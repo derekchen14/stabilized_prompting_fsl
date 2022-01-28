@@ -2,7 +2,7 @@
 
 # Intent Classification (classify)
 python main.py --dataset gsim --task classify --model gpt --size small --do-train --debug \
-      --n-epochs 3 --learning-rate 1e-5 --prune-keep 3 --batch-size 4
+      --n-epochs 3 --learning-rate 1e-5 --prune-keep 3 --batch-size 4 # --verbose
 # python main.py --dataset ed --task classify --style emotions --do-train --debug \
 #       --n-epochs 3 --learning-rate 1e-5 --model roberta --prune-keep 3 --batch-size 4
 # python main.py --dataset abcd --task classify --style subflows --do-train --debug \

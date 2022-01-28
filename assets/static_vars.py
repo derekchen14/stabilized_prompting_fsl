@@ -27,7 +27,16 @@ DATASETS = {
 }
 
 CHECKPOINTS = {
-    'roberta': 'roberta-large',
-    'gpt': 'gpt2-medium',
-    'bart': 'facebook/bart-large'
+    'roberta': {
+        'small': 'roberta-base', 
+        'medium': 'roberta-large',
+        'large': 'roberta-xlarge' },
+    'gpt': {
+        'small': 'gpt2',
+        'medium': 'gpt2-medium',
+        'large': 'EleutherAI/gpt-j-6B'},
+    'bart': {
+        'small': 'facebook/bart-base',
+        'medium': 'facebook/bart-large',
+        'large': 'facebook/bart-xlarge'}
 }

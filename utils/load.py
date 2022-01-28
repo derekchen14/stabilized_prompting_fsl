@@ -11,9 +11,9 @@ import torch
 
 from tqdm import tqdm as progress_bar
 from transformers import GPT2LMHeadModel,GPT2ForSequenceClassification, GPT2Config, GPT2Tokenizer, \
-                    GPTJForCausalLM, BartForConditionalGeneration, BartConfig, BartTokenizer
+                    BartForConditionalGeneration, BartForConditionalGeneration, BartConfig, BartTokenizer
 from transformers import logging, pipeline
-from assets.static_vars import device
+from assets.static_vars import device, CHECKPOINTS, TASKS
 from components.embed import Embedder
 
 logging.set_verbosity_error()
@@ -25,11 +25,11 @@ def load_data(args):
     split_data = json.load(open(split_path, 'r'))
 
     if split == 'ontology':
-      if args.task == 'gsim':
+      if args.dataset == 'gsim':
         data[split] = split_data['user_acts']
-      if args.task == 'abcd':
+      if args.dataset == 'abcd':
         data[split] = split_data['subflows']
-      if args.task == 'mwoz':
+      if args.dataset == 'mwoz':
         data[split] = split_data
       example_type = 'labels'
     else:
@@ -42,17 +42,17 @@ def load_data(args):
 
 def load_tokenizer(args):
   special = { 'additional_special_tokens': 
-          ['<customer>', '<agent>', '<sep>', '<service>']  }
-  tkn_name = CHECKPOINTS[args.model]
+          ['<customer>', '<agent>', '<label>', '<kb>']  }
+  token_ckpt = CHECKPOINTS[args.model][args.size]
 
   if args.model == 'roberta':
-    tokenizer = RobertaTokenizer.from_pretrained(tkn_name)
+    tokenizer = RobertaTokenizer.from_pretrained(token_ckpt)
   elif args.model == 'gpt':
-    tokenizer = GPT2Tokenizer.from_pretrained(tkn_name)
+    tokenizer = GPT2Tokenizer.from_pretrained(token_ckpt)
     special['sep_token'] = '<sep>'
     special['pad_token'] = '<pad>'
   elif args.model == 'bart':
-    tokenizer = BartTokenizer.from_pretrained(tkn_name)
+    tokenizer = BartTokenizer.from_pretrained(token_ckpt)
   else:
     print(f'{args.model} not supported at this time')
     sys.exit()
@@ -61,16 +61,9 @@ def load_tokenizer(args):
   return tokenizer
 
 def load_model(args, ontology, tokenizer, ckpt_path=None):
-  print(f"Setting up {args.model} model for {TASKS[args.task]} task")
-
-  if args.size == 'small':
-    ckpt_name = 'gpt2'
-  elif args.size == 'medium':
-    ckpt_name = 'gpt2-medium'
-  elif args.size == 'large':
-    ckpt_name = 'EleutherAI/gpt-j-6B'
-    # use GPTJForCausalLM: https://huggingface.co/docs/transformers/model_doc/gptj
-
+  print(f"Setting up {args.size} {args.model} model for {TASKS[args.task]} task")
+  ckpt_name = CHECKPOINTS[args.model][args.size]
+  # use GPTJForCausalLM: https://huggingface.co/docs/transformers/model_doc/gptj
 
   if args.model == 'gpt':
     if args.task in ['classify', 'track']:

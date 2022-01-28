@@ -12,7 +12,7 @@ from tqdm import tqdm as progress_bar
 from collections import defaultdict
 
 def check_cache(args):
-  cache_file = f'{args.task}_{args.style}.pkl'
+  cache_file = f'{args.task}_base.pkl'
   cache_path = os.path.join(args.input_dir, 'cache', args.dataset, cache_file)
   use_cache = not args.ignore_cache
 

@@ -145,9 +145,7 @@ if __name__ == "__main__":
   raw_data = load_data(args)
   tokenizer = load_tokenizer(args)
   dataset, ontology = process_data(args, raw_data, tokenizer)
-  
-  embedder = load_glove(args.glove_dim)
-  exp_logger = ExperienceLogger(args, ontology, save_path, embedder)
+  exp_logger = ExperienceLogger(args, ontology, save_path)
 
   if args.do_train:
     model = load_model(args, ontology, tokenizer)

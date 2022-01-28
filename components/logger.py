@@ -12,15 +12,13 @@ import time as tm
 from collections import defaultdict
 
 class ExperienceLogger:
-    def __init__(self, args, ontology, save_dir, embedder=None):
+    def __init__(self, args, ontology, save_dir):
         self.args = args
         self.learning_rate = args.learning_rate
-        self.style = args.style
         self.model_type = args.model
 
         self.save_path = save_dir
         self.ontology = ontology
-        self.embedder = embedder
         self.optimizer = None
         self.scheduler = None
 
@@ -77,18 +75,6 @@ class ExperienceLogger:
         self.logger.info(f"Current epoch took {minute_diff} min, average is {avg_diff} min")
 
         return self.early_stop(met)
-
-    def initialize_bleu(self):
-        start_bleu = tm.time()
-
-        from nltk.tokenize import word_tokenize
-        from nltk.translate.bleu_score import Smoothing 
-        self.word_tokenize = word_tokenize
-        self.smoothing = SmoothingFunction().method4
-
-        end_bleu = tm.time()
-        diff_time = round(end_bleu - start_bleu, 3)
-        print(f"Saved {diff_time} seconds")
 
     def early_stop(self, metric):
         below_threshold = False
