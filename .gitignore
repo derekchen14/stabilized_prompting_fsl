@@ -1,0 +1,16 @@
+.DS_Store
+__init__.py
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+assets/
+scripts/
+results/
+cache/
+
+train.json
+dev.json
+test.json
