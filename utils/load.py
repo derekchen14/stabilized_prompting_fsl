@@ -22,7 +22,7 @@ logging.set_verbosity_error()
 def load_data(args):  
   data = {}
   for split in ['train', 'dev', 'test', 'ontology']:
-    split_path = os.path.join(args.input_dir, args.dataset.upper(), f"{split}.json")
+    split_path = os.path.join(args.input_dir, args.dataset, f"{split}.json")
     split_data = json.load(open(split_path, 'r'))
 
     if split == 'ontology':

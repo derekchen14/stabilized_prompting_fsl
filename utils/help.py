@@ -30,7 +30,7 @@ def setup_gpus(args):
   return args
 
 def check_directories(args):
-  dataset_path = os.path.join(args.output_dir, args.dataset.upper())
+  dataset_path = os.path.join(args.output_dir, args.dataset)
   save_path = os.path.join(dataset_path, args.task)
   if not os.path.exists(dataset_path):
     os.mkdir(dataset_path)

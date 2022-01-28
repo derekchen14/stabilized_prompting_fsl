@@ -1,23 +1,23 @@
 # ________ BASELINE TRAINING ACROSS TASKS ________
 
 # Intent Classification (classify)
-# python main.py --dataset dd --task clc --style topics --do-train --do-save \
-#       --n-epochs 7 --learning-rate 1e-5 --model roberta --prune-keep 3 --batch-size 4
-# python main.py --dataset ed --task clc --style emotions --do-train --debug \
+python main.py --dataset gsim --task classify --model gpt --size small --do-train --debug \
+      --n-epochs 3 --learning-rate 1e-5 --prune-keep 3 --batch-size 4
+# python main.py --dataset ed --task classify --style emotions --do-train --debug \
 #       --n-epochs 3 --learning-rate 1e-5 --model roberta --prune-keep 3 --batch-size 4
-# python main.py --dataset abcd --task clc --style subflows --do-train --debug \
+# python main.py --dataset abcd --task classify --style subflows --do-train --debug \
 #       --n-epochs 3 --learning-rate 1e-5 --model roberta --prune-keep 3 --batch-size 4
-# python main.py --dataset cdgc --task clc --style movies --do-train --debug \
+# python main.py --dataset cdgc --task classify --style movies --do-train --debug \
 #       --n-epochs 7 --learning-rate 1e-5 --model roberta --prune-keep 3 --batch-size 4
 
 # Dialogue State Tracking (track)
-python main.py --dataset sgd --task dst --style intents --do-train --debug \
-      --n-epochs 3 --learning-rate 1e-5 --model bart --prune-keep 3 --batch-size 4
-# python main.py --dataset gsim --task dst --style user_acts --ignore-cache --do-train --do-save \
+# python main.py --dataset sgd --task track --style intents --do-train --debug \
+#       --n-epochs 3 --learning-rate 1e-5 --model bart --prune-keep 3 --batch-size 4
+# python main.py --dataset gsim --task track --style user_acts --ignore-cache --do-train --do-save \
 #       --n-epochs 7 --learning-rate 1e-5 --model roberta --prune-keep 3 --batch-size 4
-# python main.py --dataset mwoz --task dst --style apis --do-train --do-save \
+# python main.py --dataset mwoz --task track --style apis --do-train --do-save \
 #       --n-epochs 7 --learning-rate 1e-5 --model roberta --prune-keep 3 --batch-size 4
-# python main.py --dataset tt --task dst --style apis --do-train --do-save \
+# python main.py --dataset tt --task track --style apis --do-train --do-save \
 #       --n-epochs 7 --learning-rate 1e-5 --model roberta --prune-keep 3 --batch-size 4
 
 # Response Generation (generate)
