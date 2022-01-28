@@ -11,8 +11,7 @@ import torch
 
 from tqdm import tqdm as progress_bar
 from transformers import GPT2LMHeadModel,GPT2ForSequenceClassification, GPT2Config, GPT2Tokenizer, \
-                    RobertaModel, RobertaForSequenceClassification, RobertaConfig, RobertaTokenizer, \
-                    BartForConditionalGeneration, BartForSequenceClassification, BartConfig, BartTokenizer
+                    GPTJForCausalLM, BartForConditionalGeneration, BartConfig, BartTokenizer
 from transformers import logging, pipeline
 from assets.static_vars import device
 from components.embed import Embedder
@@ -65,6 +64,8 @@ def load_model(args, ontology, tokenizer, ckpt_path=None):
     ckpt_name = 'gpt2-medium'
   elif args.size == 'large':
     ckpt_name = 'EleutherAI/gpt-j-6B'
+    # use GPTJForCausalLM: https://huggingface.co/docs/transformers/model_doc/gptj
+
 
   if args.model == 'gpt':
     if args.task in ['classify', 'track']:

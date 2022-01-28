@@ -48,12 +48,17 @@ def calculate_bow(embedder, hypotheses, references):
 
 def parse_pred_output(full_string, label_keys):
   # parse the predicted output of the model into a structured representation
-  pred_string = full_string.split('<sep>')[-1]
-  eos_index = pred_string.index('</s>')
-  pred_string = pred_string[:eos_index]
-  # print('pred_string', pred_string)
-
   parsed = defaultdict(list)
+
+  pred_string = full_string.split('<label>')[1]   # first half is the context string
+  pred_string = pred_string.replace(' <pad>', '') 
+
+  if '<' in pred_string:  # represents the start of a special token
+    eos_index = pred_string.index('<')
+  else:
+    return parsed  # we found nothing
+
+  pred_string = pred_string[:eos_index].strip()
   for pred in pred_string.split(';'):
     try:
       remaining, value = pred[:-1].split("=")
@@ -61,12 +66,13 @@ def parse_pred_output(full_string, label_keys):
     except(ValueError):
       continue
 
-      if slot == 'request':
-        parsed['requests'].append(value)
-      else:
-        parsed['slots'].append(slot)
-        parsed['values'].append(value)
-      parsed['intents'].append(intent)
+    if slot == 'request':
+      parsed['requests'].append(value)
+    else:
+      parsed['slots'].append(slot)
+      parsed['values'].append(value)
+    parsed['intents'].append(intent)
+
   return parsed
 
 def calculate_prec_rec(predicted_outputs, labels):
