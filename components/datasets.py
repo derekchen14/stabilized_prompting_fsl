@@ -67,7 +67,7 @@ class BaseDataset(Dataset):
       targets = torch.tensor(labels, dtype=torch.long, device=device) # or torch.float of BCEWithLogits
     return inputs, targets
 
-class DialogueStateDataset(BaseDataset):
+class MultiwozDataset(BaseDataset):
 
   def collate_func(self, examples):
     """transforms a batch of examples into a features dict that can be fed directly into a model"""
@@ -93,3 +93,20 @@ class DialogueStateDataset(BaseDataset):
                                 truncation=True, return_tensors='pt').to(device)
       targets = inputs['input_ids']
       return inputs, targets, labels
+
+class SimulateDataset(BaseDataset):
+
+  def collate_func(self, examples):
+    """transforms a batch of examples into a features dict that can be fed directly into a model"""
+    pad_style = 'max_length' if self.split == 'test' else 'longest' # sequence in the batch
+
+    contexts, utterances, labels = [], [], []
+    for example in examples:
+      contexts.append(example['context'])
+      utterances.append(example['utterance'])
+      labels.append(example['label'])
+
+    inputs = self.tokenizer(contexts, utterances, padding=pad_style,
+                              truncation='only_first', return_tensors='pt').to(device)
+    targets = torch.tensor(labels, dtype=torch.long, device=device) # or torch.float of BCEWithLogits
+    return inputs, targets

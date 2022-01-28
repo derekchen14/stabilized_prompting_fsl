@@ -6,7 +6,7 @@ import pickle as pkl
 import numpy as np
 
 from assets.static_vars import device, DATASETS
-from components.datasets import BaseDataset, DialogueStateDataset
+from components.datasets import BaseDataset, MultiwozDataset, SimulateDataset
 from torch.utils.data import DataLoader, RandomSampler, SequentialSampler
 from tqdm import tqdm as progress_bar
 from collections import defaultdict
@@ -289,8 +289,10 @@ def process_data(args, raw_data, tokenizer):
     datasets = {}
     for split in ['train', 'dev', 'test']:
       examples = prepare_examples(args, raw_data[split], label_set, split)
-      if args.task == 'dst':
-        datasets[split] = DialogueStateDataset(examples, tokenizer,  args.task, split)
+      if args.dataset == 'mwoz':
+        datasets[split] = MultiwozDataset(examples, tokenizer,  args.task, split)
+      if args.dataset == 'gsim':
+        datasets[split] = SimulateDataset(examples, tokenizer,  args.task, split)
       else:
         datasets[split] = BaseDataset(examples, tokenizer,  args.task, split)
       print(f"Running with {len(datasets[split])} {split} examples")
