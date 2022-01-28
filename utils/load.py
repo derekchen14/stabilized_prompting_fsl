@@ -66,18 +66,13 @@ def load_model(args, ontology, tokenizer, ckpt_path=None):
   # use GPTJForCausalLM: https://huggingface.co/docs/transformers/model_doc/gptj
 
   if args.model == 'gpt':
-    if args.task in ['classify', 'track']:
-      model = GPT2ForSequenceClassification.from_pretrained(ckpt_name)
-    elif args.task == 'generate':
-      model = GPT2LMHeadModel.from_pretrained(ckpt_name)
+    model = GPT2LMHeadModel.from_pretrained(ckpt_name)
   elif args.model == 'bart':
-    if args.task == 'classify':
-      model = BartForSequenceClassification.from_pretrained(ckpt_name)
-    elif args.task in ['generate', 'track']:
-      model = BartForConditionalGeneration.from_pretrained(ckpt_name)
+    model = BartForConditionalGeneration.from_pretrained(ckpt_name)
 
-  if ckpt_path is None:
-    model.resize_token_embeddings(len(tokenizer))  # transformer_check
+  model.config.pad_token = tokenizer.pad_token
+  model.config.pad_token_id = tokenizer.pad_token_id
+  model.resize_token_embeddings(len(tokenizer))  # transformer_check
   return model.to(device)
 
 def load_glove(size=300):

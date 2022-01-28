@@ -291,7 +291,7 @@ def process_data(args, raw_data, tokenizer):
       examples = prepare_examples(args, raw_data[split], label_set, split)
       if args.dataset == 'mwoz':
         datasets[split] = MultiwozDataset(examples, tokenizer,  args.task, split)
-      if args.dataset == 'gsim':
+      elif args.dataset == 'gsim':
         datasets[split] = SimulateDataset(examples, tokenizer,  args.task, split)
       else:
         datasets[split] = BaseDataset(examples, tokenizer,  args.task, split)
