@@ -87,14 +87,17 @@ def run_classification(args, model, datasets):
   dataset = datasets['dev']
   train_data = datasets['train']
   eos = dataset.tokenizer.eos_token
-  random.shuffle(dataset)
+  random.shuffle(dataset.data)
+  num_examples = dataset.size
 
   correct = 0
-  for example in dataset:
+  for example in progress_bar(dataset, total=num_examples):
     input_string = example['dialogue'] + example['prompt']
+    inputs = dataset.tokenizer(input_string, return_tensors='pt').to(device)
+  
 
     included_domains = set()
-    while len(input_string) < model.max_length:
+    while len(inputs['input_ids'][0]) < args.max_len:
       one_shot = train_data[random.randrange(train_data.size)]
       label = one_shot['label']
 
@@ -103,22 +106,25 @@ def run_classification(args, model, datasets):
 
       shot_string = one_shot['dialogue'] + one_shot['prompt'] + label + eos
       input_string = shot_string + input_string
+      inputs = dataset.tokenizer(input_string, return_tensors='pt').to(device)
 
-    print("--- debug --- ")
-    print(input_string)
-    inputs = dataset.tokenizer(input_string, truncate=True, return_tensors='pt').to(device)
+    trimmed = {
+      'input_ids': inputs['input_ids'][:, -args.max_len:],
+      'attention_mask': inputs['attention_mask'][:, -args.max_len:]
+    }
+
     with torch.no_grad():
-      output_embed = model.generate(**inputs, max_length=1024, early_stopping=True)
+      size = args.max_len + 4
+      output_embed = model.generate(**trimmed, max_length=size, early_stopping=True)
 
-    output_text = tokenizer.decode(output_embed[0].detach(), skip_special_tokens=False)
-    print(f"---- Chat {i+1} ({label}) -----")
-    print(output_text)    
-    # answer = output_text.split()[-1]
-    # if answer == label:
-    #   correct += 1
-    pdb.set_trace()
+    output_text = tokenizer.decode(output_embed[0, -4:].detach(), skip_special_tokens=False)
+    answer = output_text.strip()
+    target = example['label']
+    # print(f"---- Target: {target}, Prediction {answer} -----")
+    if target in answer:
+      correct += 1
 
-  accuracy = round(float(correct) / len(dataset), 3) * 100
+  accuracy = round(float(correct) / num_examples, 3) * 100
   print("accuracy: {}%".format(accuracy))
 
 

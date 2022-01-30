@@ -38,6 +38,8 @@ def solicit_params():
                 help="Temperature for increasing diversity when decoding, mainly for paraphrase")
     parser.add_argument("-k", "--kappa", default=1, type=int,
                 help="Integer param: could be num clusters, dimensions of NT matrix or other")
+    parser.add_argument("--max-len", default=1024, type=int,
+                help="Maximum length of sequences for model input")
 
     # Key settings
     parser.add_argument("--ignore-cache", action="store_true",

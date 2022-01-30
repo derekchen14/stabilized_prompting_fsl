@@ -169,7 +169,7 @@ def build_mwoz(data, label_set):
   # written for raw v2.4 mwoz
   examples = []
   speakers = ["Customer: ", "Agent: "]  # ["<customer>", "<agent>"]
-  prompt = "\nTopic:", #  "The customer is looking for a"
+  prompt = "\nTopic:"  #  "The customer is looking for a"
 
   for convo_id, conversation in progress_bar(data.items(), total=len(data)):
     text_so_far = []
