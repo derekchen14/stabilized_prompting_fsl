@@ -52,7 +52,9 @@ def load_tokenizer(args):
     print(f'{args.model} not supported at this time')
     sys.exit()
 
-  tokenizer.add_special_tokens(special)
+  if args.do_train or args.num_shots == 'percent':
+    print(f"Adding special tokens {special}")
+    tokenizer.add_special_tokens(special)
   return tokenizer
 
 def load_model(args, ontology, tokenizer, load_dir):
@@ -67,9 +69,10 @@ def load_model(args, ontology, tokenizer, load_dir):
   elif args.model == 'bart':
     model = BartForConditionalGeneration.from_pretrained(ckpt_name)
 
-  model.config.pad_token = tokenizer.pad_token
-  model.config.pad_token_id = tokenizer.pad_token_id
-  model.resize_token_embeddings(len(tokenizer))  # transformer_check
+  if args.do_train or args.num_shots == 'percent': 
+    model.config.pad_token = tokenizer.pad_token
+    model.config.pad_token_id = tokenizer.pad_token_id
+    model.resize_token_embeddings(len(tokenizer))  # transformer_check
   return model.to(device)
 
 def load_glove(size=300):

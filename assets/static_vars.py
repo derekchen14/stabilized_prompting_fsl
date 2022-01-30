@@ -11,6 +11,8 @@ metric_by_task = {
     'ir': 'recall@5'
 }
 
+STOP_TOKENS = ['done', 'exit', 'logout', 'finish', 'stop']
+
 TASKS = {
     'classify': 'Intent Classification',
     'track': 'Dialogue State Tracking',

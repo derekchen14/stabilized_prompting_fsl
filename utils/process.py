@@ -144,26 +144,40 @@ def build_gsim(data, mapping):
 
   return examples
 
+def extract_domain(metadata, mapping):
+  for domain, index in mapping.items():
+    domain_data = metadata[domain]
+    for slot, value in domain_data['book'].items():
+      if len(value) > 0:
+        return index
+    for slot, value in domain_data['semi'].items():
+      if len(value) > 0:
+        return index
+  # could not find anything 
+  return -1
+
 def build_mwoz(data, mapping):
+  # written for raw v2.4 mwoz
   examples = []
+  speakers = ["<customer>", "<agent>"]
   prompt = "The topic of conversation is about"
 
-  for conversation in progress_bar(data, total=len(data)):
-    text_so_far = []    
-    for turn in conversation['turns']:
-      if 'system_utterance' in turn:
-        sys_text = turn['system_utterance']['text']
-        sys_utt = f"<agent> {sys_text}"
-        text_so_far.append(sys_utt)
+  for convo_id, conversation in progress_bar(data.items(), total=len(data)):
+    text_so_far = []
+    speaker_id = 0
 
-      user_text = turn['user_utterance']['text']
-      user_utt = f"<customer> {user_text}"
-      text_so_far.append(user_utt)
-
+    for turn in conversation['log']:
+      text = turn['text']
+      speaker = speakers[speaker_id]
+      utterance = f"{speaker} {text}"
+      text_so_far.append(utterance)
       context = ' '.join(text_so_far)
-      domain_id = extract_act(turn['domains'], mapping)
-      examples.append({'context': context, 'prompt': prompt, 'label': domain_id})  
-
+      
+      if speaker == '<agent>':
+        domain_id = extract_domain(turn['metadata'], mapping)
+        examples.append({'context': context, 'prompt': prompt, 'label': domain_id})  
+      
+      speaker_id = 1 - speaker_id
   return examples
 
 def build_sgd(data, mapping, split):

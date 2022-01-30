@@ -11,10 +11,10 @@ from utils.process import process_data, get_dataloader
 from utils.arguments import solicit_params
 from utils.load import *
 from utils.evaluate import eval_quantify, eval_qualify
-from assets.static_vars import device, debug_break
+from assets.static_vars import device, debug_break, STOP_TOKENS
 
-def run_train(args, model, datasets, tokenizer, exp_logger):
-  train_dataloader = get_dataloader(args, datasets['train'], tokenizer)
+def run_train(args, model, datasets, exp_logger):
+  train_dataloader = get_dataloader(args, datasets['train'])
   total_steps = len(train_dataloader) // args.grad_accum_steps * args.n_epochs
   optimizer, scheduler = setup_optimization(args, model, total_steps)
   exp_logger.update_optimization(optimizer, scheduler)
@@ -103,32 +103,38 @@ def run_eval(args, model, datasets, exp_logger, split='dev'):
 
 def run_interaction(args, model, dataset, exp_logger):
   dataset = datasets['dev']
-  for _ in range(args.batch_size):
+  for i in range(args.batch_size):
     sample_id = random.randrange(dataset.size)
     sample = dataset[sample_id]
-    for turn in sample['dialogue']:
-      print(turn)
-      pdb.set_trace()
+    dialog = sample['context'].replace('<agent>', 'Agent:').replace('<customer>', 'Customer:')
+    if len(dialog) > 1000: continue
 
-    prompt = input("<customer> ")
-    input_text = sample['dialogue'] + " <customer> " + prompt
-    print("-- <start debug> --")
-    print(input_text)
-    print("-- <end debug> --")
+    print(f"---- Chat {i+1} -----")
+    print(dialog)
+    prompt = input("Customer: ")
+    if prompt in STOP_TOKENS: sys.exit()
+
+    input_text = dialog + " Customer: " + prompt + " Agent:"
     inputs = dataset.tokenizer(input_text, return_tensors='pt').to(device)
 
     # https://huggingface.co/docs/transformers/v4.15.0/en/main_classes/model#transformers.generation_utils.GenerationMixin.generate 
     with torch.no_grad():
       if args.kappa > 1:
         output_embeds = model.generate(**inputs, max_length=512, early_stopping=True, do_sample=True, 
-                                          num_beams=args.kappa, temperature=args.temperature, top_p=0.95)
+                                        num_beams=args.kappa, temperature=args.temperature, top_p=0.95)
         output_texts = tokenizer.batch_decode(output_embeds.detach(), skip_special_tokens=False)
         for i, out_text in enumerate(output_texts):
           print(f"<agent {i+1}> {out_text}")
       else: 
-        output_embed = model.generate(**inputs, max_length=512, early_stopping=True)
-        output_text = tokenizer.decode(output_embed[0].detach(), skip_special_tokens=False)
-        print(f"<agent> {output_text}")
+        output_embed = model.generate(**inputs, max_length=200, early_stopping=True, length_penalty=1.0,
+                                       repetition_penalty=args.threshold, temperature=args.temperature)
+        output_text = tokenizer.decode(output_embed[0].detach(), skip_special_tokens=True)
+        parts = output_text.split("Agent: ")
+        response = parts[-1]
+        if "\n" in response:
+          newline_index = response.index("\n")
+          response = response[:newline_index]
+        print(f"Agent: {response}")
 
 
 if __name__ == "__main__":
@@ -144,8 +150,8 @@ if __name__ == "__main__":
 
   model = load_model(args, ontology, tokenizer, save_path)
   if args.do_train:
-    run_train(args, model, datasets, tokenizer, exp_logger)
+    run_train(args, model, datasets, exp_logger)
   elif args.do_interact:
-    run_interaction(args, model, datasets, tokenizer, exp_logger)
+    run_interaction(args, model, datasets, exp_logger)
   elif args.do_eval:
     run_eval(args, model, datasets, exp_logger, split='test')
