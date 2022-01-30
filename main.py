@@ -51,13 +51,39 @@ def run_train(args, model, datasets, exp_logger):
 def run_inference(args, model, dataloader, exp_logger, split, extract_text=False):
   # runs a single epoch without gradients, optionally collects meta-data along the way
   if args.task == 'track':
-    return dst_inference(args, model, dataloader, exp_logger, split)
+    return run_state_tracking(args, model, dataloader, exp_logger, split)
   elif args.task == 'classify':
-    return intent_inference(args, model, dataloader, exp_logger, split, extract_text)
+    return run_classification(args, model, dataloader, exp_logger, split, extract_text)
   elif args.task == 'generate':
-    return gen_inference(args, model, dataloader, exp_logger, split)
+    return run_generation(args, model, dataloader, exp_logger, split)
 
-def gen_inference(args, model, dataloader, exp_logger, split):
+def run_classification(args, model, dataloader, exp_logger, split):
+  all_inputs, all_outputs, all_labels = [], [], []
+  exp_logger.eval_step = 0
+
+  for inputs, input_ids, label_dicts in progress_bar(dataloader, total=len(dataloader)):
+    input_strings = tokenizer.batch_decode(input_ids.detach(), skip_special_tokens=True)
+    all_inputs.extend(input_strings)
+    all_labels.extend(label_dicts)   # notice this is "extend", not "append"
+
+    with torch.no_grad():
+      # defaults to greedy sampling, for param details see https://huggingface.co/docs/transformers/
+      #        v4.15.0/en/main_classes/model#transformers.generation_utils.GenerationMixin.generate 
+      output_ids = model.generate(**inputs, max_length=512, min_length=60, early_stopping=True)
+      output_strings = tokenizer.batch_decode(output_ids.detach(), skip_special_tokens=False)
+      all_outputs.extend(output_strings)
+
+    if split == 'dev':
+      exp_logger.eval_loss = batch_loss.mean().item()
+      exp_logger.eval_step += 1
+      if args.debug and exp_logger.eval_step >= debug_break: break
+
+  assert(len(all_labels) == len(all_inputs))
+  assert(len(all_labels) == len(all_outputs))
+  pairing = [all_inputs, all_outputs]
+  return pairing, all_labels
+
+def run_generation(args, model, dataloader, exp_logger, split):
   all_inputs, all_outputs, all_labels = [], [], []
   exp_logger.eval_step = 0
 
@@ -106,7 +132,7 @@ def run_interaction(args, model, dataset, exp_logger):
   for i in range(args.batch_size):
     sample_id = random.randrange(dataset.size)
     sample = dataset[sample_id]
-    dialog = sample['context'].replace('<agent>', 'Agent:').replace('<customer>', 'Customer:')
+    dialog = sample['context']
     if len(dialog) > 1000: continue
 
     print(f"---- Chat {i+1} -----")

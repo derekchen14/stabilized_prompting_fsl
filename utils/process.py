@@ -144,13 +144,13 @@ def build_gsim(data, mapping):
 
   return examples
 
-def extract_domain(metadata, mapping, domain_tracker):
-  for domain, index in mapping.items():
+def extract_domain(metadata, label_set, domain_tracker):
+  for domain in label_set:
     domain_data = metadata[domain]
 
     slotvals = []
     for slot, value in domain_data['book'].items():
-      if len(value) > 0:
+      if len(value) > 0 and not isinstance(value, list):
         slotvals.append(value)
     for slot, value in domain_data['semi'].items():
       if len(value) > 0:
@@ -163,19 +163,49 @@ def extract_domain(metadata, mapping, domain_tracker):
       return domain, domain_tracker  # index
 
   # could not find anything 
-  return "NONE", domain_tracker  # -1
+  return "", domain_tracker
 
-def build_mwoz(data, mapping):
+def build_mwoz(data, label_set):
   # written for raw v2.4 mwoz
   examples = []
-  speakers = ["<customer>", "<agent>"]
-  prompt = "The topic of conversation is about"
+  speakers = ["Customer: ", "Agent: "]  # ["<customer>", "<agent>"]
+  prompt = "\nTopic:", #  "The customer is looking for a"
 
   for convo_id, conversation in progress_bar(data.items(), total=len(data)):
     text_so_far = []
     speaker_id = 0
-    domain_tracker = {domain: '' for domain, index in mapping.items()}
+    d_tracker = {domain: '' for domain in label_set}
 
+    for turn in conversation['log']:
+      text = turn['text']
+      speaker = speakers[speaker_id]
+      utterance = f"{speaker} {text}"
+      
+      if speaker_id == 0:  # change to agent for interactive mode
+        text_so_far.append(utterance)
+      elif speaker_id == 1:
+        domain, d_tracker = extract_domain(turn['metadata'], label_set, d_tracker)
+        if len(domain) > 0:
+          context = ' '.join(text_so_far)
+          # options = '\nCandidates: ' + ', '.join(label_set)
+          # dialogue = context + options
+          examples.append({'dialogue': context, 'prompt': prompt, 'label': domain})
+        text_so_far.append(utterance)  # add agent utterance afterwards
+      
+      speaker_id = 1 - speaker_id
+      if len(text_so_far) > 4:
+        text_so_far = text_so_far[-4:]
+
+  return examples
+
+def build_mwoz_interact(data, mapping):
+  examples = []
+  speakers = ["Customer: ", "Agent: "]
+
+  for convo_id, conversation in progress_bar(data.items(), total=len(data)):
+    text_so_far = []
+    speaker_id = 0
+    
     for turn in conversation['log']:
       text = turn['text']
       speaker = speakers[speaker_id]
@@ -183,18 +213,12 @@ def build_mwoz(data, mapping):
       text_so_far.append(utterance)
       context = ' '.join(text_so_far)
       
-      if speaker == '<agent>':
-        domain, domain_tracker = extract_domain(turn['metadata'], mapping)
-        examples.append({'context': context, 'prompt': prompt, 'label': domain})  
+      if speaker == 'Agent: ':
+        examples.append({'context': context, 'prompt': 'n/a', 'label': 'n/a'})  
       
       speaker_id = 1 - speaker_id
-    if len(text_so_far) > 10:
-      text_so_far = text_so_far[-10:]
-
-  random.shuffle(examples)
-  for example in examples:
-    print(example)
-    pdb.set_trace()
+      if len(text_so_far) > 10:
+        text_so_far = text_so_far[-10:]
 
   return examples
 
@@ -311,7 +335,7 @@ def prepare_examples(args, data, label_set, split):
   elif args.dataset == 'gsim':  # Simulated Dialogues
     examples = build_gsim(data, mapping) 
   elif args.dataset == 'mwoz':  # MultiWoz 2.2
-    examples = build_mwoz(data, mapping) 
+    examples = build_mwoz(data, label_set) 
   elif args.dataset == 'sgd':   # Schema Guided Dialogue
     examples = build_sgd(data, mapping, split) 
   elif args.dataset == 'tt':    # TicketTalk
