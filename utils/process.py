@@ -144,17 +144,26 @@ def build_gsim(data, mapping):
 
   return examples
 
-def extract_domain(metadata, mapping):
+def extract_domain(metadata, mapping, domain_tracker):
   for domain, index in mapping.items():
     domain_data = metadata[domain]
+
+    slotvals = []
     for slot, value in domain_data['book'].items():
       if len(value) > 0:
-        return index
+        slotvals.append(value)
     for slot, value in domain_data['semi'].items():
       if len(value) > 0:
-        return index
+        slotvals.append(value)
+
+    previous = domain_tracker[domain]
+    current = '_'.join(slotvals)
+    if current != previous:
+      domain_tracker[domain] = current
+      return domain, domain_tracker  # index
+
   # could not find anything 
-  return -1
+  return "NONE", domain_tracker  # -1
 
 def build_mwoz(data, mapping):
   # written for raw v2.4 mwoz
@@ -165,6 +174,7 @@ def build_mwoz(data, mapping):
   for convo_id, conversation in progress_bar(data.items(), total=len(data)):
     text_so_far = []
     speaker_id = 0
+    domain_tracker = {domain: '' for domain, index in mapping.items()}
 
     for turn in conversation['log']:
       text = turn['text']
@@ -174,10 +184,18 @@ def build_mwoz(data, mapping):
       context = ' '.join(text_so_far)
       
       if speaker == '<agent>':
-        domain_id = extract_domain(turn['metadata'], mapping)
-        examples.append({'context': context, 'prompt': prompt, 'label': domain_id})  
+        domain, domain_tracker = extract_domain(turn['metadata'], mapping)
+        examples.append({'context': context, 'prompt': prompt, 'label': domain})  
       
       speaker_id = 1 - speaker_id
+    if len(text_so_far) > 10:
+      text_so_far = text_so_far[-10:]
+
+  random.shuffle(examples)
+  for example in examples:
+    print(example)
+    pdb.set_trace()
+
   return examples
 
 def build_sgd(data, mapping, split):
