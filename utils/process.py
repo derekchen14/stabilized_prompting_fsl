@@ -124,8 +124,9 @@ def build_abcd(args, data, mapping):
 
 def build_gsim(data, mapping):
   examples = []
+  prompt = "The topic of conversation is about"
+
   for conversation in progress_bar(data, total=len(data)):
-    
     text_so_far = []    
     for turn in conversation['turns']:
       if 'system_utterance' in turn:
@@ -133,35 +134,42 @@ def build_gsim(data, mapping):
         sys_utt = f"<agent> {sys_text}"
         text_so_far.append(sys_utt)
 
-      context = ' '.join(text_so_far)
       user_text = turn['user_utterance']['text']
       user_utt = f"<customer> {user_text}"
-      act_id = extract_act(turn['user_acts'], mapping)
-
-      examples.append({'context': context, 'utterance': user_utt, 'label': act_id})  
       text_so_far.append(user_utt)
+
+      context = ' '.join(text_so_far)
+      act_id = extract_act(turn['user_acts'], mapping)
+      examples.append({'context': context, 'prompt': prompt, 'label': act_id})  
 
   return examples
 
 def build_mwoz(data, mapping):
   examples = []
+  prompt = "The topic of conversation is about"
+
   for conversation in progress_bar(data, total=len(data)):
-    
     text_so_far = []    
-    for turn in conversation:
-      current_utt = turn['utterance']
-      context = ' '.join(text_so_far).deepcopy()
+    for turn in conversation['turns']:
+      if 'system_utterance' in turn:
+        sys_text = turn['system_utterance']['text']
+        sys_utt = f"<agent> {sys_text}"
+        text_so_far.append(sys_utt)
 
-      labels = [mapping(label) for label in turn['labels']]
+      user_text = turn['user_utterance']['text']
+      user_utt = f"<customer> {user_text}"
+      text_so_far.append(user_utt)
 
-      example = {'context': context, 'utterance': current_utt, 'label': labels}
-      examples.append(example)
-  
-      text_so_far.append(current_utt)
+      context = ' '.join(text_so_far)
+      domain_id = extract_act(turn['domains'], mapping)
+      examples.append({'context': context, 'prompt': prompt, 'label': domain_id})  
+
   return examples
 
 def build_sgd(data, mapping, split):
   examples = []
+  prompt = "The topic of conversation is about"
+
   for conversation in progress_bar(data, total=len(data)):
     text_so_far = []    
 

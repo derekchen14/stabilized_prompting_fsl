@@ -57,55 +57,21 @@ def run_inference(args, model, dataloader, exp_logger, split, extract_text=False
   elif args.task == 'generate':
     return gen_inference(args, model, dataloader, exp_logger, split)
 
-def intent_inference(args, model, dataloader, exp_logger, split, extract_text):
-  all_preds, all_targets, all_contexts = [], [], []
-  exp_logger.eval_step = 0
-
-  for inputs, labels in progress_bar(dataloader, total=len(dataloader)):
-    with torch.no_grad():
-      outputs = model(**inputs, labels=labels)
-    batch_loss = outputs.loss
-
-    pred = outputs.logits.softmax(dim=-1) # detach().cpu().flatten().numpy().tolist()
-    all_preds.append(pred)
-    all_targets.append(labels)
-    all_contexts.append(inputs['input_ids'])
-
-    if split == 'dev':
-      exp_logger.eval_loss = batch_loss.mean().item()
-      exp_logger.eval_step += 1
-      if args.debug and exp_logger.eval_step >= debug_break: break
-
-  if args.task == 'rg':
-    return all_preds, all_targets
-  predictions = torch.cat(all_preds, axis=0).detach().cpu()
-  targets = torch.cat(all_targets).detach().cpu()
-  
-  if extract_text:
-    contexts = torch.cat(all_contexts).detach().cpu()
-    return predictions, targets, contexts
-  else:
-    return predictions, targets
-
 def gen_inference(args, model, dataloader, exp_logger, split):
   all_inputs, all_outputs, all_labels = [], [], []
   exp_logger.eval_step = 0
 
   for inputs, input_ids, label_dicts in progress_bar(dataloader, total=len(dataloader)):
-
-    with torch.no_grad():
-      outputs = model.generate(**inputs)
-    batch_loss = outputs.loss
-
-    logits = outputs.logits.softmax(dim=-1)       # batch_size, seq_len, vocab_size
-    output_ids = torch.argmax(logits, axis=-1)    # batch_size, seq_len
-
-    for single_input, single_output in zip(input_ids, output_ids):
-      input_string = tokenizer.decode(single_input, skip_special_tokens=True)
-      output_string = tokenizer.decode(single_output, skip_special_tokens=False)
-      all_inputs.append(input_string)
-      all_outputs.append(output_string)
+    input_strings = tokenizer.batch_decode(input_ids.detach(), skip_special_tokens=True)
+    all_inputs.extend(input_strings)
     all_labels.extend(label_dicts)   # notice this is "extend", not "append"
+    
+    with torch.no_grad():
+      # defaults to greedy sampling, for param details see https://huggingface.co/docs/transformers/
+      #        v4.15.0/en/main_classes/model#transformers.generation_utils.GenerationMixin.generate 
+      output_ids = model.generate(**inputs, max_length=512, min_length=60, early_stopping=True)
+      output_strings = tokenizer.batch_decode(output_ids.detach(), skip_special_tokens=False)
+      all_outputs.extend(output_strings)
 
     if split == 'dev':
       exp_logger.eval_loss = batch_loss.mean().item()
@@ -135,6 +101,35 @@ def run_eval(args, model, datasets, exp_logger, split='dev'):
 
   return results
 
+def run_interaction(args, model, dataset, exp_logger):
+  dataset = datasets['dev']
+  for _ in range(args.batch_size):
+    sample_id = random.randrange(dataset.size)
+    sample = dataset[sample_id]
+    for turn in sample['dialogue']:
+      print(turn)
+      pdb.set_trace()
+
+    prompt = input("<customer> ")
+    input_text = sample['dialogue'] + " <customer> " + prompt
+    print("-- <start debug> --")
+    print(input_text)
+    print("-- <end debug> --")
+    inputs = dataset.tokenizer(input_text, return_tensors='pt').to(device)
+
+    # https://huggingface.co/docs/transformers/v4.15.0/en/main_classes/model#transformers.generation_utils.GenerationMixin.generate 
+    with torch.no_grad():
+      if args.kappa > 1:
+        output_embeds = model.generate(**inputs, max_length=512, early_stopping=True, do_sample=True, 
+                                          num_beams=args.kappa, temperature=args.temperature, top_p=0.95)
+        output_texts = tokenizer.batch_decode(output_embeds.detach(), skip_special_tokens=False)
+        for i, out_text in enumerate(output_texts):
+          print(f"<agent {i+1}> {out_text}")
+      else: 
+        output_embed = model.generate(**inputs, max_length=512, early_stopping=True)
+        output_text = tokenizer.decode(output_embed[0].detach(), skip_special_tokens=False)
+        print(f"<agent> {output_text}")
+
 
 if __name__ == "__main__":
   args = solicit_params()
@@ -144,12 +139,13 @@ if __name__ == "__main__":
 
   raw_data = load_data(args)
   tokenizer = load_tokenizer(args)
-  dataset, ontology = process_data(args, raw_data, tokenizer)
+  datasets, ontology = process_data(args, raw_data, tokenizer)
   exp_logger = ExperienceLogger(args, ontology, save_path)
 
+  model = load_model(args, ontology, tokenizer, save_path)
   if args.do_train:
-    model = load_model(args, ontology, tokenizer)
-    run_train(args, model, dataset, tokenizer, exp_logger)
-  if args.do_eval:
-    model = load_best_model(args, ontology, save_path)
-    run_eval(args, model, dataset, exp_logger, split='test')
+    run_train(args, model, datasets, tokenizer, exp_logger)
+  elif args.do_interact:
+    run_interaction(args, model, datasets, tokenizer, exp_logger)
+  elif args.do_eval:
+    run_eval(args, model, datasets, exp_logger, split='test')

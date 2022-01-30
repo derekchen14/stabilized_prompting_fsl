@@ -60,13 +60,15 @@ def load_tokenizer(args):
   tokenizer.add_special_tokens(special)
   return tokenizer
 
-def load_model(args, ontology, tokenizer, ckpt_path=None):
+def load_model(args, ontology, tokenizer, load_dir):
   print(f"Setting up {args.size} {args.model} model for {TASKS[args.task]} task")
+  if args.num_shots == 'percent':
+    return load_best_model(args, ontology, load_dir)
+  
   ckpt_name = CHECKPOINTS[args.model][args.size]
-  # use GPTJForCausalLM: https://huggingface.co/docs/transformers/model_doc/gptj
-
   if args.model == 'gpt':
     model = GPT2LMHeadModel.from_pretrained(ckpt_name)
+    # use GPTJForCausalLM: https://huggingface.co/docs/transformers/model_doc/gptj
   elif args.model == 'bart':
     model = BartForConditionalGeneration.from_pretrained(ckpt_name)
 
@@ -87,7 +89,7 @@ def load_glove(size=300):
     return None  # embedder is not needed for this task
 
 def load_best_model(args, ontology, load_dir):
-  print('Loading best finetuned model ...')
+  print(f'Loading best finetuned model from {load_dir} ...')
   if len(args.checkpoint) > 0:
     top_filename = args.checkpoint
   else:

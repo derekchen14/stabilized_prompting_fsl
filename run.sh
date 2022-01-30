@@ -1,14 +1,12 @@
-# ________ BASELINE TRAINING ACROSS TASKS ________
+# ________ Training Mode ________
 
 # Intent Classification (classify)
-python main.py --dataset gsim --task classify --model gpt --size small --do-train --debug \
-      --n-epochs 3 --learning-rate 1e-5 --prune-keep 3 --batch-size 4  # --verbose
+# python main.py --dataset gsim --task classify --model gpt --size small --do-train --debug \
+#       --n-epochs 3 --learning-rate 1e-5 --prune-keep 3 --batch-size 4  # --verbose
 # python main.py --dataset ed --task classify --style emotions --do-train --debug \
 #       --n-epochs 3 --learning-rate 1e-5 --model roberta --prune-keep 3 --batch-size 4
 # python main.py --dataset abcd --task classify --style subflows --do-train --debug \
 #       --n-epochs 3 --learning-rate 1e-5 --model roberta --prune-keep 3 --batch-size 4
-# python main.py --dataset cdgc --task classify --style movies --do-train --debug \
-#       --n-epochs 7 --learning-rate 1e-5 --model roberta --prune-keep 3 --batch-size 4
 
 # Dialogue State Tracking (track)
 # python main.py --dataset sgd --task track --style intents --do-train --debug \
@@ -30,14 +28,14 @@ python main.py --dataset gsim --task classify --model gpt --size small --do-trai
 # python main.py --dataset mwoz --task rg --style slots --do-train --do-save \
 #       --n-epochs 7 --learning-rate 1e-5 --model gpt --prune-keep 3 --batch-size 4
 
+# ______________ Interactive Mode ________________
+python main.py --dataset mwoz --task classify --style domain --do-train --do-interact \
+      --model gpt --size small --batch-size 10 --num-shots zero
+# python main.py --dataset abcd --task classify --style domain --do-train --do-interact \
+#       --model gpt --size small
 
-# ______________ Model Variations ________________
-# python main.py --style dd --model gpt --style clc --do-train --debug \  # --do-save
-#       --n-epochs 3 --learning-rate 1e-5
-# python main.py --style dd --model bart --style clc --do-train --debug \  # --do-save
-#       --n-epochs 3 --learning-rate 1e-5
 
-# ______ Automatic Evaluation ______
+# ______ Automatic Evaluation Mode ______
 # python main.py --style dd --model roberta --style topics --do-eval --quantify --task clc
 # python main.py --domain airline --model roberta --do-eval --quantify --do-augment \
 # 	--mixing single --task eda

@@ -27,11 +27,14 @@ def solicit_params():
     # Custom paper parameters
     parser.add_argument("--prune-keep", default=-1, type=int,
                 help="Number of models to keep around after pruning, by default does not prune")
-    parser.add_argument("--threshold", default=0.2, type=float,
-                help="Various threshold levels, used for confidence uncertainty grid")
-    parser.add_argument("--temperature", default=2.0, type=float,
+    parser.add_argument("--num-shots", default="zero", type=str,
+                choices=["zero", "few", "percent"], help="zero-shot and few-shot learning load \
+                    an untrained model, percent loads a model fine-tuned on X% of data")
+    parser.add_argument("--threshold", default=0.25, type=float,
+                help="Determines the amount of data used for pre-training the model; See num-shots")
+    parser.add_argument("--temperature", default=1.4, type=float,
                 help="Temperature for increasing diversity when decoding, mainly for paraphrase")
-    parser.add_argument("-k", "--kappa", default=10, type=int,
+    parser.add_argument("-k", "--kappa", default=1, type=int,
                 help="Integer param: could be num clusters, dimensions of NT matrix or other")
 
     # Key settings
@@ -47,6 +50,8 @@ def solicit_params():
                 help="Whether to run eval on the test set.")
     parser.add_argument("--do-save", action="store_true",
                 help="Whether to save models, which override previous checkpoints")
+    parser.add_argument("--do-interact", action="store_true",
+                help="When turned on, you dynamically feed in a prompt for inference")
     parser.add_argument("--log-interval", type=int, default=500,
                 help="Log every X updates steps.")
     parser.add_argument("--qualify", action='store_true',

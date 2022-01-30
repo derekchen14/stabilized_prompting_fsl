@@ -100,13 +100,13 @@ class SimulateDataset(BaseDataset):
     """transforms a batch of examples into a features dict that can be fed directly into a model"""
     pad_style = 'max_length' if self.split == 'test' else 'longest' # sequence in the batch
 
-    contexts, utterances, labels = [], [], []
+    contexts, prompts, labels = [], [], []
     for example in examples:
       contexts.append(example['context'])
-      utterances.append(example['utterance'])
+      prompts.append(example['prompt'])
       labels.append(example['label'])
 
-    inputs = self.tokenizer(contexts, utterances, padding=pad_style,
+    inputs = self.tokenizer(contexts, prompts, padding=pad_style,
                               truncation='only_first', return_tensors='pt').to(device)
     targets = torch.tensor(labels, dtype=torch.long, device=device) # or torch.float of BCEWithLogits
     return inputs, targets
