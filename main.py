@@ -57,32 +57,6 @@ def run_inference(args, model, dataloader, exp_logger, split, extract_text=False
   elif args.task == 'generate':
     return run_generation(args, model, dataloader, exp_logger, split)
 
-def run_classification(args, model, dataloader, exp_logger, split):
-  all_inputs, all_outputs, all_labels = [], [], []
-  exp_logger.eval_step = 0
-
-  for inputs, input_ids, label_dicts in progress_bar(dataloader, total=len(dataloader)):
-    input_strings = tokenizer.batch_decode(input_ids.detach(), skip_special_tokens=True)
-    all_inputs.extend(input_strings)
-    all_labels.extend(label_dicts)   # notice this is "extend", not "append"
-
-    with torch.no_grad():
-      # defaults to greedy sampling, for param details see https://huggingface.co/docs/transformers/
-      #        v4.15.0/en/main_classes/model#transformers.generation_utils.GenerationMixin.generate 
-      output_ids = model.generate(**inputs, max_length=512, min_length=60, early_stopping=True)
-      output_strings = tokenizer.batch_decode(output_ids.detach(), skip_special_tokens=False)
-      all_outputs.extend(output_strings)
-
-    if split == 'dev':
-      exp_logger.eval_loss = batch_loss.mean().item()
-      exp_logger.eval_step += 1
-      if args.debug and exp_logger.eval_step >= debug_break: break
-
-  assert(len(all_labels) == len(all_inputs))
-  assert(len(all_labels) == len(all_outputs))
-  pairing = [all_inputs, all_outputs]
-  return pairing, all_labels
-
 def run_generation(args, model, dataloader, exp_logger, split):
   all_inputs, all_outputs, all_labels = [], [], []
   exp_logger.eval_step = 0
@@ -91,7 +65,7 @@ def run_generation(args, model, dataloader, exp_logger, split):
     input_strings = tokenizer.batch_decode(input_ids.detach(), skip_special_tokens=True)
     all_inputs.extend(input_strings)
     all_labels.extend(label_dicts)   # notice this is "extend", not "append"
-    
+
     with torch.no_grad():
       # defaults to greedy sampling, for param details see https://huggingface.co/docs/transformers/
       #        v4.15.0/en/main_classes/model#transformers.generation_utils.GenerationMixin.generate 
@@ -109,14 +83,53 @@ def run_generation(args, model, dataloader, exp_logger, split):
   pairing = [all_inputs, all_outputs]
   return pairing, all_labels
 
+def run_classification(args, model, datasets):
+  dataset = datasets['dev']
+  train_data = datasets['train']
+  eos = dataset.tokenizer.eos_token
+  random.shuffle(dataset)
+
+  correct = 0
+  for example in dataset:
+    input_string = example['dialogue'] + example['prompt']
+
+    included_domains = set()
+    while len(input_string) < model.max_length:
+      one_shot = train_data[random.randrange(train_data.size)]
+      label = one_shot['label']
+
+      if len(included_domains) < 5 and label in included_domains:
+        continue  # resample a new example
+
+      shot_string = one_shot['dialogue'] + one_shot['prompt'] + label + eos
+      input_string = shot_string + input_string
+
+    print("--- debug --- ")
+    print(input_string)
+    inputs = dataset.tokenizer(input_string, truncate=True, return_tensors='pt').to(device)
+    with torch.no_grad():
+      output_embed = model.generate(**inputs, max_length=1024, early_stopping=True)
+
+    output_text = tokenizer.decode(output_embed[0].detach(), skip_special_tokens=False)
+    print(f"---- Chat {i+1} ({label}) -----")
+    print(output_text)    
+    # answer = output_text.split()[-1]
+    # if answer == label:
+    #   correct += 1
+    pdb.set_trace()
+
+  accuracy = round(float(correct) / len(dataset), 3) * 100
+  print("accuracy: {}%".format(accuracy))
+
+
 def run_eval(args, model, datasets, exp_logger, split='dev'):
   dataloader = get_dataloader(args, datasets[split], split)
   tokenizer = datasets[split].tokenizer
 
   if split == 'test':        
     if args.qualify:
-      outputs = run_inference(args, model, dataloader, exp_logger, split, True)
-      results = eval_qualify(args, *outputs, exp_logger, tokenizer)
+      outputs = run_classification(args, model, datasets)
+      # results = eval_qualify(args, *outputs, exp_logger, tokenizer)
     elif args.quantify:
       outputs = run_inference(args, model, dataloader, exp_logger, split)
       results = eval_quantify(args, *outputs, exp_logger, tokenizer, split)
@@ -127,7 +140,7 @@ def run_eval(args, model, datasets, exp_logger, split='dev'):
 
   return results
 
-def run_interaction(args, model, dataset, exp_logger):
+def run_interaction(args, model, dataset):
   dataset = datasets['dev']
   for i in range(args.batch_size):
     sample_id = random.randrange(dataset.size)
@@ -178,6 +191,6 @@ if __name__ == "__main__":
   if args.do_train:
     run_train(args, model, datasets, exp_logger)
   elif args.do_interact:
-    run_interaction(args, model, datasets, exp_logger)
+    run_interaction(args, model, datasets)
   elif args.do_eval:
     run_eval(args, model, datasets, exp_logger, split='test')
