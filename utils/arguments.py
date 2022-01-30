@@ -20,6 +20,8 @@ def solicit_params():
                 help="The model architecture to be trained or fine-tuned.")
     parser.add_argument("--size", default='small', type=str, choices=['small', 'medium', 'large'],
                 help="Size of the model, use small for debugging, but report results on large")
+    parser.add_argument("--style", default='domains', type=str,
+                help="specific style name, needed to pull the correct label list from the ontology")
     parser.add_argument("--checkpoint", default='', type=str,
                 help="Enter the filename of a checkpoint for manual override")
     parser.add_argument("--seed", default=42, type=int)

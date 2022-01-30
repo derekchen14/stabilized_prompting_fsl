@@ -1,4 +1,5 @@
-{
+{ "domains": ["attraction", "hotel", "restaurant", "taxi", "train"],
+  "slot_vals" : {
   "attraction-area": [
     "north",
     "centre|west",
@@ -2035,5 +2036,5 @@
     "18:36",
     "19:00",
     "20:36"
-  ]
+  ]}
 }

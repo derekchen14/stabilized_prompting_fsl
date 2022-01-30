@@ -29,7 +29,7 @@
 #       --n-epochs 7 --learning-rate 1e-5 --model gpt --prune-keep 3 --batch-size 4
 
 # ______________ Interactive Mode ________________
-python main.py --dataset mwoz --task classify --style domain --do-train --do-interact \
+python main.py --dataset mwoz --task classify --style domains --do-train --do-interact \
       --model gpt --size small --batch-size 10 --num-shots zero
 # python main.py --dataset abcd --task classify --style domain --do-train --do-interact \
 #       --model gpt --size small

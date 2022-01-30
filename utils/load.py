@@ -25,12 +25,7 @@ def load_data(args):
     split_data = json.load(open(split_path, 'r'))
 
     if split == 'ontology':
-      if args.dataset == 'gsim':
-        data[split] = split_data['user_acts']
-      if args.dataset == 'abcd':
-        data[split] = split_data['subflows']
-      if args.dataset == 'mwoz':
-        data[split] = split_data
+      data[split] = split_data[args.style]
       example_type = 'labels'
     else:
       data[split] = split_data
