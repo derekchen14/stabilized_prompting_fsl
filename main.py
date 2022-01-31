@@ -89,7 +89,11 @@ def run_classification(args, model, datasets):
   eos = dataset.tokenizer.eos_token
   random.shuffle(dataset.data)
   num_examples = dataset.size
-
+  options = [{'domain': 'hotel',      'id': 8940}, 
+             {'domain': 'attraction', 'id': 1078},
+             {'domain': 'restaurant', 'id': 2118},
+             {'domain': 'taxi',       'id': 19290},
+             {'domain': 'train',      'id': 27432}]
   correct = 0
   for example in progress_bar(dataset, total=num_examples):
     input_string = example['dialogue'] + example['prompt']
@@ -115,16 +119,27 @@ def run_classification(args, model, datasets):
 
     with torch.no_grad():
       size = args.max_len + 4
-      output_embed = model.generate(**trimmed, max_length=size, early_stopping=True)
-
-    output_text = tokenizer.decode(output_embed[0, -4:].detach(), skip_special_tokens=False)
-    answer = output_text.strip()
+      outputs = model.generate(**trimmed, max_length=size, early_stopping=True,
+              return_dict_in_generate=True, output_scores=True)
+    
     target = example['label']
-    # print(f"---- Target: {target}, Prediction {answer} -----")
+    """ 
+    ops = torch.concat(outputs['scores']).detach()  # seq_len, vocab_size
+    preds = ops.softmax(dim=-1)
+    scores = [preds[0, opt['id']].item() for opt in options]
+    pred_id = scores.index(max(scores))
+    answer = options[pred_id]['domain']
+    """
+    output_text = tokenizer.decode(outputs['sequences'][0, -4:].detach(), skip_special_tokens=False)
+    answer = output_text.strip() 
+    
+    if args.verbose:
+      print(input_string[-100:])
+      print(f"---- Target: {target}, Prediction {answer} -----")
     if target in answer:
       correct += 1
 
-  accuracy = round(float(correct) / num_examples, 3) * 100
+  accuracy = round((float(correct) / num_examples) * 100, 1)
   print("accuracy: {}%".format(accuracy))
   return accuracy
 
