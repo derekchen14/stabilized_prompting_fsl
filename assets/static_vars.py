@@ -35,7 +35,7 @@ CHECKPOINTS = {
         'large': 'roberta-xlarge' },
     'gpt': {
         'small': 'gpt2',
-        'medium': 'gpt2-medium',
+        'medium': 'gpt2-large',
         'large': 'EleutherAI/gpt-j-6B'},
     'bart': {
         'small': 'facebook/bart-base',

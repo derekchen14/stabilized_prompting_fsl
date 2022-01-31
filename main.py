@@ -126,7 +126,7 @@ def run_classification(args, model, datasets):
 
   accuracy = round(float(correct) / num_examples, 3) * 100
   print("accuracy: {}%".format(accuracy))
-
+  return accuracy
 
 def run_eval(args, model, datasets, exp_logger, split='dev'):
   dataloader = get_dataloader(args, datasets[split], split)
@@ -134,7 +134,7 @@ def run_eval(args, model, datasets, exp_logger, split='dev'):
 
   if split == 'test':        
     if args.qualify:
-      outputs = run_classification(args, model, datasets)
+      results = run_classification(args, model, datasets)
       # results = eval_qualify(args, *outputs, exp_logger, tokenizer)
     elif args.quantify:
       outputs = run_inference(args, model, dataloader, exp_logger, split)
