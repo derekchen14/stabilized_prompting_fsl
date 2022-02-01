@@ -17,8 +17,7 @@
 
 # ________ Few Shot Training, Without Fine-Tune ________
 python main.py --dataset mwoz --task classify --style domains --do-eval --seed 15 \
-      --model gpt --size medium --num-shots few --threshold 1.4 --qualify --max-len 1020 \
-      --ignore-cache
+      --model gpt --size large --num-shots few --threshold 1.4 --qualify --max-len 1020
 # python main.py --dataset agd --task classify --style emotions --do-train --debug \
 #       --n-epochs 3 --model roberta --prune-keep 3 --batch-size 4 --ignore-cache
 

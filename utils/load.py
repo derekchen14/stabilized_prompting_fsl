@@ -12,7 +12,7 @@ import torch
 from tqdm import tqdm as progress_bar
 from transformers import GPT2LMHeadModel,GPT2ForSequenceClassification, GPT2Config, GPT2Tokenizer, \
                     BartForConditionalGeneration, BartForConditionalGeneration, BartConfig, BartTokenizer
-from transformers import logging, pipeline
+from transformers import logging, GPTJForCausalLM, AutoTokenizer
 from assets.static_vars import device, CHECKPOINTS, TASKS
 from components.embed import Embedder
 
@@ -43,7 +43,7 @@ def load_tokenizer(args):
   if args.model == 'roberta':
     tokenizer = RobertaTokenizer.from_pretrained(token_ckpt)
   elif args.model == 'gpt':
-    tokenizer = GPT2Tokenizer.from_pretrained(token_ckpt)
+    tokenizer = AutoTokenizer.from_pretrained(token_ckpt)
     special['sep_token'] = '<sep>'
     special['pad_token'] = '<pad>'
   elif args.model == 'bart':
@@ -64,7 +64,11 @@ def load_model(args, ontology, tokenizer, load_dir):
   
   ckpt_name = CHECKPOINTS[args.model][args.size]
   if args.model == 'gpt':
-    model = GPT2LMHeadModel.from_pretrained(ckpt_name)
+    if args.size == 'large':
+      model = GPTJForCausalLM.from_pretrained(ckpt_name,
+               revision="float16", torch_dtype=torch.float16, low_cpu_mem_usage=True)
+    else:
+      model = GPT2LMHeadModel.from_pretrained(ckpt_name)
     # use GPTJForCausalLM: https://huggingface.co/docs/transformers/model_doc/gptj
   elif args.model == 'bart':
     model = BartForConditionalGeneration.from_pretrained(ckpt_name)
@@ -73,6 +77,7 @@ def load_model(args, ontology, tokenizer, load_dir):
     model.config.pad_token = tokenizer.pad_token
     model.config.pad_token_id = tokenizer.pad_token_id
     model.resize_token_embeddings(len(tokenizer))  # transformer_check
+  
   return model.to(device)
 
 def load_glove(size=300):
