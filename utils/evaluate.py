@@ -16,36 +16,6 @@ from assets.static_vars import device, debug_break
 # metric = load_metric('bleu')  'bertscore', ''  
 # from nltk.translate.bleu_score import sentence_bleu, SmoothingFunction
 
-def calculate_bleu(hypotheses, references, smoothing, word_tokenize):
-    score = 0
-    for hyp, ref in zip(hypotheses, references):
-      ref_tokens = word_tokenize(ref)
-      hyp_tokens = word_tokenize(hyp)  
-      # wrap with a list since technically, you can have many references
-      s = sentence_bleu([ref_tokens], hyp_tokens, smoothing_function=smoothing)
-      score += s
-    avg_bleu = float(score) / len(hypotheses)
-    return avg_bleu
-
-def calculate_bow(embedder, hypotheses, references):
-  """ hypotheses is a list of sentences with batch_size len
-  references is a list of lists with batch_size len, the inner list contains list of sentences
-  returns the bag-of-words embedding score, taken by averaging all cosine distances """
-  cos_sims = []
-
-  for hyp, refsource in zip(hypotheses, references):
-    hyp_emb = embedder.embed_sentence(hyp)
-
-    max_similarity = 0
-    for ref in refsource:
-      ref_emb = embedder.embed_sentence(ref)
-      cosine_similarity = np.inner(hyp_emb, ref_emb)/(norm(hyp_emb) * norm(ref_emb))
-      if cosine_similarity > max_similarity:
-        max_similarity = cosine_similarity        
-    cos_sims.append(max_similarity)
-
-  return round(np.mean(cos_sims), 3)
-
 def parse_pred_output(full_string, label_keys):
   # parse the predicted output of the model into a structured representation
   parsed = defaultdict(list)

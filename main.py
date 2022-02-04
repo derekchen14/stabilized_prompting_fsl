@@ -150,7 +150,6 @@ def run_eval(args, model, datasets, exp_logger, split='dev'):
   if split == 'test':        
     if args.qualify:
       results = run_classification(args, model, datasets)
-      # results = eval_qualify(args, *outputs, exp_logger, tokenizer)
     elif args.quantify:
       outputs = run_inference(args, model, dataloader, exp_logger, split)
       results = eval_quantify(args, *outputs, exp_logger, tokenizer, split)

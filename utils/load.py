@@ -55,6 +55,7 @@ def load_tokenizer(args):
   if args.do_train or args.num_shots == 'percent':
     print(f"Adding special tokens {special}")
     tokenizer.add_special_tokens(special)
+  tokenizer.padding_side = 'left'
   return tokenizer
 
 def load_model(args, ontology, tokenizer, load_dir):

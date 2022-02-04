@@ -165,7 +165,7 @@ def extract_domain(metadata, label_set, domain_tracker):
   # could not find anything 
   return "", domain_tracker
 
-def build_mwoz(data, label_set):
+def build_mwoz(args, data, label_set):
   # written for raw v2.4 mwoz
   examples = []
   speakers = ["Customer: ", "Agent: "]  # ["<customer>", "<agent>"]
@@ -187,9 +187,15 @@ def build_mwoz(data, label_set):
         domain, d_tracker = extract_domain(turn['metadata'], label_set, d_tracker)
         if len(domain) > 0:
           context = ' '.join(text_so_far)
-          # options = '\nCandidates: ' + ', '.join(label_set)
-          # dialogue = context + options
-          examples.append({'dialogue': context, 'prompt': prompt, 'label': domain})
+          example = {'dialogue': context, 'prompt': prompt, 'label': domain}
+
+          # for domain in domains:
+          #   for slot in domain:
+          #     example['setting'] = slot_domain
+          # possible_values = '\nOptions: ' + ', '.join(label_set)  # candidate values
+          # example['options'] = possible_values
+
+          examples.append(example)
         text_so_far.append(utterance)  # add agent utterance afterwards
       
       speaker_id = 1 - speaker_id
@@ -331,15 +337,13 @@ def prepare_examples(args, data, label_set, split):
   if args.dataset == 'abcd':    # Action Based Conversations
     examples = build_abcd(args, data, mapping) 
   elif args.dataset == 'dstc':  # State Tracking Challenge 2
-    examples = build_cdgc(data, mapping) 
-  elif args.dataset == 'gsim':  # Simulated Dialogues
-    examples = build_gsim(data, mapping) 
+    examples = build_dstc(args, data, mapping) 
   elif args.dataset == 'mwoz':  # MultiWoz 2.2
-    examples = build_mwoz(data, label_set) 
+    examples = build_mwoz(args, data, label_set) 
   elif args.dataset == 'sgd':   # Schema Guided Dialogue
-    examples = build_sgd(data, mapping, split) 
-  elif args.dataset == 'tt':    # TicketTalk
-    examples = build_tt(data, mapping) 
+    examples = build_sgd(args, data, mapping, split) 
+  elif args.dataset == 'tt':    # TicketTalk / TaskMaster 3
+    examples = build_tt(args, data, mapping) 
 
   return examples
 

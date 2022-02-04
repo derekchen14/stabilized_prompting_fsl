@@ -10,7 +10,7 @@ def solicit_params():
     parser.add_argument("--output-dir", default='results', type=str,
                 help="Output directory where the model predictions and checkpoints are written.")
     parser.add_argument("--dataset", default='gsim', type=str, 
-                choices=['gsim', 'abcd', 'mwoz', 'tt', 'sgd', 'dstc'],
+                choices=['abcd', 'mwoz', 'tt', 'sgd', 'dstc'],
                 help="which dataset to choose from out of the ten options")
     parser.add_argument("--task", default='classify', type=str,
                 choices=['classify', 'track', 'generate'],
@@ -40,6 +40,8 @@ def solicit_params():
                 help="Integer param: could be num clusters, dimensions of NT matrix or other")
     parser.add_argument("--max-len", default=1024, type=int,
                 help="Maximum length of sequences for model input")
+    parser.add_argument("--prompt-style", default="schema", type=float, help='type of prompt'
+                choices=["schema", "question", "statement", "token", "none"])
 
     # Key settings
     parser.add_argument("--ignore-cache", action="store_true",
@@ -80,8 +82,6 @@ def solicit_params():
                 help="The embedding dimension of pretrained LM.")
     parser.add_argument("--weight-decay", default=0.0, type=float,
                 help="Weight decay if we apply some.")
-    parser.add_argument("--adam-epsilon", default=1e-8, type=float,
-                help="Epsilon for Adam optimizer.")
     parser.add_argument("--n-epochs", default=3, type=int,
                 help="Total number of training epochs to perform.")
     parser.add_argument("--warmup-steps", default=0, type=int, 
