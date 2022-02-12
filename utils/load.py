@@ -11,7 +11,8 @@ import torch
 
 from tqdm import tqdm as progress_bar
 from transformers import GPT2LMHeadModel,GPT2ForSequenceClassification, GPT2Config, GPT2Tokenizer, \
-                    BartForConditionalGeneration, BartForConditionalGeneration, BartConfig, BartTokenizer
+                          BartForConditionalGeneration, BartConfig, BartTokenizer \
+                          T5ForConditionalGeneration, T5Config, T5Tokenizer
 from transformers import logging, GPTJForCausalLM, AutoTokenizer
 from assets.static_vars import device, CHECKPOINTS, TASKS
 from components.embed import Embedder
@@ -40,12 +41,14 @@ def load_tokenizer(args):
           ['<customer>', '<agent>', '<label>', '<kb>']  }
   token_ckpt = CHECKPOINTS[args.model][args.size]
 
-  if args.model == 'roberta':
-    tokenizer = RobertaTokenizer.from_pretrained(token_ckpt)
+  if args.model == 't5':
+    tokenizer = T5Tokenizer.from_pretrained(token_ckpt)
   elif args.model == 'gpt':
     tokenizer = AutoTokenizer.from_pretrained(token_ckpt)
     special['sep_token'] = '<sep>'
     special['pad_token'] = '<pad>'
+  elif args.model == 'bart':
+    tokenizer = BartTokenizer.from_pretrained(token_ckpt)
   elif args.model == 'bart':
     tokenizer = BartTokenizer.from_pretrained(token_ckpt)
   else:
@@ -72,6 +75,8 @@ def load_model(args, ontology, tokenizer, load_dir):
       model = GPT2LMHeadModel.from_pretrained(ckpt_name)
     # use GPTJForCausalLM: https://huggingface.co/docs/transformers/model_doc/gptj
   elif args.model == 'bart':
+    model = BartForConditionalGeneration.from_pretrained(ckpt_name)
+  elif args.model == 't5':
     model = BartForConditionalGeneration.from_pretrained(ckpt_name)
 
   if args.do_train or args.num_shots == 'percent': 

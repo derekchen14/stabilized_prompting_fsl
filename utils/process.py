@@ -5,7 +5,8 @@ import math
 import pickle as pkl
 import numpy as np
 
-from assets.static_vars import device, DATASETS
+from assets.static_vars import device, DATASETS, GENERAL_TYPO
+from utils.prompt import make_prompt
 from components.datasets import BaseDataset, MultiwozDataset, SimulateDataset
 from torch.utils.data import DataLoader, RandomSampler, SequentialSampler
 from tqdm import tqdm as progress_bar
@@ -165,11 +166,83 @@ def extract_domain(metadata, label_set, domain_tracker):
   # could not find anything 
   return "", domain_tracker
 
+def extract_label(targets):
+  # returns a list of (domain, slot, value) tuples when the domain is an active 
+  swaps = {'not mentioned': 'none', 'dontcare': 'any', '': 'none'}
+  labels = []
+
+  for domain, domain_data in targets.items():
+    domain_data = targets[domain]
+    active_domain = False
+
+    for slot, value in domain_data['book'].items():
+      if len(value) > 0:
+        active_domain = True
+    for slot, value in domain_data['semi'].items():
+      if len(value) > 0:
+        active_domain = True
+
+    if active_domain:
+      for slot, value in domain_data['book'].items():
+        if not isinstance(value, list):
+          if value in swaps:
+            value = swaps[value]
+          labels.append((domain, slot, value))
+      for slot, value in domain_data['semi'].items():
+        if value in swaps:
+          value = swaps[value]
+        if value in GENERAL_TYPO:
+          value = GENERAL_TYPO[value]
+        labels.append((domain, slot, value))
+  return labels
+
+def track_mwoz(args, data, label_set):
+  # written for raw v2.4 mwoz
+  examples = []
+  speakers = ["<customer>", "<agent>"]
+
+  for convo_id, conversation in progress_bar(data.items(), total=len(data)):
+    text_so_far = []
+    speaker_id = 0
+    goals = conversation['goal']
+    if len(goals['police']) > 0 or len(goals['hospital']) > 0:
+      continue
+
+    for turn in conversation['log']:
+      text = turn['text']
+      speaker = speakers[speaker_id]
+      utterance = f"{speaker} {text}"
+      
+      if speaker == '<agent>':
+        domain, d_tracker = extract_domain(targets, label_set, d_tracker)
+          context = ' '.join(text_so_far)
+          targets = extract_label(turn['metadata'])
+          for domain, slot, value in targets:
+            examples.append({'dialogue': context + '<label>',
+                               'prompt': make_prompt(args.prompt_style, domain, slot),
+                                'label': value})
+      text_so_far.append(utterance)  # add agent utterance afterwards
+      
+      speaker_id = 1 - speaker_id
+      if len(text_so_far) > args.context_len:
+        text_so_far = text_so_far[-args.context_len:]
+
+  return examples
+
 def build_mwoz(args, data, label_set):
+  if args.task == 'classify':
+    return classify_mwoz(args, data, label_set)
+  elif args.task == 'track':
+    return track_mwoz(args, data, label_set)
+  elif args.do_interact:
+    mapping = {label: idx for idx, label in enumerate(label_set)}
+    return interact_mwoz(args, mapping)
+
+def classify_mwoz(args, data, label_set):
   # written for raw v2.4 mwoz
   examples = []
   speakers = ["Customer: ", "Agent: "]  # ["<customer>", "<agent>"]
-  prompt = " The topic of conversation is about a" # " Topic:" The customer is looking for a"
+  prompt = make_prompt(args.prompt_style, 'topic')
 
   for convo_id, conversation in progress_bar(data.items(), total=len(data)):
     text_so_far = []
@@ -181,13 +254,14 @@ def build_mwoz(args, data, label_set):
       speaker = speakers[speaker_id]
       utterance = f"{speaker} {text}"
       
-      if speaker_id == 0:  # change to agent for interactive mode
+      if speaker_id == 0:
         text_so_far.append(utterance)
       elif speaker_id == 1:
         domain, d_tracker = extract_domain(turn['metadata'], label_set, d_tracker)
         if len(domain) > 0:
           context = ' '.join(text_so_far)
-          example = {'dialogue': context, 'prompt': prompt, 'label': domain}
+          dialogue = context + '<label>'
+          example = {'dialogue': dialogue, 'prompt': prompt, 'label': domain}
 
           # for domain in domains:
           #   for slot in domain:
@@ -199,12 +273,12 @@ def build_mwoz(args, data, label_set):
         text_so_far.append(utterance)  # add agent utterance afterwards
       
       speaker_id = 1 - speaker_id
-      if len(text_so_far) > 4:
-        text_so_far = text_so_far[-4:]
+      if len(text_so_far) > args.context_len:
+        text_so_far = text_so_far[-args.context_len:]
 
   return examples
 
-def build_mwoz_interact(data, mapping):
+def interact_mwoz(data, mapping):
   examples = []
   speakers = ["Customer: ", "Agent: "]
 

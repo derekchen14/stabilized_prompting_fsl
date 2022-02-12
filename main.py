@@ -57,31 +57,28 @@ def run_inference(args, model, dataloader, exp_logger, split, extract_text=False
   elif args.task == 'generate':
     return run_generation(args, model, dataloader, exp_logger, split)
 
-def run_generation(args, model, dataloader, exp_logger, split):
-  all_inputs, all_outputs, all_labels = [], [], []
+def run_state_tracking(args, model, dataloader, exp_logger, split):
+  all_outputs, all_labels = [], []
   exp_logger.eval_step = 0
 
-  for inputs, input_ids, label_dicts in progress_bar(dataloader, total=len(dataloader)):
-    input_strings = tokenizer.batch_decode(input_ids.detach(), skip_special_tokens=True)
-    all_inputs.extend(input_strings)
+  for inputs, label_dicts in progress_bar(dataloader, total=len(dataloader)):
     all_labels.extend(label_dicts)   # notice this is "extend", not "append"
 
     with torch.no_grad():
       # defaults to greedy sampling, for param details see https://huggingface.co/docs/transformers/
       #        v4.15.0/en/main_classes/model#transformers.generation_utils.GenerationMixin.generate 
-      output_ids = model.generate(**inputs, max_length=512, min_length=60, early_stopping=True)
-      output_strings = tokenizer.batch_decode(output_ids.detach(), skip_special_tokens=False)
-      all_outputs.extend(output_strings)
+      output_ids = model.generate(**inputs, max_length=args.max_len, early_stopping=True,
+                                    repetition_penalty=args.threshold, temperature=args.temperature)
+      output = tokenizer.batch_decode(output_ids.detach(), skip_special_tokens=False)
+      all_outputs.extend(output)
 
     if split == 'dev':
       exp_logger.eval_loss = batch_loss.mean().item()
       exp_logger.eval_step += 1
       if args.debug and exp_logger.eval_step >= debug_break: break
 
-  assert(len(all_labels) == len(all_inputs))
-  assert(len(all_labels) == len(all_outputs))
-  pairing = [all_inputs, all_outputs]
-  return pairing, all_labels
+  assert(len(all_outputs) == len(all_labels))
+  return all_outputs, all_labels
 
 def run_classification(args, model, datasets):
   dataset = datasets['dev']

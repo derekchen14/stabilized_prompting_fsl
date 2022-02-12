@@ -13,15 +13,16 @@ def solicit_params():
                 choices=['abcd', 'mwoz', 'tt', 'sgd', 'dstc'],
                 help="which dataset to choose from out of the ten options")
     parser.add_argument("--task", default='classify', type=str,
-                choices=['classify', 'track', 'generate'],
-                help="Classify corresponds to intent classification, Track refers to dialogue \
-                    state tracking and Generate refers to response generation")
+                choices=['in_context', 'meta_learn', 'fine_tune'],
+                help="in context has no gradients, meta learn uses inner loop gradients to \
+                improve outer loop performance, fine tune performs outer loop training only")
     parser.add_argument("--model", default='roberta', type=str, choices=['roberta', 'bart', 'gpt'],
                 help="The model architecture to be trained or fine-tuned.")
     parser.add_argument("--size", default='small', type=str, choices=['small', 'medium', 'large'],
                 help="Size of the model, use small for debugging, but report results on large")
-    parser.add_argument("--style", default='domains', type=str,
-                help="specific style name, needed to pull the correct label list from the ontology")
+    parser.add_argument("--style", default='domain', type=str, choices=['domain', 'dataset'],
+                help="Subset of data held out for testing. For example, if domain is the chosen style, \
+                then we meta learn on [taxi, hotel, restaurant, train] and test on [attraction].")
     parser.add_argument("--checkpoint", default='', type=str,
                 help="Enter the filename of a checkpoint for manual override")
     parser.add_argument("--seed", default=42, type=int)
@@ -30,8 +31,8 @@ def solicit_params():
     parser.add_argument("--prune-keep", default=-1, type=int,
                 help="Number of models to keep around after pruning, by default does not prune")
     parser.add_argument("--num-shots", default="zero", type=str,
-                choices=["zero", "few", "percent"], help="zero-shot and few-shot learning load \
-                    an untrained model, percent loads a model fine-tuned on X% of data")
+                choices=["zero", "few", "percent", "full"], help="zero-shot and few-shot load \
+                    an untrained model, percent loads a model fine-tuned on <threshold>% of data")
     parser.add_argument("--threshold", default=0.25, type=float,
                 help="Determines the amount of data used for pre-training the model; See num-shots")
     parser.add_argument("--temperature", default=1.4, type=float,
@@ -40,8 +41,10 @@ def solicit_params():
                 help="Integer param: could be num clusters, dimensions of NT matrix or other")
     parser.add_argument("--max-len", default=1024, type=int,
                 help="Maximum length of sequences for model input")
-    parser.add_argument("--prompt-style", default="schema", type=float, help='type of prompt'
-                choices=["schema", "question", "statement", "token", "none"])
+    parser.add_argument("--prompt-style", default="informed", type=float, help='type of prompt'
+                choices=["schema", "question", "informed", "naive", "human", "none", "random"])
+    parser.add_argument("--context-len", default=8, type=int,
+                help="Number of turns to look back into dialogue context, eats into token length")
 
     # Key settings
     parser.add_argument("--ignore-cache", action="store_true",

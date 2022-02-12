@@ -1,52 +1,51 @@
-# ________ Meta-Stabilize Pre-training Mode ________
-# Intent Classification (classify)
-# python main.py --dataset mwoz --task classify --style domains --do-train --seed 15 \
-#       --model gpt --size small --num-shots percent --max-len 1020 --prompt-style schema
-# python main.py --dataset abcd --task classify --style subflows --do-train --debug \
+# ________ Fine-tuned Model Training ________
+# Leveraging Slot Descriptions for Zero-Shot Cross-Domain DST (domain held out for testing)
+# python main.py --dataset mwoz --task fine_tune --style domain --do-train --do-save \
+#       --model t5 --size small --num-shots zero --max-len 512 --prompt-style human \
+#       --temperature 0.8 --threshold 1.4 --context-len 8
+python main.py --dataset mwoz --task fine_tune --style domain --do-train --debug \
+      --model t5 --size small --num-shots zero --max-len 512 --prompt-style naive \
+      --temperature 0.8 --threshold 1.4 --context-len 8
+# python main.py --dataset mwoz --task fine_tune --style domain --do-train --do-save \
+#       --model t5 --size small --num-shots zero --max-len 512 --prompt-style slotval \
+#       --temperature 0.8 --threshold 1.4 --context-len 8
+# python main.py --dataset mwoz --task fine_tune --style domain --do-train --do-save \
+#       --model t5 --size small --num-shots zero --max-len 512 --prompt-style question \
+#       --temperature 0.8 --threshold 1.4 --context-len 8
+
+# Zero-Shot DST via Cross-Task Transfer (dataset is held out for testing)
+# python main.py --dataset mwoz --task fine_tune --style dataset --do-train --debug \
+#       --model t5 --size small --num-shots percent --threshold 0.01 --prompt-style naive \
+#       --max-len 512 --temperature 0.8 --threshold 1.4 --context-len 8
+# python main.py --dataset mwoz --task fine_tune --style dataset --do-train --debug \
+#       --model t5 --size small --num-shots percent --threshold 0.05 --prompt-style naive \
+#       --max-len 512 --temperature 0.8 --threshold 1.4 --context-len 8
+# python main.py --dataset mwoz --task fine_tune --style dataset --do-train --debug \
+#       --model t5 --size small --num-shots percent --threshold 0.10 --prompt-style naive \
+#       --max-len 512 --temperature 0.8 --threshold 1.4 --context-len 8
+
+# ________ In-context Learning, without Back-propogation ________
+# >> ICL Baseline
+# python main.py --dataset sgd --task in_context --style domain --do-eval --seed 15 \
+#       --model gpt --size large --num-shots few --qualify --max-len 1020 --context-len 4 \
+#       --threshold 1.4   --temperature 0.8 --prompt-style statement
+# python main.py --dataset mwoz --task in_context --style domain --do-eval --seed 15 \
+#       --model gpt --size small --num-shots few --max-len 512 --prompt-style schema \
+#       --temperature 0.8 --threshold 1.4 --context-len 8
+
+# ________ Meta-Stabilize Pre-training Mode ___________
+# >> Our System
+# python main.py --dataset mwoz --task meta_learn --style domain --do-train --seed 15 \
+#       --model gpt --size large --num-shots percent --max-len 1020 --prompt-style schema
+# python main.py --dataset abcd --task meta_learn --style subflows --do-train --debug \
 #       --n-epochs 3 --learning-rate 1e-5 --model roberta --prune-keep 3 --batch-size 4
 
-# Dialogue State Tracking (track)
-# python main.py --dataset sgd --task track --style intents --do-train --debug \
-#       --n-epochs 3 --learning-rate 1e-5 --model bart --prune-keep 3 --batch-size 4
-# python main.py --dataset gsim --task track --style user_acts --ignore-cache --do-train --do-save \
-#       --n-epochs 7 --learning-rate 1e-5 --model roberta --prune-keep 3 --batch-size 4
-# python main.py --dataset mwoz --task track --style apis --do-train --do-save \
-#       --n-epochs 7 --learning-rate 1e-5 --model roberta --prune-keep 3 --batch-size 4
-# python main.py --dataset tt --task track --style apis --do-train --do-save \
-#       --n-epochs 7 --learning-rate 1e-5 --model roberta --prune-keep 3 --batch-size 4
-
-# ________ Few Shot Training, Without Fine-Tune ________
-python main.py --dataset mwoz --task classify --style domains --do-eval --seed 15 \
-      --model gpt --size large --num-shots few --threshold 1.4 --qualify --max-len 1020
-# python main.py --dataset agd --task classify --style emotions --do-train --debug \
-#       --n-epochs 3 --model roberta --prune-keep 3 --batch-size 4 --ignore-cache
-
-
-# Response Generation (generate)
-# python main.py --dataset dd --task rg --style topics --do-train --seed 12 \
-#       --n-epochs 7 --learning-rate 1e-5 --model gpt --prune-keep 2 --batch-size 2 --do-save
-# python main.py --dataset ed --task rg --style emotions --ignore-cache --do-train --do-save \
-#       --n-epochs 7 --learning-rate 1e-5 --model gpt --prune-keep 3 --batch-size 4
-
-# ______________ Interactive Mode ________________
-# python main.py --dataset mwoz --task generate --style domains --do-interact --seed 30 \
-#       --model gpt --size medium --batch-size 7 --num-shots zero --threshold 1.4 --temperature 1.2
-# python main.py --dataset abcd --task classify --style subflows --do-interact \
-#       --model gpt --size small --ignore-cache
-
-
-# ______ Automatic Evaluation Mode ______
-# python main.py --style dd --model roberta --style topics --do-eval --quantify --task clc
-# python main.py --domain airline --model roberta --do-eval --quantify --do-augment \
-# 	--mixing single --task eda
-# python main.py --domain airline --model roberta --do-eval --quantify --do-augment \
-#	--mixing single --task translate
-# python main.py --domain telco --model roberta --do-eval --quantify --do-augment \
-# 		--mixing single --task decode
-# (Evaluation of mixing styles)
-# python main.py --domain airline --do-eval --quantify --do-augment --mixing top --task none
-# python main.py --domain airline --do-eval --quantify --do-augment --mixing cat --task none
-# python main.py --domain airline --do-eval --quantify --do-augment --mixing all --task none
-# python main.py --domain airline --do-eval --quantify --do-augment --mixing hs --task none
-# (Generate CSV for Human Evaluation)
-# python extract.py  # change the domain in the file 
+# ______________ Special Modes ________________
+# >> Interactive Mode
+# python main.py --dataset mwoz --task generate --style domain --do-interact --seed 30 \
+#       --model gpt --size medium --batch-size 7 --num-shots zero --threshold 1.4 \
+#       --temperature 1.2
+# >> Evaluation Mode
+# python main.py --dataset sgd --task track --style dataset --do-eval \
+#       --model t5 --size small --num-shots few --prompt-style naive \
+#       --max-len 512 --temperature 0.8 --threshold 1.4 --context-len 8

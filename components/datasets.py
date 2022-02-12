@@ -72,11 +72,12 @@ class MultiwozDataset(BaseDataset):
   def collate_func(self, examples):
     """transforms a batch of examples into a features dict that can be fed directly into a model"""
     dialogues, labels = [], []
+    eos = self.tokenizer.eos_token
 
     if self.split == 'train':
       
       for example in examples:
-        input_text = example['dialogue'] + example['flattened']
+        input_text = example['dialogue'] + example['prompt'] + example['flattened'] + eos
         dialogues.append(input_text)
       inputs = self.tokenizer(dialogues, padding='longest',
                                 truncation=True, return_tensors='pt').to(device)
