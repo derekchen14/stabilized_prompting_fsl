@@ -35,9 +35,9 @@ def parse_output(generated_string, task):
     return parse_sgd(pred_string, parsed)
   elif task == 'tt':
     return parse_tt(pred_string, parsed)
-  elif task == 'mwoz':
+  elif task == 'mwoz20':
     return parse_mwoz(pred_string, parsed)
-  elif task == 'delex':
+  elif task == 'mwoz22':
     return pred_string
 
 def parse_sgd(pred_string, parsed):

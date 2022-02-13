@@ -6,7 +6,7 @@ import pickle as pkl
 import numpy as np
 
 from assets.static_vars import device, DATASETS, GENERAL_TYPO
-from utils.prompt import make_prompt
+from utils.prompt import find_prompt
 from components.datasets import MetaLearnDataset, InContextDataset, FineTuneDataset
 from torch.utils.data import DataLoader, RandomSampler, SequentialSampler
 from tqdm import tqdm as progress_bar
@@ -154,9 +154,6 @@ def extract_label(targets):
     domain_data = targets[domain]
     active_domain = False
 
-    for slot, value in domain_data['book'].items():
-      if len(value) > 0:
-        active_domain = True
     for slot, value in domain_data['semi'].items():
       if len(value) > 0:
         active_domain = True
@@ -218,17 +215,15 @@ def build_mwoz22(args, data, label_set):
   if args.task == 'meta_learn':
     return meta_learn_mwoz(args, data, label_set)
   elif args.task == 'fine_tune':
-    return fine_tune_mwoz(args, data, label_set)
+    return fine_tune_mwoz22(args, data, label_set)
   elif args.task == 'in_context':
     return in_context_mwoz(args, data, label_set)
   elif args.do_interact:
     mapping = {label: idx for idx, label in enumerate(label_set)}
     return interact_mwoz(args, mapping)
 
-def fine_tune_mwoz(args, data, label_set):
-  ''' Written for raw v2.2 mwoz.  Since evaluation is done by a library, 
-  based on the dialog_id, we do not actually pass the ground truth target as
-  the label for evaluation.  Instead, we use dialog_id as the meta_label '''
+def fine_tune_mwoz20(args, data, label_set):
+  ''' Written for raw v2.0 mwoz.  Requires extra pre-processing which comes from TRADE'''
   examples = []
   speakers = ["<customer>", "<agent>"]
 
@@ -260,6 +255,56 @@ def fine_tune_mwoz(args, data, label_set):
         text_so_far.append(utterance)  # add agent utterance afterwards
       
       speaker_id = 1 - speaker_id
+      if len(text_so_far) > args.context_len:
+        text_so_far = text_so_far[-args.context_len:]
+
+  return examples
+
+def fine_tune_mwoz22(args, data, label_set):
+  ''' Written for raw v2.2 mwoz.  Since evaluation is done by a library
+  based on the dialog_id, we will additionally pass some extra meta data along
+  with the ground truth label for evaluation, which includes dialog_id '''
+  examples = []
+  speakers = {'USER': '<customer>', 'SYSTEM': '<agent>'}
+  allowed_domains = list(DOMAIN_SLOTS.keys())
+
+  for conversation in progress_bar(data, total=len(data)):
+    text_so_far = []
+
+    for turn in conversation['turns']:
+      text = turn['utterance']
+      speaker = speakers[turn['speaker']]
+      utterance = f"{speaker} {text}"
+      text_so_far.append(utterance)
+      
+      if len(turn['frames']) > 0:
+
+        convo_id = conversation['dialogue_id'].split('.')[0].lower()  # drop the ".json"
+        turn_count = turn['turn_id']
+        active_domains = [frame['service'] for frame in turn['frames'] if frame['state']['active_intent'] is not "NONE"]
+        domain_string = ';'.join(active_domains)
+        extra = "_".join([convo_id, turn_count, domain_string]) 
+
+        for frame in turn['frames']:
+          current_domain = frame['service']
+          if current_domain in allowed_domains:
+
+            slotvals = frame['state']['slot_values']
+            if len(slotvals) > 0:
+              active_slots = [domain_slot.split('-')[1] for domain_slot, _ in slotvals.items()]
+              
+              for slot in DOMAIN_SLOTS[current_domain]:
+                prompt = find_prompt(args.prompt_style, domain, slot)
+                if slot in active_slots:
+                  domain_slot = '_'.join([current_domain, slot])
+                  value = slotvals[domain_slot][0]
+                else:
+                  value = 'none'
+
+                context = ' '.join(text_so_far)
+                example = {'context': context, 'prompt': prompt, 'label': value, 'extra': extra}
+                examples.append(example)
+      
       if len(text_so_far) > args.context_len:
         text_so_far = text_so_far[-args.context_len:]
 
@@ -407,11 +452,11 @@ def process_data(args, raw_data, tokenizer):
     for split in ['train', 'dev', 'test']:
       examples = prepare_examples(args, raw_data[split], label_set, split)
       if args.task == 'meta_learn':
-        datasets[split] = MetaLearnDataset(examples, tokenizer,  args.task, split)
+        datasets[split] = MetaLearnDataset(args, examples, tokenizer, split)
       elif args.task == 'in_context':
-        datasets[split] = InContextDataset(examples, tokenizer,  args.task, split)
+        datasets[split] = InContextDataset(args, examples, tokenizer, split)
       elif args.task == 'fine_tune':
-        datasets[split] = FineTuneDataset(examples, tokenizer,  args.task, split)
+        datasets[split] = FineTuneDataset(args, examples, tokenizer, split)
       print(f"Running with {len(datasets[split])} {split} examples")
     pkl.dump(datasets, open(cache_results, 'wb'))
 

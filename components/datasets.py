@@ -23,14 +23,15 @@ class BaseInstance:
     return f'utt: {self.utterance}\nlabel: {self.label}'
 
 class BaseDataset(Dataset):
-  def __init__(self, examples, tokenizer, task, split):
+  def __init__(self, args, examples, tokenizer, split):
     self.split = split
     self.shuffle = (split == 'train')
     self.data = examples
     self.size = len(self.data)
 
     self.tokenizer = tokenizer
-    self.task = task
+    self.task = args.task
+    self.review_inputs = args.debug and args.verbose 
 
   def __len__(self):
     return self.size
@@ -104,15 +105,33 @@ class FineTuneDataset(BaseDataset):
 
   def collate_func(self, examples):
     """transforms a batch of examples into a features dict that can be fed directly into a model"""
-    pad_style = 'max_length' if self.split == 'test' else 'longest' # sequence in the batch
+    dialogues, extras = [], []
+    eos = self.tokenizer.eos_token
 
-    dialogues, prompts, labels = [], [], []
-    for example in examples:
-      dialogues.append(example['dialogue'])
-      prompts.append(example['prompt'])
-      labels.append(example['label'])
+    if self.split == 'train':
+      for example in examples:
+        context = example['context']
+        value = example['label']
+        dialog = context + '<sep>' + example['prompt'] + '<label>' + value + eos
+        dialogues.append(dialog)
+      inputs = self.tokenizer(dialogues, padding=True, max_length=1024,
+                                truncation=True, return_tensors='pt').to(device)
+      targets = inputs['input_ids']
 
-    inputs = self.tokenizer(dialogues, prompts, padding=pad_style,
-                              truncation='only_first', return_tensors='pt').to(device)
-    targets = torch.tensor(labels, dtype=torch.long, device=device) # or torch.float of BCEWithLogits
-    return inputs, targets
+      if self.review_inputs:
+        tbd = self.tokenizer.batch_decode(targets)
+        for batch_item in tbd:
+            print(batch_item.replace('<pad>', ''))
+        pdb.set_trace()
+      return inputs, targets
+
+    elif self.split in ['dev', 'test']:
+      for example in examples:
+        context = example['context']
+        value = example['label']
+        dialog = context + '<sep>' + example['prompt'] + '<label>'
+        dialogues.append(dialog)
+        extras.append(example['extra'])
+      inputs = self.tokenizer(dialogues, padding=True, max_length=1000,
+                                truncation=True, return_tensors='pt').to(device)
+      return inputs, extras
