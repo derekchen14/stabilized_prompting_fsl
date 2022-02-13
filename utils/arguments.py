@@ -16,7 +16,7 @@ def solicit_params():
                 choices=['in_context', 'meta_learn', 'fine_tune'],
                 help="in context has no gradients, meta learn uses inner loop gradients to \
                 improve outer loop performance, fine tune performs outer loop training only")
-    parser.add_argument("--model", default='roberta', type=str, choices=['roberta', 'bart', 'gpt'],
+    parser.add_argument("--model", default='t5', type=str, choices=['t5', 'bart', 'gpt'],
                 help="The model architecture to be trained or fine-tuned.")
     parser.add_argument("--size", default='small', type=str, choices=['small', 'medium', 'large'],
                 help="Size of the model, use small for debugging, but report results on large")
@@ -41,7 +41,7 @@ def solicit_params():
                 help="Integer param: could be num clusters, dimensions of NT matrix or other")
     parser.add_argument("--max-len", default=1024, type=int,
                 help="Maximum length of sequences for model input")
-    parser.add_argument("--prompt-style", default="informed", type=float, help='type of prompt'
+    parser.add_argument("--prompt-style", default="informed", type=str, help='type of prompt', 
                 choices=["schema", "question", "informed", "naive", "human", "none", "random"])
     parser.add_argument("--context-len", default=8, type=int,
                 help="Number of turns to look back into dialogue context, eats into token length")

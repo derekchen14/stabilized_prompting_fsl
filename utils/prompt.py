@@ -218,7 +218,7 @@ def extract_domain_slot(targets):
   
   for domain, slots in DOMAIN_SLOTS.items():
     for slot in slots:
-
+      pass
 
   return domain, slot
 

@@ -11,7 +11,7 @@ import torch
 
 from tqdm import tqdm as progress_bar
 from transformers import GPT2LMHeadModel,GPT2ForSequenceClassification, GPT2Config, GPT2Tokenizer, \
-                          BartForConditionalGeneration, BartConfig, BartTokenizer \
+                          BartForConditionalGeneration, BartConfig, BartTokenizer, \
                           T5ForConditionalGeneration, T5Config, T5Tokenizer
 from transformers import logging, GPTJForCausalLM, AutoTokenizer
 from assets.static_vars import device, CHECKPOINTS

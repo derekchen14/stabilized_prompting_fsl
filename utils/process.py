@@ -214,7 +214,7 @@ def meta_learn_mwoz(args, data, label_set):
 
   return examples
 
-def build_mwoz(args, data, label_set):
+def build_mwoz22(args, data, label_set):
   if args.task == 'meta_learn':
     return meta_learn_mwoz(args, data, label_set)
   elif args.task == 'fine_tune':
@@ -383,8 +383,12 @@ def prepare_examples(args, data, label_set, split):
     examples = build_abcd(args, data, mapping) 
   elif args.dataset == 'dstc':  # State Tracking Challenge 2
     examples = build_dstc(args, data, mapping) 
-  elif args.dataset == 'mwoz':  # MultiWoz 2.2
-    examples = build_mwoz(args, data, label_set) 
+  elif args.dataset == 'mwoz20':  # MultiWoz 2.0
+    examples = build_mwoz20(args, data, label_set)
+  elif args.dataset == 'mwoz21':  # MultiWoz 2.1
+    examples = build_mwoz21(args, data, label_set)
+  elif args.dataset == 'mwoz22':  # MultiWoz 2.2
+    examples = build_mwoz22(args, data, label_set)
   elif args.dataset == 'sgd':   # Schema Guided Dialogue
     examples = build_sgd(args, data, mapping, split) 
   elif args.dataset == 'tt':    # TicketTalk / TaskMaster 3
