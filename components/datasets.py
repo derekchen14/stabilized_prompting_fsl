@@ -22,18 +22,6 @@ class BaseInstance:
   def __repr__(self):
     return f'utt: {self.utterance}\nlabel: {self.label}'
 
-class TypoInstance(object):
-  def __init__(self, encoder_data, decoder_data, label_ids):
-    self.labels = label_ids
-
-    self.enc_inputs = encoder_data['input_ids']
-    self.enc_mask = encoder_data['attention_mask']
-    self.enc_text = encoder_data['raw_text']
-
-    self.dec_inputs = decoder_data['input_ids']
-    self.dec_mask = decoder_data['attention_mask']
-    self.dec_text = decoder_data['raw_text']
-
 class BaseDataset(Dataset):
   def __init__(self, examples, tokenizer, task, split):
     self.split = split
@@ -67,7 +55,7 @@ class BaseDataset(Dataset):
       targets = torch.tensor(labels, dtype=torch.long, device=device) # or torch.float of BCEWithLogits
     return inputs, targets
 
-class MultiwozDataset(BaseDataset):
+class MetaLearnDataset(BaseDataset):
 
   def collate_func(self, examples):
     """transforms a batch of examples into a features dict that can be fed directly into a model"""
@@ -95,7 +83,7 @@ class MultiwozDataset(BaseDataset):
       targets = inputs['input_ids']
       return inputs, targets, labels
 
-class SimulateDataset(BaseDataset):
+class InContextDataset(BaseDataset):
 
   def collate_func(self, examples):
     """transforms a batch of examples into a features dict that can be fed directly into a model"""
@@ -108,6 +96,23 @@ class SimulateDataset(BaseDataset):
       labels.append(example['label'])
 
     inputs = self.tokenizer(contexts, prompts, padding=pad_style,
+                              truncation='only_first', return_tensors='pt').to(device)
+    targets = torch.tensor(labels, dtype=torch.long, device=device) # or torch.float of BCEWithLogits
+    return inputs, targets
+
+class FineTuneDataset(BaseDataset):
+
+  def collate_func(self, examples):
+    """transforms a batch of examples into a features dict that can be fed directly into a model"""
+    pad_style = 'max_length' if self.split == 'test' else 'longest' # sequence in the batch
+
+    dialogues, prompts, labels = [], [], []
+    for example in examples:
+      dialogues.append(example['dialogue'])
+      prompts.append(example['prompt'])
+      labels.append(example['label'])
+
+    inputs = self.tokenizer(dialogues, prompts, padding=pad_style,
                               truncation='only_first', return_tensors='pt').to(device)
     targets = torch.tensor(labels, dtype=torch.long, device=device) # or torch.float of BCEWithLogits
     return inputs, targets

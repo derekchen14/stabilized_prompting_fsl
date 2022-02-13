@@ -14,7 +14,7 @@ from transformers import GPT2LMHeadModel,GPT2ForSequenceClassification, GPT2Conf
                           BartForConditionalGeneration, BartConfig, BartTokenizer \
                           T5ForConditionalGeneration, T5Config, T5Tokenizer
 from transformers import logging, GPTJForCausalLM, AutoTokenizer
-from assets.static_vars import device, CHECKPOINTS, TASKS
+from assets.static_vars import device, CHECKPOINTS
 from components.embed import Embedder
 
 logging.set_verbosity_error()
@@ -26,8 +26,8 @@ def load_data(args):
     split_data = json.load(open(split_path, 'r'))
 
     if split == 'ontology':
-      data[split] = split_data[args.style]
-      example_type = 'labels'
+      data[split] = split_data
+      example_type = 'domains'
     else:
       data[split] = split_data
       example_type = 'conversations'
@@ -62,7 +62,7 @@ def load_tokenizer(args):
   return tokenizer
 
 def load_model(args, ontology, tokenizer, load_dir):
-  print(f"Setting up {args.size} {args.model} model for {TASKS[args.task]} task")
+  print(f"Setting up {args.size} {args.model} model for {args.num_shots} shot learning")
   if args.num_shots == 'percent':
     return load_best_model(args, ontology, load_dir)
   

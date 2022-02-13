@@ -7,7 +7,7 @@ import numpy as np
 
 from assets.static_vars import device, DATASETS, GENERAL_TYPO
 from utils.prompt import make_prompt
-from components.datasets import BaseDataset, MultiwozDataset, SimulateDataset
+from components.datasets import MetaLearnDataset, InContextDataset, FineTuneDataset
 from torch.utils.data import DataLoader, RandomSampler, SequentialSampler
 from tqdm import tqdm as progress_bar
 from collections import defaultdict
@@ -145,27 +145,6 @@ def build_gsim(data, mapping):
 
   return examples
 
-def extract_domain(metadata, label_set, domain_tracker):
-  for domain in label_set:
-    domain_data = metadata[domain]
-
-    slotvals = []
-    for slot, value in domain_data['book'].items():
-      if len(value) > 0 and not isinstance(value, list):
-        slotvals.append(value)
-    for slot, value in domain_data['semi'].items():
-      if len(value) > 0:
-        slotvals.append(value)
-
-    previous = domain_tracker[domain]
-    current = '_'.join(slotvals)
-    if current != previous:
-      domain_tracker[domain] = current
-      return domain, domain_tracker  # index
-
-  # could not find anything 
-  return "", domain_tracker
-
 def extract_label(targets):
   # returns a list of (domain, slot, value) tuples when the domain is an active 
   swaps = {'not mentioned': 'none', 'dontcare': 'any', '': 'none'}
@@ -196,7 +175,7 @@ def extract_label(targets):
         labels.append((domain, slot, value))
   return labels
 
-def track_mwoz(args, data, label_set):
+def meta_learn_mwoz(args, data, label_set):
   # written for raw v2.4 mwoz
   examples = []
   speakers = ["<customer>", "<agent>"]
@@ -215,12 +194,18 @@ def track_mwoz(args, data, label_set):
       
       if speaker == '<agent>':
         domain, d_tracker = extract_domain(targets, label_set, d_tracker)
-          context = ' '.join(text_so_far)
-          targets = extract_label(turn['metadata'])
-          for domain, slot, value in targets:
-            examples.append({'dialogue': context + '<label>',
-                               'prompt': make_prompt(args.prompt_style, domain, slot),
-                                'label': value})
+        context = ' '.join(text_so_far)
+        targets = extract_label(turn['metadata'])
+        for domain, slot, value in targets:
+          examples.append({'dialogue': context + '<label>',
+                             'prompt': make_prompt(args.prompt_style, domain, slot),
+                              'label': value})
+          # for domain in domains:
+          #   for slot in domain:
+          #     example['setting'] = slot_domain
+          # possible_values = '\nOptions: ' + ', '.join(label_set)  # candidate values
+          # example['options'] = possible_values
+
       text_so_far.append(utterance)  # add agent utterance afterwards
       
       speaker_id = 1 - speaker_id
@@ -230,24 +215,26 @@ def track_mwoz(args, data, label_set):
   return examples
 
 def build_mwoz(args, data, label_set):
-  if args.task == 'classify':
-    return classify_mwoz(args, data, label_set)
-  elif args.task == 'track':
-    return track_mwoz(args, data, label_set)
+  if args.task == 'meta_learn':
+    return meta_learn_mwoz(args, data, label_set)
+  elif args.task == 'fine_tune':
+    return fine_tune_mwoz(args, data, label_set)
+  elif args.task == 'in_context':
+    return in_context_mwoz(args, data, label_set)
   elif args.do_interact:
     mapping = {label: idx for idx, label in enumerate(label_set)}
     return interact_mwoz(args, mapping)
 
-def classify_mwoz(args, data, label_set):
-  # written for raw v2.4 mwoz
+def fine_tune_mwoz(args, data, label_set):
+  ''' Written for raw v2.2 mwoz.  Since evaluation is done by a library, 
+  based on the dialog_id, we do not actually pass the ground truth target as
+  the label for evaluation.  Instead, we use dialog_id as the meta_label '''
   examples = []
-  speakers = ["Customer: ", "Agent: "]  # ["<customer>", "<agent>"]
-  prompt = make_prompt(args.prompt_style, 'topic')
+  speakers = ["<customer>", "<agent>"]
 
   for convo_id, conversation in progress_bar(data.items(), total=len(data)):
     text_so_far = []
     speaker_id = 0
-    d_tracker = {domain: '' for domain in label_set}
 
     for turn in conversation['log']:
       text = turn['text']
@@ -258,17 +245,17 @@ def classify_mwoz(args, data, label_set):
         text_so_far.append(utterance)
       elif speaker_id == 1:
         domain, d_tracker = extract_domain(turn['metadata'], label_set, d_tracker)
+        prompt = make_prompt(args.prompt_style, domain, slot)
         if len(domain) > 0:
           context = ' '.join(text_so_far)
           dialogue = context + '<label>'
-          example = {'dialogue': dialogue, 'prompt': prompt, 'label': domain}
 
-          # for domain in domains:
-          #   for slot in domain:
-          #     example['setting'] = slot_domain
-          # possible_values = '\nOptions: ' + ', '.join(label_set)  # candidate values
-          # example['options'] = possible_values
+          dialog_id = convo_id.split('.')[0].lower()  # drop the ".json"
+          turn_count = str(len(text_so_far))
+          domain_string = ';'.join(active_domains)
+          meta_label = "_".join([dialog_id, turn_count, domain_string]) 
 
+          example = {'dialogue': dialogue, 'prompt': prompt, 'label': meta_label}
           examples.append(example)
         text_so_far.append(utterance)  # add agent utterance afterwards
       
@@ -392,22 +379,6 @@ def get_dataloader(args, dataset, split='train'):
   return dataloader
 
 def prepare_examples(args, data, label_set, split):
-  """If predicting:
-    - Conversation Level Classification
-      - Return 'dialogue' as long string that joins utterances together
-      - The 'label' value is the topic or intent being predicted
-    - Dialogue state given the current turn
-      - Return 'dialogue' as one long string, including formatted labels for generation
-      - The 'label' value is for evaluation only and not used during training
-    - Turn Level Classification
-      - Return 'context' as one long string, 'utterance' for the current utt
-      - The 'label' value is the emotion or dialog_act being predicted
-    - Information Retrieval
-      - Return 'dialogue' as the context and 'position' as the index of the correct target
-      - Also include 'candidates' as the list of candidate texts or IDs to choose from
-  """
-  mapping = {label: idx for idx, label in enumerate(label_set)}
-  
   if args.dataset == 'abcd':    # Action Based Conversations
     examples = build_abcd(args, data, mapping) 
   elif args.dataset == 'dstc':  # State Tracking Challenge 2
@@ -431,12 +402,12 @@ def process_data(args, raw_data, tokenizer):
     datasets = {}
     for split in ['train', 'dev', 'test']:
       examples = prepare_examples(args, raw_data[split], label_set, split)
-      if args.dataset == 'mwoz':
-        datasets[split] = MultiwozDataset(examples, tokenizer,  args.task, split)
-      elif args.dataset == 'gsim':
-        datasets[split] = SimulateDataset(examples, tokenizer,  args.task, split)
-      else:
-        datasets[split] = BaseDataset(examples, tokenizer,  args.task, split)
+      if args.task == 'meta_learn':
+        datasets[split] = MetaLearnDataset(examples, tokenizer,  args.task, split)
+      elif args.task == 'in_context':
+        datasets[split] = InContextDataset(examples, tokenizer,  args.task, split)
+      elif args.task == 'fine_tune':
+        datasets[split] = FineTuneDataset(examples, tokenizer,  args.task, split)
       print(f"Running with {len(datasets[split])} {split} examples")
     pkl.dump(datasets, open(cache_results, 'wb'))
 

@@ -9,10 +9,10 @@ def solicit_params():
                 help="The input training data file (a text file).")
     parser.add_argument("--output-dir", default='results', type=str,
                 help="Output directory where the model predictions and checkpoints are written.")
-    parser.add_argument("--dataset", default='gsim', type=str, 
-                choices=['abcd', 'mwoz', 'tt', 'sgd', 'dstc'],
-                help="which dataset to choose from out of the ten options")
-    parser.add_argument("--task", default='classify', type=str,
+    parser.add_argument("--dataset", default='mwoz', type=str, 
+                choices=['abcd', 'dstc', 'mwoz20', 'mwoz21', 'mwoz22', 'sgd', 'tt'],
+                help="which dataset to choose from out of all possible options")
+    parser.add_argument("--task", default='fine_tune', type=str,
                 choices=['in_context', 'meta_learn', 'fine_tune'],
                 help="in context has no gradients, meta learn uses inner loop gradients to \
                 improve outer loop performance, fine tune performs outer loop training only")

@@ -13,12 +13,6 @@ metric_by_task = {
 
 STOP_TOKENS = ['done', 'exit', 'logout', 'finish', 'stop']
 
-TASKS = {
-    'classify': 'Intent Classification',
-    'track': 'Dialogue State Tracking',
-    'generate': 'Response Generation'
-}
-
 DATASETS = {
     'abcd': 'Action-Based Conversations Dataset',
     'sgd': 'Schema Guided Dialogue',
@@ -71,4 +65,12 @@ GENERAL_TYPO = {
     # others
     "any":"dontcare", "n":"no", "does not care":"dontcare", "not men":"none", "not":"none", "art":"none",
     "not mentioned":"none", '':"none", "not mendtioned":"none", "3 .":"3", "does not":"no", "fun":"none",
+}
+
+DOMAIN_SLOTS = {
+  "restaurant": ["area", "book people", "book day", "book time", "food", "name", "pricerange"],
+  "taxi": ["arriveBy", "destination", "departure", "leaveAt"],
+  "train": ["arriveBy", "book people", "day", "destination", "departure", "leaveAt"],
+  "hotel": ["area", "book day", "book stay", "book people", "internet", "name", "parking", "pricerange", "stars", "type"],
+  "attraction": ["area", "name", "type"]
 }

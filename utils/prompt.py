@@ -1,5 +1,6 @@
 import os, pdb, sys
 import numpy as np
+from assets.static_vars import DOMAIN_SLOTS
 
 schema_descriptions = {
   "taxi": {
@@ -123,19 +124,19 @@ is_categorical = {
     "book time": False,
     "food": True,
     "name": False,
-    "pricerange": True,
+    "pricerange": True},
   "taxi": {
     "arriveBy": False,
     "destination": False,
     "departure": False,
-    "leaveAt": False, 
+    "leaveAt": False}, 
   "train": {
     "arriveBy": False,
     "book people": False,
     "day": True,
     "destination": False,
     "departure": False,
-    "leaveAt": False,
+    "leaveAt": False},
   "hotel": {
     "area": True,
     "book day": True,
@@ -146,7 +147,7 @@ is_categorical = {
     "parking": True,
     "pricerange": True,
     "stars": True,
-    "type": True,
+    "type": True},
   "attraction": {
     "area": True,
     "name": False,
@@ -191,22 +192,51 @@ question_descriptions = {
     "type": "What is the type of the attraction that the user is interested in?"}
 }
 
+def extract_domain(metadata, label_set, domain_tracker):
+  for domain in label_set:
+    domain_data = metadata[domain]
+
+    slotvals = []
+    for slot, value in domain_data['book'].items():
+      if len(value) > 0 and not isinstance(value, list):
+        slotvals.append(value)
+    for slot, value in domain_data['semi'].items():
+      if len(value) > 0:
+        slotvals.append(value)
+
+    previous = domain_tracker[domain]
+    current = '_'.join(slotvals)
+    if current != previous:
+      domain_tracker[domain] = current
+      return domain, domain_tracker  # index
+
+  # could not find anything 
+  return "", domain_tracker
+
+
 def extract_domain_slot(targets):
-  return slot, value
+  
+  for domain, slots in DOMAIN_SLOTS.items():
+    for slot in slots:
+
+
+  return domain, slot
 
 def make_prompt(style, domain, slot):
   if style == 'schema':
     return schema_descriptions[domain][slot]
-  if style == 'none':
+  elif style == 'question':
+    return question_descriptions[domain][slot]
+  elif style == 'informed':
+    return slot_informed_descriptions[domain][slot]
+  elif style == 'naive':
+    return naive_descriptions[domain][slot]
+  elif style == 'human':
+    return human_descriptions[domain][slot]
+  elif style == 'none':
     return " "
-
-  if domain == 'train':
-    return train_prompts(style)
-  elif domain == 'restaurant':
-    return restaurant_prompts(style)
-  elif domain == 'topic':
-    return topic_prompts(style)
-
+  elif style == 'random':
+    return "random"
 
 def topic_prompts(style):
   if style == 'schema':

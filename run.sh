@@ -1,26 +1,26 @@
 # ________ Fine-tuned Model Training ________
 # Leveraging Slot Descriptions for Zero-Shot Cross-Domain DST (domain held out for testing)
-# python main.py --dataset mwoz --task fine_tune --style domain --do-train --do-save \
+# python main.py --dataset mwoz22 --task fine_tune --style domain --do-train --do-save \
 #       --model t5 --size small --num-shots zero --max-len 512 --prompt-style human \
 #       --temperature 0.8 --threshold 1.4 --context-len 8
-python main.py --dataset mwoz --task fine_tune --style domain --do-train --debug \
+python main.py --dataset mwoz22 --task fine_tune --style domain --do-train --debug \
       --model t5 --size small --num-shots zero --max-len 512 --prompt-style naive \
       --temperature 0.8 --threshold 1.4 --context-len 8
-# python main.py --dataset mwoz --task fine_tune --style domain --do-train --do-save \
+# python main.py --dataset mwoz22 --task fine_tune --style domain --do-train --do-save \
 #       --model t5 --size small --num-shots zero --max-len 512 --prompt-style slotval \
 #       --temperature 0.8 --threshold 1.4 --context-len 8
-# python main.py --dataset mwoz --task fine_tune --style domain --do-train --do-save \
+# python main.py --dataset mwoz22 --task fine_tune --style domain --do-train --do-save \
 #       --model t5 --size small --num-shots zero --max-len 512 --prompt-style question \
 #       --temperature 0.8 --threshold 1.4 --context-len 8
 
 # Zero-Shot DST via Cross-Task Transfer (dataset is held out for testing)
-# python main.py --dataset mwoz --task fine_tune --style dataset --do-train --debug \
+# python main.py --dataset mwoz22 --task fine_tune --style dataset --do-train --debug \
 #       --model t5 --size small --num-shots percent --threshold 0.01 --prompt-style naive \
 #       --max-len 512 --temperature 0.8 --threshold 1.4 --context-len 8
-# python main.py --dataset mwoz --task fine_tune --style dataset --do-train --debug \
+# python main.py --dataset mwoz22 --task fine_tune --style dataset --do-train --debug \
 #       --model t5 --size small --num-shots percent --threshold 0.05 --prompt-style naive \
 #       --max-len 512 --temperature 0.8 --threshold 1.4 --context-len 8
-# python main.py --dataset mwoz --task fine_tune --style dataset --do-train --debug \
+# python main.py --dataset mwoz22 --task fine_tune --style dataset --do-train --debug \
 #       --model t5 --size small --num-shots percent --threshold 0.10 --prompt-style naive \
 #       --max-len 512 --temperature 0.8 --threshold 1.4 --context-len 8
 
