@@ -5,7 +5,7 @@ import math
 import pickle as pkl
 import numpy as np
 
-from assets.static_vars import device, DATASETS, GENERAL_TYPO
+from assets.static_vars import device, DATASETS, GENERAL_TYPO, DOMAIN_SLOTS
 from utils.prompt import find_prompt
 from components.datasets import MetaLearnDataset, InContextDataset, FineTuneDataset
 from torch.utils.data import DataLoader, RandomSampler, SequentialSampler
@@ -277,11 +277,11 @@ def fine_tune_mwoz22(args, data, label_set):
       utterance = f"{speaker} {text}"
       text_so_far.append(utterance)
       
-      if len(turn['frames']) > 0:
+      if len(turn['frames']) > 0 and speaker == '<customer>':
 
         convo_id = conversation['dialogue_id'].split('.')[0].lower()  # drop the ".json"
         turn_count = turn['turn_id']
-        active_domains = [frame['service'] for frame in turn['frames'] if frame['state']['active_intent'] is not "NONE"]
+        active_domains = [fr['service'] for fr in turn['frames'] if fr['state']['active_intent'] != "NONE"]
         domain_string = ';'.join(active_domains)
         extra = "_".join([convo_id, turn_count, domain_string]) 
 
@@ -294,9 +294,9 @@ def fine_tune_mwoz22(args, data, label_set):
               active_slots = [domain_slot.split('-')[1] for domain_slot, _ in slotvals.items()]
               
               for slot in DOMAIN_SLOTS[current_domain]:
-                prompt = find_prompt(args.prompt_style, domain, slot)
+                prompt = find_prompt(args.prompt_style, current_domain, slot)
                 if slot in active_slots:
-                  domain_slot = '_'.join([current_domain, slot])
+                  domain_slot = '-'.join([current_domain, slot])
                   value = slotvals[domain_slot][0]
                 else:
                   value = 'none'
