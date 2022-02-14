@@ -10,7 +10,7 @@ from collections import defaultdict
 from tqdm import tqdm as progress_bar
 from assets.static_vars import device
 from copy import deepcopy
-from transformers import AdamW, get_scheduler
+from transformers import get_scheduler
 
 def set_seed(args):
   random.seed(args.seed)
@@ -59,9 +59,17 @@ def setup_optimization(args, model, total_steps):
   ]
   warmup = int(total_steps * 0.2)
 
-  optimizer = AdamW(optimizer_grouped_parameters, lr=args.learning_rate)
+  optimizer = torch.optim.AdamW(optimizer_grouped_parameters, lr=args.learning_rate)
   scheduler = get_scheduler('cosine', optimizer, num_warmup_steps=warmup, num_training_steps=total_steps)
   return optimizer, scheduler
+
+def review_inputs(args, targets, tokenizer):
+  if args.debug and args.verbose:
+    tbd = tokenizer.batch_decode(targets)
+    print(f"Batch with {len(tbd)} items")
+    for batch_item in tbd:
+      print(batch_item.replace('<pad>', ''))
+      pdb.set_trace()
 
 def get_all_checkpoints(args, load_dir):
   print('Loading all finetuned models ...')

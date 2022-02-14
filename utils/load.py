@@ -43,6 +43,7 @@ def load_tokenizer(args):
 
   if args.model == 't5':
     tokenizer = T5Tokenizer.from_pretrained(token_ckpt)
+    special['sep_token'] = '<sep>'
   elif args.model == 'gpt':
     tokenizer = AutoTokenizer.from_pretrained(token_ckpt)
     special['sep_token'] = '<sep>'

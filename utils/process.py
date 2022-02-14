@@ -278,13 +278,12 @@ def fine_tune_mwoz22(args, data, label_set):
       text_so_far.append(utterance)
       
       if len(turn['frames']) > 0 and speaker == '<customer>':
-
-        convo_id = conversation['dialogue_id'].split('.')[0].lower()  # drop the ".json"
-        turn_count = turn['turn_id']
-        active_domains = [fr['service'] for fr in turn['frames'] if fr['state']['active_intent'] != "NONE"]
-        domain_string = ';'.join(active_domains)
-        extra = "_".join([convo_id, turn_count, domain_string]) 
-
+        act_dom = [fr['service'] for fr in turn['frames'] if fr['state']['active_intent'] != "NONE"]
+        extra = {
+          'convo_id': conversation['dialogue_id'].split('.')[0].lower(),  # drop the ".json"
+          'active_domains': act_dom,
+          'turn_count': int(turn['turn_id']) }
+        
         for frame in turn['frames']:
           current_domain = frame['service']
           if current_domain in allowed_domains:
@@ -302,6 +301,7 @@ def fine_tune_mwoz22(args, data, label_set):
                   value = 'none'
 
                 context = ' '.join(text_so_far)
+                extra['dsv'] = [current_domain, slot, value]
                 example = {'context': context, 'prompt': prompt, 'label': value, 'extra': extra}
                 examples.append(example)
       

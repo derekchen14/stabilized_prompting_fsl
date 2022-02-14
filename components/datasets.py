@@ -31,7 +31,6 @@ class BaseDataset(Dataset):
 
     self.tokenizer = tokenizer
     self.task = args.task
-    self.review_inputs = args.debug and args.verbose 
 
   def __len__(self):
     return self.size
@@ -117,18 +116,11 @@ class FineTuneDataset(BaseDataset):
       inputs = self.tokenizer(dialogues, padding=True, max_length=1024,
                                 truncation=True, return_tensors='pt').to(device)
       targets = inputs['input_ids']
-
-      if self.review_inputs:
-        tbd = self.tokenizer.batch_decode(targets)
-        for batch_item in tbd:
-            print(batch_item.replace('<pad>', ''))
-        pdb.set_trace()
       return inputs, targets
 
     elif self.split in ['dev', 'test']:
       for example in examples:
         context = example['context']
-        value = example['label']
         dialog = context + '<sep>' + example['prompt'] + '<label>'
         dialogues.append(dialog)
         extras.append(example['extra'])
