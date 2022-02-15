@@ -38,7 +38,7 @@ def load_data(args):
 
 def load_tokenizer(args):
   special = { 'additional_special_tokens': 
-          ['<customer>', '<agent>', '<label>', '<kb>']  }
+          ['<customer>', '<agent>', '<label>']  }
   token_ckpt = CHECKPOINTS[args.model][args.size]
 
   if args.model == 't5':
@@ -48,8 +48,6 @@ def load_tokenizer(args):
     tokenizer = AutoTokenizer.from_pretrained(token_ckpt)
     special['sep_token'] = '<sep>'
     special['pad_token'] = '<pad>'
-  elif args.model == 'bart':
-    tokenizer = BartTokenizer.from_pretrained(token_ckpt)
   elif args.model == 'bart':
     tokenizer = BartTokenizer.from_pretrained(token_ckpt)
   else:

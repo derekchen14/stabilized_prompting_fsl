@@ -25,6 +25,7 @@ def run_train(args, model, datasets, exp_logger):
       
     for step, batch in enumerate(train_dataloader):
       inputs, targets = batch
+      review_inputs(args, targets, datasets['train'].tokenizer)
       outputs = model(**inputs, labels=targets)
       exp_logger.tr_loss += outputs.loss.item()
       loss = outputs.loss / args.grad_accum_steps
@@ -50,14 +51,15 @@ def run_train(args, model, datasets, exp_logger):
 
 def run_inference(args, model, dataloader, exp_logger, split, extract_text=False):
   # runs a single epoch without gradients, optionally collects meta-data along the way
-  if args.task == 'track':
-    return run_state_tracking(args, model, dataloader, exp_logger, split)
-  elif args.task == 'classify':
-    return run_classification(args, model, dataloader, exp_logger, split, extract_text)
-  elif args.task == 'generate':
-    return run_generation(args, model, dataloader, exp_logger, split)
+  if args.task == 'in_context':
+    return in_context_eval(args, model, dataloader, exp_logger, split)
+  elif args.task == 'meta_learn':
+    return meta_learn_eval(args, model, dataloader, exp_logger, split, extract_text)
+  elif args.task == 'fine_tune':
+    return fine_tune_eval(args, model, dataloader, exp_logger, split)
 
-def run_state_tracking(args, model, dataloader, exp_logger, split):
+def fine_tune_eval(args, model, dataloader, exp_logger, split):
+  ''' goes through model generation without backprop, rather than classification '''
   all_outputs, all_labels = [], []
   exp_logger.eval_step = 0
 
@@ -67,20 +69,17 @@ def run_state_tracking(args, model, dataloader, exp_logger, split):
     with torch.no_grad():
       # defaults to greedy sampling, for param details see https://huggingface.co/docs/transformers/
       #        v4.15.0/en/main_classes/model#transformers.generation_utils.GenerationMixin.generate 
-      output_ids = model.generate(**inputs, max_length=args.max_len, early_stopping=True,
-                                    repetition_penalty=args.threshold, temperature=args.temperature)
-      output = tokenizer.batch_decode(output_ids.detach(), skip_special_tokens=False)
-      all_outputs.extend(output)
+      outputs = model.generate(**inputs, max_length=args.max_len, early_stopping=True, do_sample=False)
+      output_strings = tokenizer.batch_decode(outputs.detach(), skip_special_tokens=True)
+      all_outputs.extend(output_strings)
 
     if split == 'dev':
-      exp_logger.eval_loss = batch_loss.mean().item()
+      exp_logger.eval_loss = 0  # no loss, since inference only
       exp_logger.eval_step += 1
       if args.debug and exp_logger.eval_step >= debug_break: break
-
-  assert(len(all_outputs) == len(all_labels))
   return all_outputs, all_labels
 
-def run_classification(args, model, datasets):
+def in_context_eval(args, model, datasets):
   dataset = datasets['dev']
   train_data = datasets['train']
   eos = dataset.tokenizer.eos_token
@@ -145,11 +144,8 @@ def run_eval(args, model, datasets, exp_logger, split='dev'):
   tokenizer = datasets[split].tokenizer
 
   if split == 'test':        
-    if args.qualify:
-      results = run_classification(args, model, datasets)
-    elif args.quantify:
-      outputs = run_inference(args, model, dataloader, exp_logger, split)
-      results = eval_quantify(args, *outputs, exp_logger, tokenizer, split)
+    outputs = run_inference(args, model, dataloader, exp_logger, split)
+    results = eval_quantify(args, *outputs, exp_logger, tokenizer, split)
   else:
     model.eval()
     outputs = run_inference(args, model, dataloader, exp_logger, split)
@@ -157,7 +153,7 @@ def run_eval(args, model, datasets, exp_logger, split='dev'):
 
   return results
 
-def run_interaction(args, model, dataset):
+def meta_learn_eval(args, model, dataset):
   dataset = datasets['dev']
   for i in range(args.batch_size):
     sample_id = random.randrange(dataset.size)
