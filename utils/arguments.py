@@ -20,16 +20,11 @@ def solicit_params():
                 help="The model architecture to be trained or fine-tuned.")
     parser.add_argument("--size", default='small', type=str, choices=['small', 'medium', 'large'],
                 help="Size of the model, use small for debugging, but report results on large")
-    parser.add_argument("--style", default='domain', type=str, choices=['domain', 'dataset'],
-                help="Subset of data held out for testing. For example, if domain is the chosen style, \
-                then we meta learn on [taxi, hotel, restaurant, train] and test on [attraction].")
     parser.add_argument("--checkpoint", default='', type=str,
                 help="Enter the filename of a checkpoint for manual override")
     parser.add_argument("--seed", default=42, type=int)
 
     # Custom paper parameters
-    parser.add_argument("--prune-keep", default=-1, type=int,
-                help="Number of models to keep around after pruning, by default does not prune")
     parser.add_argument("--num-shots", default="zero", type=str,
                 choices=["zero", "few", "percent", "full"], help="zero-shot and few-shot load \
                     an untrained model, percent loads a model fine-tuned on <threshold>% of data")
@@ -37,8 +32,11 @@ def solicit_params():
                 help="Determines the amount of data used for pre-training the model; See num-shots")
     parser.add_argument("--temperature", default=1.4, type=float,
                 help="Temperature for increasing diversity when decoding, mainly for paraphrase")
-    parser.add_argument("-k", "--kappa", default=1, type=int,
-                help="Integer param: could be num clusters, dimensions of NT matrix or other")
+    parser.add_argument("--style", default='domain', type=str, choices=['domain', 'dataset'],
+                help="Subset of data held out for testing. For example, if domain is the chosen style, \
+                then we meta learn on [taxi, hotel, restaurant, train] and test on [attraction].")
+    parser.add_argument("--left-out", default='', type=str,   # see args.style
+                help="Name of the domain or dataset left out of training and used for testing only")
     parser.add_argument("--max-len", default=1024, type=int,
                 help="Maximum length of sequences for model input")
     parser.add_argument("--prompt-style", default="informed", type=str, help='type of prompt', 
@@ -67,6 +65,8 @@ def solicit_params():
                 help="Whether to include joint accuracy scores during evaluation")
     parser.add_argument("--quantify", action='store_true',
                 help="Whether to include inform/success/BLEU scores during evaluation")
+    parser.add_argument("--prune-keep", default=-1, type=int,
+                help="Number of models to keep around after pruning, by default does not prune")
     
     # Hyper-parameters for tuning
     parser.add_argument("--batch-size", default=12, type=int,

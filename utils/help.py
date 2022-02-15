@@ -46,6 +46,8 @@ def check_directories(args):
 
   if args.debug:
     args.log_interval /= 10
+  if args.num_shots in ['zero', 'few', 'percent']:
+    assert(len(args.left_out) > 0)
   return args, save_path
 
 def setup_optimization(args, model, total_steps):

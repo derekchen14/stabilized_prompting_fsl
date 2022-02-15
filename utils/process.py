@@ -441,6 +441,44 @@ def prepare_examples(args, data, label_set, split):
 
   return examples
 
+def hold_out(self, args, datasets):
+  if args.num_shots == 'zero':
+
+    for split in ['train', 'dev', 'test']:
+      previous_size = len(datasets[split])
+      original = datasets[split].data
+      kept_data = []
+      for example in original:
+        current_domain, slot, value = example['extra']['dsv']
+
+        # keep the chosen domain in the dev and test sets
+        if current_domain == args.left_out:
+          if split in ['dev', 'test']:
+            kept_data.append(example)
+
+        else:  # hold out the chosen domain from the train set
+          if split == 'train':
+            kept_data.append(example)
+
+      datasets[split].data = kept_data
+      datasets[split].size = len(kept_data)
+
+      future_size = len(datasets[split])
+      print(f"Previously, the size was {previous_size} for {split}.  Now, the size is {future_size}")
+
+  elif args.num_shots == 'few':
+    # separate the chosen domain from the other domains, but keep both
+    # the "few" examples for in-context learning will be sampled during training
+    # only keep the chosen domain in the dev and test sets
+    pass
+  elif args.num_shots == 'percent':
+    # sample some percentage from the chosen domain
+    # keep all data from the other domains for training
+    # only keep the chosen domain in the dev and test sets
+    percent_keep = args.threshold
+
+  return datasets
+
 def process_data(args, raw_data, tokenizer):
   label_set = raw_data['ontology']
 
@@ -460,4 +498,5 @@ def process_data(args, raw_data, tokenizer):
       print(f"Running with {len(datasets[split])} {split} examples")
     pkl.dump(datasets, open(cache_results, 'wb'))
 
+  datasets = hold_out(args, datasets)
   return datasets, label_set
