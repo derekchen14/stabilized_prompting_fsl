@@ -128,7 +128,6 @@ def group_by_convo(predictions, extras, model_type):
       if turn_count not in convos[convo_id]:
         convos[convo_id][turn_count] = []
       convos[convo_id][turn_count].append(turn_tuple)
-  
   return convos
 
 def pred_to_dialog_state(grouped_preds):
@@ -147,11 +146,14 @@ def order_by_turn_group_by_ds(convo_turns, max_turns):
     if turn_index in convo_turns:
       turn_tuples = convo_turns[turn_index]
       gen_turn = {'state': defaultdict(dict), 'active_domains': turn_tuples[0][2]}
-
+      
       # Group by domain
+      response_tokens = []
       for pred_value, dsv, _ in turn_tuples:
         domain, slot, target_value = dsv
         gen_turn['state'][domain][slot] = pred_value
+        response_tokens.extend([domain, slot, target_value])
+      gen_turn['response'] = ' '.join(response_tokens)  # filler to satisfy evaluator
       generated_turns.append(gen_turn)  # in order due to looping by turn_count
     
   return generated_turns

@@ -76,7 +76,7 @@ def load_model(args, ontology, tokenizer, load_dir):
   elif args.model == 'bart':
     model = BartForConditionalGeneration.from_pretrained(ckpt_name)
   elif args.model == 't5':
-    model = BartForConditionalGeneration.from_pretrained(ckpt_name)
+    model = T5ForConditionalGeneration.from_pretrained(ckpt_name)
 
   if args.do_train or args.num_shots == 'percent': 
     model.config.pad_token = tokenizer.pad_token

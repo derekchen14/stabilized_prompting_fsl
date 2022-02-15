@@ -117,11 +117,9 @@ class ExperienceLogger:
             ckpt_name = f'{self.model_type}_epoch{self.epoch}_lr{learning_rate}_acc{accuracy}.pt'
             ckpt_path = os.path.join(self.save_path, ckpt_name)
 
-            if model.name == 'ranker':
-                model_to_save = model.module if hasattr(model, 'module') else model
-                torch.save(model_to_save.state_dict(), ckpt_path)   # Standard Pytorch method
-            else:
-                model.save_pretrained(ckpt_path)
+            # model_to_save = model.module if hasattr(model, 'module') else model
+            # torch.save(model_to_save.state_dict(), ckpt_path)   # Standard Pytorch method
+            model.save_pretrained(ckpt_path)
             # tokenizer.save_pretrained(ckpt_path)  # Huggingface method, creates a new folder
             print(f"Saved a model at {ckpt_path}")
             if prune_keep > 0:
