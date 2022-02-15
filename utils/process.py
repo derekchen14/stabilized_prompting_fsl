@@ -445,7 +445,6 @@ def hold_out(args, datasets):
   if args.num_shots == 'zero':
 
     for split in ['train', 'dev', 'test']:
-      previous_size = len(datasets[split])
       original = datasets[split].data
       kept_data = []
       for example in original:
@@ -461,10 +460,10 @@ def hold_out(args, datasets):
             kept_data.append(example)
 
       datasets[split].data = kept_data
-      datasets[split].size = len(kept_data)
-
-      future_size = len(datasets[split])
-      print(f"Previously, the size was {previous_size} for {split}.  Now, the size is {future_size}")
+      new_size = len(kept_data)
+      datasets[split].size = new_size
+      if args.verbose:
+        print(f"Previously the {split} size was {len(original)}. Now it is {new_size}.")
 
   elif args.num_shots == 'few':
     # separate the chosen domain from the other domains, but keep both
