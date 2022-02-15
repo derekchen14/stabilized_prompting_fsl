@@ -9,9 +9,9 @@
 #       --model t5 --size small --num-shots zero --max-len 512 --prompt-style human \
 #       --temperature 0.8 --threshold 1.4 --context-len 8
 python main.py --dataset mwoz22 --task fine_tune --n-epochs 7 --do-train --do-save \
-      --style domain --left-out restaurant --model t5 --size small --num-shots zero \
+      --style domain --left-out attraction --model t5 --size small --num-shots zero \
       --learning-rate 1e-4  --max-len 1024 --prompt-style naive --context-len 9 \
-      --batch-size 8 --log-interval 1200
+      --batch-size 8 --log-interval 1200 --prune-keep 2
 # python main.py --dataset mwoz22 --task fine_tune --style domain --do-train --do-save \
 #       --model t5 --size small --num-shots zero --max-len 512 --prompt-style slotval \
 #       --temperature 0.8 --threshold 1.4 --context-len 8

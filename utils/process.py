@@ -441,7 +441,7 @@ def prepare_examples(args, data, label_set, split):
 
   return examples
 
-def hold_out(self, args, datasets):
+def hold_out(args, datasets):
   if args.num_shots == 'zero':
 
     for split in ['train', 'dev', 'test']:
