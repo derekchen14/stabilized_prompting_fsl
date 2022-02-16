@@ -169,7 +169,7 @@ def calculate_mwoz_2_2(predictions, extras, model_type):
   return evaluator.evaluate(generated_convos)
 
 def eval_quantify(args, predictions, targets, exp_logger, tokenizer, split):
-  results = {'epoch': exp_logger.epoch, 'loss': round(exp_logger.eval_loss, 3) }
+  results = {'epoch': exp_logger.epoch }  # 'loss': exp_logger.eval_loss  (no loss by default)
 
   if args.dataset == 'mwoz22':
     mwoz_res = calculate_mwoz_2_2(predictions, targets, args.model)
