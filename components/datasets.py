@@ -31,6 +31,7 @@ class BaseDataset(Dataset):
 
     self.tokenizer = tokenizer
     self.task = args.task
+    self.model_type = args.model
 
   def __len__(self):
     return self.size
@@ -52,22 +53,18 @@ class BaseDataset(Dataset):
     target_tensor = torch.tensor(padded).to(device)
     return target_tensor
 
+  def collate_lm(self, examples):
+    raise NotImplementedError
+
+  def collate_seq2seq(self, examples):
+    raise NotImplementedError
+
   def collate_func(self, examples):
-    """transforms a batch of examples into a features dict that can be fed directly into a model"""
-    pad_style = 'max_length' if self.split == 'test' else 'longest' # sequence in the batch
+    if self.model_type == 'gpt':
+      return self.collate_lm(examples)
+    elif self.model_type in ['bart', 't5']:
+      return self.collate_seq2seq(examples)
 
-    dialogues, labels, cands = [], [], []
-    for example in examples:
-      dialogues.append(example['dialogue'])
-      labels.append(example['label'])
-    inputs = self.tokenizer(dialogues, padding=pad_style,
-                              truncation=True, return_tensors='pt').to(device)
-
-    if self.task == 'generate':
-      targets = inputs["input_ids"]
-    else:
-      targets = torch.tensor(labels, dtype=torch.long, device=device) # or torch.float of BCEWithLogits
-    return inputs, targets
 
 class MetaLearnDataset(BaseDataset):
 
@@ -116,7 +113,7 @@ class InContextDataset(BaseDataset):
 
 class FineTuneDataset(BaseDataset):
 
-  def collate_func(self, examples):
+  def collate_seq2seq(self, examples):
     """transforms a batch of examples into a features dict that can be fed into a T5 or BART model"""
     dialogues, labels = [], []
 
@@ -134,3 +131,29 @@ class FineTuneDataset(BaseDataset):
       return inputs, target_tensor
     else:
       return inputs, labels
+
+  def collate_lm(self, examples):
+    """transforms a batch of examples into a features dict that can be fed into a GPT model"""
+    dialogues, extras = [], []
+    eos = self.tokenizer.eos_token
+
+    if self.split == 'train':
+      for example in examples:
+        context = example['context']
+        value = example['label']
+        dialog = context + '<sep>' + example['prompt'] + '<label>' + value + eos
+        dialogues.append(dialog)
+      inputs = self.tokenizer(dialogues, padding=True, max_length=1024,
+                                truncation=True, return_tensors='pt').to(device)
+      targets = inputs['input_ids']
+      return inputs, targets
+
+    elif self.split in ['dev', 'test']:
+      for example in examples:
+        context = example['context']
+        dialog = context + '<sep>' + example['prompt'] + '<label>'
+        dialogues.append(dialog)
+        extras.append(example['extra'])
+      inputs = self.tokenizer(dialogues, padding=True, max_length=1000,
+                                truncation=True, return_tensors='pt').to(device)
+      return inputs, extras
