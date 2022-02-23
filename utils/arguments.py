@@ -16,7 +16,7 @@ def solicit_params():
                 choices=['in_context', 'meta_learn', 'fine_tune'],
                 help="in context has no gradients, meta learn uses inner loop gradients to \
                 improve outer loop performance, fine tune performs outer loop training only")
-    parser.add_argument("--model", default='t5', type=str, choices=['t5', 'bart', 'gpt'],
+    parser.add_argument("--model", default='t5', type=str, choices=['t5', 'bart', 'gpt', 'trade'],
                 help="The model architecture to be trained or fine-tuned.")
     parser.add_argument("--size", default='small', type=str, choices=['small', 'medium', 'large'],
                 help="Size of the model, use small for debugging, but report results on large")
