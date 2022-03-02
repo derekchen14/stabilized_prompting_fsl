@@ -50,6 +50,13 @@ def check_directories(args):
     assert(len(args.left_out) > 0)
   return args, save_path
 
+def trade_loss(predictions, targets):
+  returns loss
+
+def prepare_inputs(batch):
+  # change as needed
+  return inputs
+
 def setup_optimization(args, model, total_steps):
   no_decay = ["bias", "LayerNorm.weight"]
   optimizer_grouped_parameters = [

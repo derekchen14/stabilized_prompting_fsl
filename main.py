@@ -25,8 +25,14 @@ def run_train(args, model, datasets, exp_logger):
       
     for step, batch in enumerate(train_dataloader):
       inputs, targets = batch
-      review_inputs(args, targets, datasets['train'].tokenizer)
-      outputs = model(**inputs, labels=targets)
+      
+      if args.model == 'trade':
+        inputs =  prepare_inputs(batch)
+        outputs = model(inputs, use_teacher_forcing, slot_temp)
+        loss = trade_loss(pred_outputs, targets)
+      else:
+        review_inputs(args, targets, datasets['train'].tokenizer)
+        outputs = model(**inputs, labels=targets)
       exp_logger.tr_loss += outputs.loss.item()
       loss = outputs.loss / args.grad_accum_steps
       loss.backward()

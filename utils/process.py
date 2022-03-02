@@ -222,7 +222,7 @@ def build_mwoz22(args, data, label_set):
     mapping = {label: idx for idx, label in enumerate(label_set)}
     return interact_mwoz(args, mapping)
 
-def fine_tune_mwoz20(args, data, label_set):
+def fine_tune_mwoz21(args, data, label_set):
   ''' Written for raw v2.0 mwoz.  Requires extra pre-processing which comes from TRADE'''
   examples = []
   speakers = ["<customer>", "<agent>"]
@@ -333,6 +333,9 @@ def interact_mwoz(data, mapping):
         text_so_far = text_so_far[-10:]
 
   return examples
+
+def build_mwoz21(data, mapping, split):
+  # Add pre-processing code here for mwoz 2.1  # for Kun
 
 def build_sgd(data, mapping, split):
   examples = []
