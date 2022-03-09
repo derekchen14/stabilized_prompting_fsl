@@ -145,6 +145,72 @@ def build_gsim(data, mapping):
 
   return examples
 
+def build_mwoz21(args, data, label_set):
+  examples = []
+  speakers = {'USER': '<customer>', 'SYSTEM': '<agent>'}
+  allowed_domains = list(DOMAIN_SLOTS.keys())
+
+  for conversation in progress_bar(data, total=len(data)):
+    text_so_far = []
+
+    for turn in conversation['turns']:
+      context = turn["context"]
+      for slot in turn["slot_inf"].split(",")[:-1]:
+        domain, slot_type, slot_value = slot.split()[0], slot.split()[1], " ".join(slot.split()[2:])
+        if domain not in allowed_domains:
+          continue
+
+        for slot in DOMAIN_SLOTS[current_domain]:
+          prompt = find_prompt(args.prompt_style, current_domain, slot)
+          if slot in active_slots:
+            domain_slot = '-'.join([current_domain, slot])
+            value = slotvals[domain_slot][0]
+          else:
+            value = 'none'
+
+          context = ' '.join(text_so_far)
+          extra['dsv'] = [current_domain, slot, value]
+          example = {'context': context, 'prompt': prompt, 'label': value, 'extra': extra}
+          examples.append(example)
+
+
+      text = turn['utterance']
+      speaker = speakers[turn['speaker']]
+      utterance = f"{speaker} {text}"
+      text_so_far.append(utterance)
+      
+      if len(turn['frames']) > 0 and speaker == '<customer>':
+        act_dom = [fr['service'] for fr in turn['frames'] if fr['state']['active_intent'] != "NONE"]
+        extra = {
+          'convo_id': conversation['dialogue_id'].split('.')[0].lower(),  # drop the ".json"
+          'active_domains': act_dom,
+          'turn_count': int(turn['turn_id']) }
+        
+        for frame in turn['frames']:
+          current_domain = frame['service']
+          if current_domain in allowed_domains:
+            slotvals = frame['state']['slot_values']
+            if len(slotvals) > 0:
+              active_slots = [domain_slot.split('-')[1] for domain_slot, _ in slotvals.items()]
+              
+              for slot in DOMAIN_SLOTS[current_domain]:
+                prompt = find_prompt(args.prompt_style, current_domain, slot)
+                if slot in active_slots:
+                  domain_slot = '-'.join([current_domain, slot])
+                  value = slotvals[domain_slot][0]
+                else:
+                  value = 'none'
+
+                context = ' '.join(text_so_far)
+                extra['dsv'] = [current_domain, slot, value]
+                example = {'context': context, 'prompt': prompt, 'label': value, 'extra': extra}
+                examples.append(example)
+      
+      if len(text_so_far) > args.context_len:
+        text_so_far = text_so_far[-args.context_len:]
+
+  return examples
+
 def extract_label(targets):
   # returns a list of (domain, slot, value) tuples when the domain is an active 
   swaps = {'not mentioned': 'none', 'dontcare': 'any', '': 'none'}
@@ -222,7 +288,7 @@ def build_mwoz22(args, data, label_set):
     mapping = {label: idx for idx, label in enumerate(label_set)}
     return interact_mwoz(args, mapping)
 
-def fine_tune_mwoz21(args, data, label_set):
+def fine_tune_mwoz20(args, data, label_set):
   ''' Written for raw v2.0 mwoz.  Requires extra pre-processing which comes from TRADE'''
   examples = []
   speakers = ["<customer>", "<agent>"]
@@ -259,6 +325,7 @@ def fine_tune_mwoz21(args, data, label_set):
         text_so_far = text_so_far[-args.context_len:]
 
   return examples
+
 
 def fine_tune_mwoz22(args, data, label_set):
   ''' Written for raw v2.2 mwoz.  Since evaluation is done by a library
@@ -334,8 +401,6 @@ def interact_mwoz(data, mapping):
 
   return examples
 
-def build_mwoz21(data, mapping, split):
-  # Add pre-processing code here for mwoz 2.1  # for Kun
 
 def build_sgd(data, mapping, split):
   examples = []
@@ -372,6 +437,7 @@ def build_sgd(data, mapping, split):
         text_so_far = text_so_far[-14:]
 
   return examples
+
 
 def extract_frame(turn):
   labels = {}
@@ -419,12 +485,14 @@ def build_tt(data, mapping):
       text_so_far.append(current_utt)
   return examples
 
+
 def get_dataloader(args, dataset, split='train'):
   sampler = RandomSampler(dataset) if dataset.shuffle else SequentialSampler(dataset)
   collate = dataset.collate_func
   dataloader = DataLoader(dataset, sampler=sampler, batch_size=args.batch_size, collate_fn=collate)
   print(f"Loaded {split} data with {len(dataloader)} batches")
   return dataloader
+
 
 def prepare_examples(args, data, label_set, split):
   if args.dataset == 'abcd':    # Action Based Conversations

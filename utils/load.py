@@ -8,6 +8,7 @@ import pickle as pkl
 import numpy as np
 import pandas as pd
 import torch
+import shutil
 
 from tqdm import tqdm as progress_bar
 from transformers import GPT2LMHeadModel,GPT2ForSequenceClassification, GPT2Config, GPT2Tokenizer, \
@@ -16,15 +17,39 @@ from transformers import GPT2LMHeadModel,GPT2ForSequenceClassification, GPT2Conf
 from transformers import logging, GPTJForCausalLM, AutoTokenizer
 from assets.static_vars import device, CHECKPOINTS
 from components.embed import Embedder
+from utils.reformat_data import *
 
 logging.set_verbosity_error()
 
-def load_data(args):  
+def prepare_data(args, force_reformat=False):
+  """
+  TODO:
+  add more dataset (GSIM, ABCD, TaskMaster)
+  """
+
+  if not os.path.exists(os.path.join(args.input_dir, args.dataset)) or force_reformat:
+    os.makedirs(os.path.join(args.input_dir, args.dataset), exist_ok=True)
+    if args.dataset == 'mwoz20':  # MultiWoz 2.0
+      reformat = ReformatMultiWOZ20(args.input_dir)
+    elif args.dataset == 'mwoz21':  # MultiWoz 2.1
+      reformat = ReformatMultiWOZ21(args.input_dir)
+      shutil.copyfile(os.path.join(args.input_dir, "multiwoz_dst/MULTIWOZ2.1/ontology.json"), 
+                      os.path.join(args.input_dir, args.dataset, "ontology.json"))
+    elif args.dataset == 'mwoz22':  # MultiWoz 2.2
+      reformat = ReformatMultiWOZ22(args.input_dir)
+      shutil.copyfile(os.path.join(args.input_dir, "multiwoz_dst/MULTIWOZ2.2/otgy.json"), 
+                      os.path.join(args.input_dir, args.dataset, "ontology.json"))
+    elif args.dataset == 'sgd':   # Schema Guided Dialogue
+      reformat = ReformatSGD()
+    reformat.reformat()
+
+def load_data(args):
+  prepare_data(args)
+
   data = {}
   for split in ['train', 'dev', 'test', 'ontology']:
     split_path = os.path.join(args.input_dir, args.dataset, f"{split}.json")
     split_data = json.load(open(split_path, 'r'))
-
     if split == 'ontology':
       data[split] = split_data
       example_type = 'domains'
@@ -50,6 +75,8 @@ def load_tokenizer(args):
     special['pad_token'] = '<pad>'
   elif args.model == 'bart':
     tokenizer = BartTokenizer.from_pretrained(token_ckpt)
+  elif args.model == 'trade':
+    return None
   else:
     print(f'{args.model} not supported at this time')
     sys.exit()
@@ -77,6 +104,8 @@ def load_model(args, ontology, tokenizer, load_dir):
     model = BartForConditionalGeneration.from_pretrained(ckpt_name)
   elif args.model == 't5':
     model = T5ForConditionalGeneration.from_pretrained(ckpt_name)
+  elif args.model == 'trade':
+    model = torch.load(path)
 
   if args.do_train or args.num_shots == 'percent': 
     model.config.pad_token = tokenizer.pad_token

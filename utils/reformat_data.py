@@ -58,16 +58,16 @@ class ReformatBase(object):
 
 class ReformatMultiWOZ21(ReformatBase):
     """docstring for ReformatMultiWOZ21"""
-    def __init__(self, data_dir="./data/multiwoz_dst/MULTIWOZ2.1/"):
+    def __init__(self, input_dir="./assets/"):
         super(ReformatMultiWOZ21, self).__init__()
-        self.data_dir = data_dir
+        self.data_dir = os.path.join(input_dir, "multiwoz_dst/MULTIWOZ2.1/")
         self.data_path = os.path.join(self.data_dir, "data.json")
-        self.reformat_data_name = "mwoz21.json"
-        self.reformat_data_path = os.path.join(self.data_dir, self.reformat_data_name)
+        self.reformat_data_dir = "./assets/mwoz21"
         self.slot_accm = True
+        self.hist_accm = True
 
-        self.val_path = os.path.join(self.data_dir, "valListFile.json")
-        self.test_path = os.path.join(self.data_dir, "testListFile.json")
+        self.val_path = os.path.join(self.data_dir, "valListFile.txt")
+        self.test_path = os.path.join(self.data_dir, "testListFile.txt")
         self.val_list = self.load_txt(self.val_path)
         self.test_list = self.load_txt(self.test_path)
 
@@ -111,7 +111,7 @@ class ReformatMultiWOZ21(ReformatBase):
         self.data_trade_proc_path = os.path.join(self.data_dir, "dials_trade.json")
         self.load_data(data_path = self.data_trade_proc_path)
         self.dials_reform = {}
-        self.dials_train, self.dials_val, self.dials_test = {}, {}, {}
+        self.dials_train, self.dials_dev, self.dials_test = {}, {}, {}
 
         for dial in tqdm(self.dials):
             # self.dials_form[dial["dialogue_idx"]] = []
@@ -155,35 +155,32 @@ class ReformatMultiWOZ21(ReformatBase):
                 if dial_id in self.test_list:
                     self.dials_test[dial_id + "-" + str(turn_form["turn_num"])] = turn_form
                 elif dial_id in self.val_list:
-                    self.dials_val[dial_id + "-" + str(turn_form["turn_num"])] = turn_form
+                    self.dials_dev[dial_id + "-" + str(turn_form["turn_num"])] = turn_form
                 else:
                     self.dials_train[dial_id + "-" + str(turn_form["turn_num"])] = turn_form
 
-        self.reformat_train_data_path = self.reformat_data_path.replace(".json", "_train.json")
-        self.reformat_valid_data_path = self.reformat_data_path.replace(".json", "_valid.json")
-        self.reformat_test_data_path = self.reformat_data_path.replace(".json", "_test.json")
+        self.reformat_train_data_path = os.path.join(self.reformat_data_dir, "train.json")
+        self.reformat_dev_data_path = os.path.join(self.reformat_data_dir, "dev.json")
+        self.reformat_test_data_path = os.path.join(self.reformat_data_dir, "test.json")
 
         with open(self.reformat_train_data_path, "w") as tf:
             json.dump(self.dials_train, tf, indent=2)
-        with open(self.reformat_valid_data_path, "w") as tf:
-            json.dump(self.dials_val, tf, indent=2)
+        with open(self.reformat_dev_data_path, "w") as tf:
+            json.dump(self.dials_dev, tf, indent=2)
         with open(self.reformat_test_data_path, "w") as tf:
             json.dump(self.dials_test, tf, indent=2)
-        with open(self.reformat_data_path, "w") as tf:
-            json.dump(self.dials_reform, tf, indent=2)
 
 class ReformatMultiWOZ22(ReformatBase):
     """docstring for ReformatMultiWOZ22"""
-    def __init__(self, data_dir="./data/multiwoz_dst/MULTIWOZ2.2/"):
+    def __init__(self, data_dir="./assets/"):
         super(ReformatMultiWOZ22, self).__init__()
-        self.data_dir = data_dir
+        self.data_dir = os.path.join(input_dir, "multiwoz_dst/MULTIWOZ2.2/")
         self.data_path = os.path.join(self.data_dir, "data.json")
-        self.reformat_data_name = "mwoz22.json"
-        self.reformat_data_path = os.path.join(self.data_dir, self.reformat_data_name)
+        self.reformat_data_dir = "./assets/mwoz22"
         self.slot_accm = True
 
-        self.val_path = os.path.join(self.data_dir, "valListFile.json")
-        self.test_path = os.path.join(self.data_dir, "testListFile.json")
+        self.val_path = os.path.join(self.data_dir, "valListFile.txt")
+        self.test_path = os.path.join(self.data_dir, "testListFile.txt")
         self.val_list = self.load_txt(self.val_path)
         self.test_list = self.load_txt(self.test_path)
             
@@ -205,7 +202,7 @@ class ReformatMultiWOZ22(ReformatBase):
         """
         self.load_data()
         self.dials_form = {}
-        self.dials_train, self.dials_val, self.dials_test = {}, {}, {}
+        self.dials_train, self.dials_dev, self.dials_test = {}, {}, {}
         
         for dial_id, dial in tqdm(self.dials.items()):
             context = []
@@ -236,7 +233,6 @@ class ReformatMultiWOZ22(ReformatBase):
 
                 
                 turn["slots_inf"] = " ".join(slots_inf)
-                # turn["slots_err"] = self.create_err(slots_inf[:])
                 turn["slots_err"] = ""
                 # # adding current turn to dialog history
                 context.append("<user> " + user_utt)
@@ -250,26 +246,24 @@ class ReformatMultiWOZ22(ReformatBase):
                 if dial_id in self.test_list:
                     self.dials_test[dial_id + "-" + str(turn_num)] = turn
                 elif dial_id in self.val_list:
-                    self.dials_val[dial_id + "-" + str(turn_num)] = turn
+                    self.dials_dev[dial_id + "-" + str(turn_num)] = turn
                 else:
                     self.dials_train[dial_id + "-" + str(turn_num)] = turn
 
-        self.reformat_train_data_path = self.reformat_data_path.replace(".json", "_train.json")
-        self.reformat_valid_data_path = self.reformat_data_path.replace(".json", "_valid.json")
-        self.reformat_test_data_path = self.reformat_data_path.replace(".json", "_test.json")
+        self.reformat_train_data_path = os.path.join(self.reformat_data_dir, "train.json")
+        self.reformat_dev_data_path = os.path.join(self.reformat_data_dir, "dev.json")
+        self.reformat_test_data_path = os.path.join(self.reformat_data_dir, "test.json")
 
         with open(self.reformat_train_data_path, "w") as tf:
             json.dump(self.dials_train, tf, indent=2)
-        with open(self.reformat_valid_data_path, "w") as tf:
-            json.dump(self.dials_val, tf, indent=2)
+        with open(self.reformat_dev_data_path, "w") as tf:
+            json.dump(self.dials_dev, tf, indent=2)
         with open(self.reformat_test_data_path, "w") as tf:
             json.dump(self.dials_test, tf, indent=2)
-        with open(self.reformat_data_path, "w") as tf:
-            json.dump(self.dials_form, tf, indent=2)
 
 class ReformatSGD(ReformatBase):
     """docstring for ReformatSGD"""
-    def __init__(self, data_dir="./data/google_sgd/"):
+    def __init__(self, data_dir="./assets/google_sgd/"):
         super(ReformatSGD, self).__init__()
         # self.data_dir = "/checkpoint/kunqian/dstc8-schema-guided-dialogue/"
         self.data_dir =data_dir
@@ -328,7 +322,7 @@ class ReformatSGD(ReformatBase):
                         turn_num += 1
                         
             # save reformatted dialogs
-            self.reformat_data_path = os.path.join(self.data_dir, "data_reformat_" + data_type + ".json")
+            self.reformat_data_path = os.path.join("./assets/sgd", data_type + ".json")
             with open(self.reformat_data_path, "w") as tf:
                 json.dump(self.dials_form, tf, indent=2)
 
@@ -577,7 +571,8 @@ class ReformatReddit(object):
         
 
 def main():
-    pass
+    reformatmwoz21 = ReformatMultiWOZ21()
+    reformatmwoz21.reformat()
 
 if __name__ == "__main__":
     main()

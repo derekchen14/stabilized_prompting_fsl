@@ -33,15 +33,15 @@ def check_directories(args):
   dataset_path = os.path.join(args.output_dir, args.dataset)
   save_path = os.path.join(dataset_path, args.task)
   if not os.path.exists(dataset_path):
-    os.mkdir(dataset_path)
+    os.makedirs(dataset_path)
     print(f"Created {dataset_path} for {args.dataset} results")
   if not os.path.exists(save_path):
-    os.mkdir(save_path)
+    os.makedirs(save_path)
     print(f"Created {save_path} directory")
   
   cache_path = os.path.join(args.input_dir, 'cache', args.dataset)
   if not os.path.exists(cache_path):
-    os.mkdir(cache_path)
+    os.makedirs(cache_path)
     print(f"Created {cache_path} directory")
 
   if args.debug:
@@ -51,11 +51,12 @@ def check_directories(args):
   return args, save_path
 
 def trade_loss(predictions, targets):
-  returns loss
+  pass
 
 def prepare_inputs(batch):
   # change as needed
-  return inputs
+  pass
+  # return inputs
 
 def setup_optimization(args, model, total_steps):
   no_decay = ["bias", "LayerNorm.weight"]
