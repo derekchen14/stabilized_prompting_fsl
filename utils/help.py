@@ -11,6 +11,7 @@ from tqdm import tqdm as progress_bar
 from assets.static_vars import device
 from copy import deepcopy
 from transformers import get_scheduler
+from utils.reformat import *
 
 def set_seed(args):
   random.seed(args.seed)
@@ -100,3 +101,27 @@ def memstat(message):
   maxmem = torch.cuda.max_memory_allocated()
   human_maxmem = str(round( (maxmem / 1000000), 2)) + "MB"
   print(f"{message} -- Current memory: {human_malloc}, Max: {human_maxmem}")
+
+
+def reformat_data(args):
+  """
+  TODO:
+  add more dataset (GSIM, ABCD, TaskMaster)
+  """
+
+  if not os.path.exists(os.path.join(args.input_dir, args.dataset)) or args.ignore_cache:
+    os.makedirs(os.path.join(args.input_dir, args.dataset), exist_ok=True)
+    if args.dataset == 'mwoz20':  # MultiWoz 2.0
+      reformatter = ReformatMultiWOZ20(args.input_dir)
+    elif args.dataset == 'mwoz21':  # MultiWoz 2.1
+      reformatter = ReformatMultiWOZ21(args.input_dir)
+      shutil.copyfile(os.path.join(args.input_dir, "multiwoz_dst/MULTIWOZ2.1/ontology.json"), 
+                      os.path.join(args.input_dir, args.dataset, "ontology.json"))
+    elif args.dataset == 'mwoz22':  # MultiWoz 2.2
+      reformatter = ReformatMultiWOZ22(args.input_dir)
+      shutil.copyfile(os.path.join(args.input_dir, "multiwoz_dst/MULTIWOZ2.2/otgy.json"), 
+                      os.path.join(args.input_dir, args.dataset, "ontology.json"))
+    elif args.dataset == 'sgd':   # Schema Guided Dialogue
+      reformatter = ReformatSGD()
+    # loads, reformats and saves the data in the background
+    reformatter.reformat()

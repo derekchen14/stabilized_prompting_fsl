@@ -66,7 +66,7 @@ class GenerateModel(BaseModel):
     output = logits if outcome == 'logit' else self.softmax(logits)
     return output, loss
 
-class TRADE(BaseModel):
+class TradeModel(BaseModel):
 
   def __init__(self, args, lang, task, slots, gating_dict, tokenizer):
     encoder = EncoderRNN(args.embed_dim, args.hidden_dim, args.drop_rate)

@@ -9,7 +9,7 @@ from components.logger import ExperienceLogger
 from utils.help import *
 from utils.process import process_data, get_dataloader
 from utils.arguments import solicit_params
-from utils.load import *
+from utils.load import load_tokenizer, load_model, load_data
 from utils.evaluate import eval_quantify, eval_qualify
 from assets.static_vars import device, debug_break, STOP_TOKENS
 
@@ -201,6 +201,7 @@ if __name__ == "__main__":
   args, save_path = check_directories(args)
   set_seed(args)
 
+  reformat_data(args)
   raw_data = load_data(args)
   tokenizer = load_tokenizer(args)
   datasets, ontology = process_data(args, raw_data, tokenizer)

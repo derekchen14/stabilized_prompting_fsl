@@ -36,7 +36,7 @@ CHECKPOINTS = {
         'medium': 'facebook/bart-large',
         'large': 'facebook/bart-xlarge'},
     'trade': {
-        'small' : 'trade'
+        'small' : 'trade.pt'
     }
 }
 
