@@ -95,36 +95,30 @@ def abcd_retrieval(convo, examples):
     text_so_far.append(turn['text'])
   return examples
 
-def abcd_classification(convo, mapping):
-  intent = convo['conversation'][0]['targets'][0]  # 0 is the intent/subflow
-  label_id = mapping[intent]
-
-  dialogue = []
-  for turn in convo['conversation']:
-    speaker = turn['speaker']
-    if speaker == 'action':  # skip action turns
-      if len(dialogue) > 3:  # complete if at least 3 turns
-        break
-      else:
-        continue
-
-    text = turn['text']
-    dialogue.append(f"{speaker} {text}")
-
-  dialog_string = ' '.join(dialogue)
-  return {'dialogue': dialog_string, 'label': label_id}
-
 def build_abcd(args, data, mapping):
   examples = []
   for convo in progress_bar(data, total=len(data)):
-    if args.task == 'clc':
-      example = abcd_classification(convo, mapping)
-      examples.append(example)  
-    elif args.task == 'ir':
-      examples = abcd_retrieval(convo, examples)
+    intent = convo['conversation'][0]['targets'][0]  # 0 is the intent/subflow
+    label_id = mapping[intent]
+
+    dialogue = []
+    for turn in convo['conversation']:
+      speaker = turn['speaker']
+      if speaker == 'action':  # skip action turns
+        if len(dialogue) > 3:  # complete if at least 3 turns
+          break
+        else:
+          continue
+
+      text = turn['text']
+      dialogue.append(f"{speaker} {text}")
+
+    dialog_string = ' '.join(dialogue)
+    example = {'dialogue': dialog_string, 'label': label_id}
+    examples.append(example)  
   return examples
 
-def build_gsim(data, mapping):
+def build_gsim(args, data, mapping):
   examples = []
   prompt = "The topic of conversation is about"
 
@@ -213,6 +207,10 @@ def meta_learn_mwoz(args, data, label_set):
   return examples
 
 def build_mwoz(args, data, label_set):
+<<<<<<< HEAD
+=======
+  """ All models are default MWOZ 2.2 which conforms to SGD format"""
+>>>>>>> 2331e175ddfa2185308439e829a8bce27308b51c
   if args.task == 'meta_learn':
     return meta_learn_mwoz(args, data, label_set)
   elif args.task == 'fine_tune':
@@ -307,8 +305,12 @@ def fine_tune_mwoz20(args, data, label_set):
 
   return examples
 
+<<<<<<< HEAD
 
 def fine_tune_mwoz22(args, data, label_set):
+=======
+def fine_tune_mwoz(args, data, label_set):
+>>>>>>> 2331e175ddfa2185308439e829a8bce27308b51c
   ''' Written for raw v2.2 mwoz.  Since evaluation is done by a library
   based on the dialog_id, we will additionally pass some extra meta data along
   with the ground truth label for evaluation, which includes dialog_id '''
@@ -383,8 +385,13 @@ def interact_mwoz(data, mapping):
 
   return examples
 
+<<<<<<< HEAD
+=======
+def build_dstc(args, data, mapping):
+  # Add pre-processing code here for mwoz 2.1  # for Kun
+>>>>>>> 2331e175ddfa2185308439e829a8bce27308b51c
 
-def build_sgd(data, mapping, split):
+def build_sgd(args, data, mapping, split):
   examples = []
   prompt = "The topic of conversation is about"
 
@@ -449,8 +456,7 @@ def extract_frame(turn):
     labels[service]['flattened'] = ';'.join(targets)
   return labels
 
-
-def build_tt(data, mapping):
+def build_tt(args, data, mapping):
   examples = []
   for conversation in progress_bar(data, total=len(data)):
     
@@ -479,10 +485,13 @@ def get_dataloader(args, dataset, split='train'):
 
 
 def prepare_examples(args, data, label_set, split):
+  mapping = {label: idx for idx, label in enumerate(label_set)}
+
   if args.dataset == 'abcd':    # Action Based Conversations
     examples = build_abcd(args, data, mapping) 
   elif args.dataset == 'dstc':  # State Tracking Challenge 2
     examples = build_dstc(args, data, mapping) 
+<<<<<<< HEAD
   elif args.dataset.startswith('mwoz'):
     examples = build_mwoz(args, data, label_set)
   # elif args.dataset == 'mwoz20':  # MultiWoz 2.0
@@ -491,6 +500,12 @@ def prepare_examples(args, data, label_set, split):
   #   examples = build_mwoz21(args, data, label_set)
   # elif args.dataset == 'mwoz22':  # MultiWoz 2.2
     # examples = build_mwoz22(args, data, label_set)
+=======
+  elif args.dataset == 'gsim':  # Google Simulated Chats
+    examples = build_gsim(args, data, mapping) 
+  elif args.dataset == 'mwoz':  # MultiWoz 2.2
+    examples = build_mwoz(args, data, label_set)
+>>>>>>> 2331e175ddfa2185308439e829a8bce27308b51c
   elif args.dataset == 'sgd':   # Schema Guided Dialogue
     examples = build_mwoz(args, data, mapping, split) 
   elif args.dataset == 'tt':    # TicketTalk / TaskMaster 3

@@ -14,7 +14,7 @@ from transformers import GPT2LMHeadModel,GPT2ForSequenceClassification, GPT2Conf
                           BartForConditionalGeneration, BartConfig, BartTokenizer, \
                           T5ForConditionalGeneration, T5Config, T5Tokenizer
 from transformers import logging, GPTJForCausalLM, AutoTokenizer
-from assets.static_vars import device, CHECKPOINTS
+from assets.static_vars import device, DATASETS, CHECKPOINTS
 from components.embed import Embedder
 from components.trade import TradeModel
 from utils.trade_utils import prepare_data_seq
@@ -36,9 +36,23 @@ def load_data(args):
       print(f"Loaded {split} data with {len(data[split])} {example_type}")
   return data
 
+def load_support(args):
+  support_data = {}
+  for dataset, full_name in DATASETS.items():
+    if dataset != args.left_out:
+      support_path = os.path.join(args.input_dir, dataset, "train.json")
+      sdata = json.load(open(support_path, 'r'))  # consider loading dev data too
+      if args.debug:
+        support_data[dataset]['data'] = sdata[:500]
+      else:
+        support_data[dataset]['data'] = sdata
+
+      sont = json.load(open(os.path.join(args.input_dir, dataset, "ontology.json"), 'r'))
+      support_data[dataset]['ont'] = sont
+  return support_data
+
 def load_tokenizer(args):
-  special = { 'additional_special_tokens': 
-          ['<customer>', '<agent>', '<label>']  }
+  special = { 'additional_special_tokens': ['<customer>', '<agent>', '<label>']  }
   token_ckpt = CHECKPOINTS[args.model][args.size]
 
   if args.model == 't5':

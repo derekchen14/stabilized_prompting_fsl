@@ -10,7 +10,7 @@ def solicit_params():
     parser.add_argument("--output-dir", default='results', type=str,
                 help="Output directory where the model predictions and checkpoints are written.")
     parser.add_argument("--dataset", default='mwoz', type=str, 
-                choices=['abcd', 'dstc', 'mwoz20', 'mwoz21', 'mwoz22', 'sgd', 'tt'],
+                choices=['abcd', 'dstc', 'gsim', 'mwoz', 'sgd', 'tt'],
                 help="which dataset to choose from out of all possible options")
     parser.add_argument("--task", default='fine_tune', type=str,
                 choices=['in_context', 'meta_learn', 'fine_tune'],

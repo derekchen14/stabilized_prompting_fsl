@@ -15,10 +15,10 @@ STOP_TOKENS = ['done', 'exit', 'logout', 'finish', 'stop']
 
 DATASETS = {
     'abcd': 'Action-Based Conversations Dataset',
-    'sgd': 'Schema Guided Dialogue',
     'dstc': 'Dialogue State Tracking Challenge 2',
     'gsim': 'Google Simulated Dialogue',
     'mwoz': 'MultiWoz',
+    'sgd': 'Schema Guided Dialogue',
     'tt': 'TicketTalk'
 }
 
