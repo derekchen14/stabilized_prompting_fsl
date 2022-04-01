@@ -89,6 +89,8 @@ def solicit_params():
                 help="Total number of training epochs to perform.")
     parser.add_argument("--warmup-steps", default=0, type=int, 
                 help="Linear warmup over warmup-steps.")
+    parser.add_argument("--teacher-force", default=0.5, type=float, 
+                help="teacher force ratio")
 
     args = parser.parse_args()
     return args

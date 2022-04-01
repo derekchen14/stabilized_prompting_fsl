@@ -11,6 +11,7 @@ from components.datasets import MetaLearnDataset, InContextDataset, FineTuneData
 from torch.utils.data import DataLoader, RandomSampler, SequentialSampler
 from tqdm import tqdm as progress_bar
 from collections import defaultdict
+from utils.trade_utils import prepare_data_seq
 
 def check_cache(args):
   cache_file = f'{args.task}_{args.style}.pkl'
@@ -206,7 +207,10 @@ def meta_learn_mwoz(args, data, label_set):
   return examples
 
 def build_mwoz(args, data, label_set):
+<<<<<<< HEAD
+=======
   """ All models are default MWOZ 2.2 which conforms to SGD format"""
+>>>>>>> 2331e175ddfa2185308439e829a8bce27308b51c
   if args.task == 'meta_learn':
     return meta_learn_mwoz(args, data, label_set)
   elif args.task == 'fine_tune':
@@ -217,7 +221,53 @@ def build_mwoz(args, data, label_set):
     mapping = {label: idx for idx, label in enumerate(label_set)}
     return interact_mwoz(args, mapping)
 
-def fine_tune_mwoz21(args, data, label_set):
+def fine_tune_mwoz(args, data, label_set):
+  ''' Written for raw v2.1 mwoz.  Since evaluation is done by a library
+  based on the dialog_id, we will additionally pass some extra meta data along
+  with the ground truth label for evaluation, which includes dialog_id '''
+  examples = []
+  allowed_domains = list(DOMAIN_SLOTS.keys())
+
+  for dial_id in progress_bar(data, total=len(data)):
+    text_so_far = []
+
+    for turn in data[dial_id]:
+      # context
+      context = turn['context']
+      if len(context.split("<system>")) > args.context_len:
+        context = "<system>".join(context.split("<system>")[-args.context_len:])
+
+      # construct extra information
+      extra = {
+        'convo_id': dial_id.split('.')[0].lower(),  # drop the ".json"
+        'active_domains': turn["potential_domains"],
+        'turn_count': int(turn['turn_num']) }
+
+      # building slot dict
+      slot_dict = {}
+      for slot in turn["slots_inf"].split(" , ")[:-1]:
+        dom, slot_type, slot_value = slot.split()[0], slot.split()[1], " ".join(slot.split()[2:])
+        if dom not in slot_dict:
+          slot_dict[dom] = {}
+        slot_dict[dom][slot_type] = slot_value
+
+      for domain in turn["potential_domains"]:
+        if domain not in allowed_domains:
+          continue
+        for slot_type in DOMAIN_SLOTS[domain]:
+          prompt = find_prompt(args.prompt_style, domain, slot_type)
+          if domain in slot_dict and slot_type in slot_dict[domain]:
+            slot_value = slot_dict[domain][slot_type]
+          else:
+            slot_value = 'none'
+
+          extra['dsv'] = [domain, slot_type, slot_value]
+          example = {'context': context, 'prompt': prompt, 'label': slot_value, 'extra': extra}
+          examples.append(example)
+      
+  return examples
+
+def fine_tune_mwoz20(args, data, label_set):
   ''' Written for raw v2.0 mwoz.  Requires extra pre-processing which comes from TRADE'''
   examples = []
   speakers = ["<customer>", "<agent>"]
@@ -255,7 +305,12 @@ def fine_tune_mwoz21(args, data, label_set):
 
   return examples
 
+<<<<<<< HEAD
+
+def fine_tune_mwoz22(args, data, label_set):
+=======
 def fine_tune_mwoz(args, data, label_set):
+>>>>>>> 2331e175ddfa2185308439e829a8bce27308b51c
   ''' Written for raw v2.2 mwoz.  Since evaluation is done by a library
   based on the dialog_id, we will additionally pass some extra meta data along
   with the ground truth label for evaluation, which includes dialog_id '''
@@ -305,6 +360,7 @@ def fine_tune_mwoz(args, data, label_set):
 
   return examples
 
+
 def interact_mwoz(data, mapping):
   examples = []
   speakers = ["Customer: ", "Agent: "]
@@ -329,8 +385,11 @@ def interact_mwoz(data, mapping):
 
   return examples
 
+<<<<<<< HEAD
+=======
 def build_dstc(args, data, mapping):
   # Add pre-processing code here for mwoz 2.1  # for Kun
+>>>>>>> 2331e175ddfa2185308439e829a8bce27308b51c
 
 def build_sgd(args, data, mapping, split):
   examples = []
@@ -367,6 +426,7 @@ def build_sgd(args, data, mapping, split):
         text_so_far = text_so_far[-14:]
 
   return examples
+
 
 def extract_frame(turn):
   labels = {}
@@ -413,12 +473,16 @@ def build_tt(args, data, mapping):
       text_so_far.append(current_utt)
   return examples
 
+
 def get_dataloader(args, dataset, split='train'):
+  if args.model == 'trade':
+    return dataset
   sampler = RandomSampler(dataset) if dataset.shuffle else SequentialSampler(dataset)
   collate = dataset.collate_func
   dataloader = DataLoader(dataset, sampler=sampler, batch_size=args.batch_size, collate_fn=collate)
   print(f"Loaded {split} data with {len(dataloader)} batches")
   return dataloader
+
 
 def prepare_examples(args, data, label_set, split):
   mapping = {label: idx for idx, label in enumerate(label_set)}
@@ -427,18 +491,31 @@ def prepare_examples(args, data, label_set, split):
     examples = build_abcd(args, data, mapping) 
   elif args.dataset == 'dstc':  # State Tracking Challenge 2
     examples = build_dstc(args, data, mapping) 
+<<<<<<< HEAD
+  elif args.dataset.startswith('mwoz'):
+    examples = build_mwoz(args, data, label_set)
+  # elif args.dataset == 'mwoz20':  # MultiWoz 2.0
+  #   examples = build_mwoz20(args, data, label_set)
+  # elif args.dataset == 'mwoz21':  # MultiWoz 2.1
+  #   examples = build_mwoz21(args, data, label_set)
+  # elif args.dataset == 'mwoz22':  # MultiWoz 2.2
+    # examples = build_mwoz22(args, data, label_set)
+=======
   elif args.dataset == 'gsim':  # Google Simulated Chats
     examples = build_gsim(args, data, mapping) 
   elif args.dataset == 'mwoz':  # MultiWoz 2.2
     examples = build_mwoz(args, data, label_set)
+>>>>>>> 2331e175ddfa2185308439e829a8bce27308b51c
   elif args.dataset == 'sgd':   # Schema Guided Dialogue
-    examples = build_sgd(args, data, mapping, split) 
+    examples = build_mwoz(args, data, mapping, split) 
   elif args.dataset == 'tt':    # TicketTalk / TaskMaster 3
     examples = build_tt(args, data, mapping) 
 
   return examples
 
 def hold_out(args, datasets):
+  if args.model == "trade":
+    return datasets
   if args.num_shots == 'zero':
 
     for split in ['train', 'dev', 'test']:
@@ -492,6 +569,13 @@ def process_data(args, raw_data, tokenizer):
       elif args.task == 'fine_tune':
         datasets[split] = FineTuneDataset(args, examples, tokenizer, split)
       print(f"Running with {len(datasets[split])} {split} examples")
+    if args.model == 'trade':
+      train, dev, test = prepare_data_seq(args, tokenizer=False)
+      datasets = {
+        "train": train,
+        "dev"  : dev,
+        "test" : test,
+      }
     pkl.dump(datasets, open(cache_results, 'wb'))
 
   datasets = hold_out(args, datasets)

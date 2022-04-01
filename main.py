@@ -9,7 +9,7 @@ from components.logger import ExperienceLogger
 from utils.help import *
 from utils.process import process_data, get_dataloader
 from utils.arguments import solicit_params
-from utils.load import *
+from utils.load import load_tokenizer, load_model, load_data
 from utils.evaluate import eval_quantify, eval_qualify
 from assets.static_vars import device, debug_break, STOP_TOKENS
 
@@ -19,39 +19,53 @@ def run_train(args, model, datasets, exp_logger):
   optimizer, scheduler = setup_optimization(args, model, total_steps)
   exp_logger.update_optimization(optimizer, scheduler)
 
+  avg_best = 0
   for epoch_count in range(exp_logger.num_epochs):
     exp_logger.start_epoch(train_dataloader)
     model.train()
-      
-    for step, batch in enumerate(train_dataloader):
-      inputs, targets = batch
-      
-      if args.model == 'trade':
-        inputs =  prepare_inputs(batch)
-        outputs = model(inputs, use_teacher_forcing, slot_temp)
-        loss = trade_loss(pred_outputs, targets)
+    
+    if args.model == "trade":
+      pbar = tqdm(enumerate(train_dataloader), total=len(train_dataloader))
+      for step, batch in pbar:
+        model.train_batch(batch, reset=(step==0))
+        model.optimize()
+        pbar.set_description(model.print_loss())
+
+      acc = model.evaluate(datasets['dev'], avg_best, None)
+      model.scheduler.step(acc)
+      if(acc >= avg_best):
+        avg_best = acc
+        cnt=0
+        best_model = model
       else:
+        cnt+=1
+      if cnt == 6 or acc==1.0 : 
+        print("Ran out of patient, early stop...")  
+        break
+    else:
+      for step, batch in enumerate(train_dataloader):
+        inputs, targets = batch
         review_inputs(args, targets, datasets['train'].tokenizer)
         outputs = model(**inputs, labels=targets)
-      exp_logger.tr_loss += outputs.loss.item()
-      loss = outputs.loss / args.grad_accum_steps
-      loss.backward()
+        exp_logger.tr_loss += outputs.loss.item()
+        loss = outputs.loss / args.grad_accum_steps
+        loss.backward()
 
-      if (step + 1) % args.grad_accum_steps == 0:
-        torch.nn.utils.clip_grad_norm_(model.parameters(), 5.0)
-        exp_logger.optimizer.step()  # backprop to update the weights
-        exp_logger.scheduler.step()  # Update learning rate schedule
-        model.zero_grad()
-        exp_logger.log_train(step)
-      if args.debug and step >= debug_break*args.log_interval:
-        break
+        if (step + 1) % args.grad_accum_steps == 0:
+          torch.nn.utils.clip_grad_norm_(model.parameters(), 5.0)
+          exp_logger.optimizer.step()  # backprop to update the weights
+          exp_logger.scheduler.step()  # Update learning rate schedule
+          model.zero_grad()
+          exp_logger.log_train(step)
+        if args.debug and step >= debug_break*args.log_interval:
+          break
 
-    eval_res = run_eval(args, model, datasets, exp_logger)
-    if args.do_save and eval_res[exp_logger.metric] >= exp_logger.best_score[exp_logger.metric]:
-      exp_logger.best_score = eval_res
-      exp_logger.save_best_model(model, tokenizer, args.prune_keep)
-    early_stop = exp_logger.end_epoch()
-    if early_stop: break
+      eval_res = run_eval(args, model, datasets, exp_logger)
+      if args.do_save and eval_res[exp_logger.metric] >= exp_logger.best_score[exp_logger.metric]:
+        exp_logger.best_score = eval_res
+        exp_logger.save_best_model(model, tokenizer, args.prune_keep)
+      early_stop = exp_logger.end_epoch()
+      if early_stop: break
 
   return model
 
@@ -147,6 +161,7 @@ def in_context_eval(args, model, datasets):
 
 def run_eval(args, model, datasets, exp_logger, split='dev'):
   dataloader = get_dataloader(args, datasets[split], split)
+
   tokenizer = datasets[split].tokenizer
 
   if split == 'test':        
@@ -201,6 +216,7 @@ if __name__ == "__main__":
   args, save_path = check_directories(args)
   set_seed(args)
 
+  reformat_data(args)
   raw_data = load_data(args)
   tokenizer = load_tokenizer(args)
   datasets, ontology = process_data(args, raw_data, tokenizer)
