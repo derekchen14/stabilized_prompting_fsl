@@ -65,7 +65,6 @@ class BaseDataset(Dataset):
     elif self.model_type in ['bart', 't5']:
       return self.collate_seq2seq(examples)
 
-
 class MetaLearnDataset(BaseDataset):
 
   def collate_func(self, examples):

@@ -207,10 +207,7 @@ def meta_learn_mwoz(args, data, label_set):
   return examples
 
 def build_mwoz(args, data, label_set):
-<<<<<<< HEAD
-=======
   """ All models are default MWOZ 2.2 which conforms to SGD format"""
->>>>>>> 2331e175ddfa2185308439e829a8bce27308b51c
   if args.task == 'meta_learn':
     return meta_learn_mwoz(args, data, label_set)
   elif args.task == 'fine_tune':
@@ -305,12 +302,7 @@ def fine_tune_mwoz20(args, data, label_set):
 
   return examples
 
-<<<<<<< HEAD
-
-def fine_tune_mwoz22(args, data, label_set):
-=======
 def fine_tune_mwoz(args, data, label_set):
->>>>>>> 2331e175ddfa2185308439e829a8bce27308b51c
   ''' Written for raw v2.2 mwoz.  Since evaluation is done by a library
   based on the dialog_id, we will additionally pass some extra meta data along
   with the ground truth label for evaluation, which includes dialog_id '''
@@ -352,7 +344,7 @@ def fine_tune_mwoz(args, data, label_set):
 
                 context = ' '.join(text_so_far)
                 extra['dsv'] = [current_domain, slot, value]
-                example = {'context': context, 'prompt': prompt, 'label': value, 'extra': extra}
+                example = {'dialogue': context, 'prompt': prompt, 'label': value, 'extra': extra}
                 examples.append(example)
       
       if len(text_so_far) > args.context_len:
@@ -385,11 +377,42 @@ def interact_mwoz(data, mapping):
 
   return examples
 
-<<<<<<< HEAD
-=======
 def build_dstc(args, data, mapping):
-  # Add pre-processing code here for mwoz 2.1  # for Kun
->>>>>>> 2331e175ddfa2185308439e829a8bce27308b51c
+  examples = []
+  prompt = "The topic of conversation is about"
+
+  for conversation in progress_bar(data, total=len(data)):
+    text_so_far = []    
+
+    for turn in conversation['turns']:    
+      utt = turn['utterance']
+
+      if turn['speaker'] == 'SYSTEM':
+        sys_text = f"<agent> {utt}"
+        text_so_far.append(sys_text)
+  
+      elif turn['speaker'] == 'USER':
+        user_text = f"<customer> {utt}"
+        text_so_far.append(user_text)
+        context = ' '.join(text_so_far)
+
+        labels = extract_frame(turn)
+        """labels with number of keys equal to the number of services found in that turn
+        each of these will be turned into a training example
+        the targets of each training example has keys: intents, requests, slots, values
+        each of the four keys is a list containing the respectives items as strings """
+
+        for service, details in labels.items():
+          dialogue = context + f' <service> {service} <sep>'
+          fls = details['flattened']  # labels as a long, flattened string, split by service
+          sls = details['structured'] # labels as a dictionary, again split by service
+          if len(sls['intents']) > 0 and len(sls['slots']) > 0:
+            example = {'dialogue': dialogue, 'prompt': prompt, 'label': value, 'extra': extra}
+            examples.append(example)
+      if len(text_so_far) > 14:
+        text_so_far = text_so_far[-14:]
+
+  return examples
 
 def build_sgd(args, data, mapping, split):
   examples = []
@@ -491,21 +514,10 @@ def prepare_examples(args, data, label_set, split):
     examples = build_abcd(args, data, mapping) 
   elif args.dataset == 'dstc':  # State Tracking Challenge 2
     examples = build_dstc(args, data, mapping) 
-<<<<<<< HEAD
-  elif args.dataset.startswith('mwoz'):
-    examples = build_mwoz(args, data, label_set)
-  # elif args.dataset == 'mwoz20':  # MultiWoz 2.0
-  #   examples = build_mwoz20(args, data, label_set)
-  # elif args.dataset == 'mwoz21':  # MultiWoz 2.1
-  #   examples = build_mwoz21(args, data, label_set)
-  # elif args.dataset == 'mwoz22':  # MultiWoz 2.2
-    # examples = build_mwoz22(args, data, label_set)
-=======
   elif args.dataset == 'gsim':  # Google Simulated Chats
     examples = build_gsim(args, data, mapping) 
   elif args.dataset == 'mwoz':  # MultiWoz 2.2
     examples = build_mwoz(args, data, label_set)
->>>>>>> 2331e175ddfa2185308439e829a8bce27308b51c
   elif args.dataset == 'sgd':   # Schema Guided Dialogue
     examples = build_mwoz(args, data, mapping, split) 
   elif args.dataset == 'tt':    # TicketTalk / TaskMaster 3
