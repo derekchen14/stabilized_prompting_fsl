@@ -207,6 +207,8 @@ if __name__ == "__main__":
   exp_logger = ExperienceLogger(args, ontology, save_path)
 
   model = load_model(args, ontology, tokenizer, save_path)
+  supports = load_support(args)  # load support data
+
   if args.do_train:
     run_train(args, model, datasets, exp_logger)
   elif args.do_interact:

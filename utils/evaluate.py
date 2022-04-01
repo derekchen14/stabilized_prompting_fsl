@@ -119,7 +119,7 @@ def group_by_convo(predictions, extras, model_type):
   for pred, extra in zip(predictions, extras):
     if model_type == 'gpt':
       pred_value = parse_output(pred, task='mwoz22')
-    elif model_type == 't5':
+    elif model_type in ['bart', 't5']:
       pred_value = pred.strip()
 
     if isinstance(pred_value, str) and len(pred_value) > 0 and pred_value != "none":
