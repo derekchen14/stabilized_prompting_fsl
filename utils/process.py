@@ -11,6 +11,7 @@ from components.datasets import MetaLearnDataset, InContextDataset, FineTuneData
 from torch.utils.data import DataLoader, RandomSampler, SequentialSampler
 from tqdm import tqdm as progress_bar
 from collections import defaultdict
+from utils.trade_utils import prepare_data_seq
 
 def check_cache(args):
   cache_file = f'{args.task}_{args.style}.pkl'
@@ -145,72 +146,6 @@ def build_gsim(data, mapping):
 
   return examples
 
-def build_mwoz21(args, data, label_set):
-  examples = []
-  speakers = {'USER': '<customer>', 'SYSTEM': '<agent>'}
-  allowed_domains = list(DOMAIN_SLOTS.keys())
-
-  for conversation in progress_bar(data, total=len(data)):
-    text_so_far = []
-
-    for turn in conversation['turns']:
-      context = turn["context"]
-      for slot in turn["slot_inf"].split(",")[:-1]:
-        domain, slot_type, slot_value = slot.split()[0], slot.split()[1], " ".join(slot.split()[2:])
-        if domain not in allowed_domains:
-          continue
-
-        for slot in DOMAIN_SLOTS[current_domain]:
-          prompt = find_prompt(args.prompt_style, current_domain, slot)
-          if slot in active_slots:
-            domain_slot = '-'.join([current_domain, slot])
-            value = slotvals[domain_slot][0]
-          else:
-            value = 'none'
-
-          context = ' '.join(text_so_far)
-          extra['dsv'] = [current_domain, slot, value]
-          example = {'context': context, 'prompt': prompt, 'label': value, 'extra': extra}
-          examples.append(example)
-
-
-      text = turn['utterance']
-      speaker = speakers[turn['speaker']]
-      utterance = f"{speaker} {text}"
-      text_so_far.append(utterance)
-      
-      if len(turn['frames']) > 0 and speaker == '<customer>':
-        act_dom = [fr['service'] for fr in turn['frames'] if fr['state']['active_intent'] != "NONE"]
-        extra = {
-          'convo_id': conversation['dialogue_id'].split('.')[0].lower(),  # drop the ".json"
-          'active_domains': act_dom,
-          'turn_count': int(turn['turn_id']) }
-        
-        for frame in turn['frames']:
-          current_domain = frame['service']
-          if current_domain in allowed_domains:
-            slotvals = frame['state']['slot_values']
-            if len(slotvals) > 0:
-              active_slots = [domain_slot.split('-')[1] for domain_slot, _ in slotvals.items()]
-              
-              for slot in DOMAIN_SLOTS[current_domain]:
-                prompt = find_prompt(args.prompt_style, current_domain, slot)
-                if slot in active_slots:
-                  domain_slot = '-'.join([current_domain, slot])
-                  value = slotvals[domain_slot][0]
-                else:
-                  value = 'none'
-
-                context = ' '.join(text_so_far)
-                extra['dsv'] = [current_domain, slot, value]
-                example = {'context': context, 'prompt': prompt, 'label': value, 'extra': extra}
-                examples.append(example)
-      
-      if len(text_so_far) > args.context_len:
-        text_so_far = text_so_far[-args.context_len:]
-
-  return examples
-
 def extract_label(targets):
   # returns a list of (domain, slot, value) tuples when the domain is an active 
   swaps = {'not mentioned': 'none', 'dontcare': 'any', '': 'none'}
@@ -281,12 +216,58 @@ def build_mwoz(args, data, label_set):
   if args.task == 'meta_learn':
     return meta_learn_mwoz(args, data, label_set)
   elif args.task == 'fine_tune':
-    return fine_tune_mwoz22(args, data, label_set)
+    return fine_tune_mwoz(args, data, label_set)
   elif args.task == 'in_context':
     return in_context_mwoz(args, data, label_set)
   elif args.do_interact:
     mapping = {label: idx for idx, label in enumerate(label_set)}
     return interact_mwoz(args, mapping)
+
+def fine_tune_mwoz(args, data, label_set):
+  ''' Written for raw v2.1 mwoz.  Since evaluation is done by a library
+  based on the dialog_id, we will additionally pass some extra meta data along
+  with the ground truth label for evaluation, which includes dialog_id '''
+  examples = []
+  allowed_domains = list(DOMAIN_SLOTS.keys())
+
+  for dial_id in progress_bar(data, total=len(data)):
+    text_so_far = []
+
+    for turn in data[dial_id]:
+      # context
+      context = turn['context']
+      if len(context.split("<system>")) > args.context_len:
+        context = "<system>".join(context.split("<system>")[-args.context_len:])
+
+      # construct extra information
+      extra = {
+        'convo_id': dial_id.split('.')[0].lower(),  # drop the ".json"
+        'active_domains': turn["potential_domains"],
+        'turn_count': int(turn['turn_num']) }
+
+      # building slot dict
+      slot_dict = {}
+      for slot in turn["slots_inf"].split(" , ")[:-1]:
+        dom, slot_type, slot_value = slot.split()[0], slot.split()[1], " ".join(slot.split()[2:])
+        if dom not in slot_dict:
+          slot_dict[dom] = {}
+        slot_dict[dom][slot_type] = slot_value
+
+      for domain in turn["potential_domains"]:
+        if domain not in allowed_domains:
+          continue
+        for slot_type in DOMAIN_SLOTS[domain]:
+          prompt = find_prompt(args.prompt_style, domain, slot_type)
+          if domain in slot_dict and slot_type in slot_dict[domain]:
+            slot_value = slot_dict[domain][slot_type]
+          else:
+            slot_value = 'none'
+
+          extra['dsv'] = [domain, slot_type, slot_value]
+          example = {'context': context, 'prompt': prompt, 'label': slot_value, 'extra': extra}
+          examples.append(example)
+      
+  return examples
 
 def fine_tune_mwoz20(args, data, label_set):
   ''' Written for raw v2.0 mwoz.  Requires extra pre-processing which comes from TRADE'''
@@ -376,6 +357,7 @@ def fine_tune_mwoz22(args, data, label_set):
         text_so_far = text_so_far[-args.context_len:]
 
   return examples
+
 
 def interact_mwoz(data, mapping):
   examples = []
@@ -487,6 +469,8 @@ def build_tt(data, mapping):
 
 
 def get_dataloader(args, dataset, split='train'):
+  if args.model == 'trade':
+    return dataset
   sampler = RandomSampler(dataset) if dataset.shuffle else SequentialSampler(dataset)
   collate = dataset.collate_func
   dataloader = DataLoader(dataset, sampler=sampler, batch_size=args.batch_size, collate_fn=collate)
@@ -515,6 +499,8 @@ def prepare_examples(args, data, label_set, split):
   return examples
 
 def hold_out(args, datasets):
+  if args.model == "trade":
+    return datasets
   if args.num_shots == 'zero':
 
     for split in ['train', 'dev', 'test']:
@@ -568,6 +554,13 @@ def process_data(args, raw_data, tokenizer):
       elif args.task == 'fine_tune':
         datasets[split] = FineTuneDataset(args, examples, tokenizer, split)
       print(f"Running with {len(datasets[split])} {split} examples")
+    if args.model == 'trade':
+      train, dev, test = prepare_data_seq(args, tokenizer=False)
+      datasets = {
+        "train": train,
+        "dev"  : dev,
+        "test" : test,
+      }
     pkl.dump(datasets, open(cache_results, 'wb'))
 
   datasets = hold_out(args, datasets)

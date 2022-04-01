@@ -10,7 +10,7 @@ class ReformatBase(object):
     def __init__(self):
         super(ReformatBase, self).__init__()
         
-    def load_data(self, data_path=None):
+    def load_json(self, data_path=None):
         if data_path is None:
             data_path = self.data_path
         with open(data_path) as df:
@@ -61,15 +61,10 @@ class ReformatMultiWOZ21(ReformatBase):
     def __init__(self, input_dir="./assets/"):
         super(ReformatMultiWOZ21, self).__init__()
         self.data_dir = os.path.join(input_dir, "multiwoz_dst/MULTIWOZ2.1/")
-        self.data_path = os.path.join(self.data_dir, "data.json")
         self.reformat_data_dir = "./assets/mwoz21"
         self.slot_accm = True
         self.hist_accm = True
 
-        self.val_path = os.path.join(self.data_dir, "valListFile.txt")
-        self.test_path = os.path.join(self.data_dir, "testListFile.txt")
-        self.val_list = self.load_txt(self.val_path)
-        self.test_list = self.load_txt(self.test_path)
 
     def reformat(self):
         """
@@ -98,77 +93,79 @@ class ReformatMultiWOZ21(ReformatBase):
             ]
         and output with format like:
         file={
-            dial_id-turn_num:
+            dial_id:
+                [
                     {
                         "dial_id": dial_id
                         "turn_num": 0,
+                        "current_domain" : domain,
+                        "potential_domains" : domain, domain2, ...   
                         "slots_inf": slot sequence ("dom slot_type1 slot_val1, dom slot_type2 ..."),
-                        "context" : "User: ... Sys: ... User:..."
-                    },
+                        "context" : "<user> ... <system> ... <user> ..."
+                    },...
+                ]
             ...
             }
         """
-        self.data_trade_proc_path = os.path.join(self.data_dir, "dials_trade.json")
-        self.load_data(data_path = self.data_trade_proc_path)
-        self.dials_reform = {}
-        self.dials_train, self.dials_dev, self.dials_test = {}, {}, {}
+        for mode in ["train", "dev", "test"]:
+            self.data_trade_proc_path = os.path.join(self.data_dir, f"{mode}_dials_trade.json")
+            self.load_json(data_path = self.data_trade_proc_path)
 
-        for dial in tqdm(self.dials):
-            # self.dials_form[dial["dialogue_idx"]] = []
-            context = []
-            dial_id = dial["dialogue_idx"]
-            for turn in dial["dialogue"]:                
-                turn_form = {"turn_num": turn["turn_idx"],  # turn number
-                             "dial_id" : dial_id}           # dial_id
-                # # # slots/dialog states
-                slots_inf = []
-                if not self.slot_accm:
-                    # # # dialog states only for the current turn, extracted based on "turn_label"
-                    for slot in turn["turn_label"]:
-                        domain    = slot[0].split("-")[0]
-                        slot_type = slot[0].split("-")[1]
-                        slot_val  = slot[1]
-                        slots_inf += [domain, slot_type, slot_val, ","]
-                else:
-                    # # # ACCUMULATED dialog states, extracted based on "belief_state"
-                    for state in turn["belief_state"]:
-                        if state["act"] == "inform":
-                            domain = state["slots"][0][0].split("-")[0]
-                            slot_type = state["slots"][0][0].split("-")[1]
-                            slot_val  = state["slots"][0][1]
+            self.dials_reformat = {}
+            for dial in tqdm(self.dials):
+                # self.dials_form[dial["dialogue_idx"]] = []
+                context = []
+                dial_id = dial["dialogue_idx"]
+                dial_new = []
+
+                for turn in dial["dialogue"]:                
+                    turn_new = {
+                                    "turn_num": turn["turn_idx"],   # turn number
+                                    "dial_id" : dial_id,           # dial_id
+                                    "current_domain" : turn["domain"],
+                                    "potential_domains" : dial["domains"],
+                                 }           
+                    # # # slots/dialog states
+                    slots_inf = []
+                    if not self.slot_accm:
+                        # # # dialog states only for the current turn, extracted based on "turn_label"
+                        for slot in turn["turn_label"]:
+                            domain    = slot[0].split("-")[0]
+                            slot_type = slot[0].split("-")[1]
+                            slot_val  = slot[1]
                             slots_inf += [domain, slot_type, slot_val, ","]
+                    else:
+                        # # # ACCUMULATED dialog states, extracted based on "belief_state"
+                        for state in turn["belief_state"]:
+                            if state["act"] == "inform":
+                                domain = state["slots"][0][0].split("-")[0]
+                                slot_type = state["slots"][0][0].split("-")[1]
+                                slot_val  = state["slots"][0][1]
+                                if "," in slot_val:
+                                    if slot_val == "16,15":
+                                        slot_val = "16:15"
+                                slots_inf += [domain, slot_type, slot_val, ","]
 
-                turn_form["slots_inf"] = " ".join(slots_inf)
+                    turn_new["slots_inf"] = " ".join(slots_inf)
 
-                # # # dialog history
-                if turn["system_transcript"] != "":
-                    context.append("<system> " + turn["system_transcript"])
-                
-                if not self.hist_accm:
-                    context = context[-1:]
+                    # # # dialog history
+                    if turn["system_transcript"] != "":
+                        context.append("<system> " + turn["system_transcript"])
+                    
+                    if not self.hist_accm:
+                        context = context[-1:]
 
-                # # # adding current turn to dialog history
-                context.append("<user> " + turn["transcript"])
-                turn_form["context"] = " ".join(context)
+                    # # # adding current turn to dialog history
+                    context.append("<user> " + turn["transcript"])
+                    turn_new["context"] = " ".join(context)
+                    dial_new.append(turn_new)
 
-                self.dials_reform[dial_id + "-" + str(turn_form["turn_num"])] = turn_form
-                if dial_id in self.test_list:
-                    self.dials_test[dial_id + "-" + str(turn_form["turn_num"])] = turn_form
-                elif dial_id in self.val_list:
-                    self.dials_dev[dial_id + "-" + str(turn_form["turn_num"])] = turn_form
-                else:
-                    self.dials_train[dial_id + "-" + str(turn_form["turn_num"])] = turn_form
+                self.dials_reformat[dial_id] = dial_new
 
-        self.reformat_train_data_path = os.path.join(self.reformat_data_dir, "train.json")
-        self.reformat_dev_data_path = os.path.join(self.reformat_data_dir, "dev.json")
-        self.reformat_test_data_path = os.path.join(self.reformat_data_dir, "test.json")
+            self.reformat_data_path = os.path.join(self.reformat_data_dir, f"{mode}.json")
 
-        with open(self.reformat_train_data_path, "w") as tf:
-            json.dump(self.dials_train, tf, indent=2)
-        with open(self.reformat_dev_data_path, "w") as tf:
-            json.dump(self.dials_dev, tf, indent=2)
-        with open(self.reformat_test_data_path, "w") as tf:
-            json.dump(self.dials_test, tf, indent=2)
+            with open(self.reformat_data_path, "w") as tf:
+                json.dump(self.dials_reformat, tf, indent=2)
 
 class ReformatMultiWOZ22(ReformatBase):
     """docstring for ReformatMultiWOZ22"""
@@ -200,12 +197,13 @@ class ReformatMultiWOZ22(ReformatBase):
                 ...
             }
         """
-        self.load_data()
+        self.load_json()
         self.dials_form = {}
         self.dials_train, self.dials_dev, self.dials_test = {}, {}, {}
         
         for dial_id, dial in tqdm(self.dials.items()):
             context = []
+            dial_new = []
 
             for turn_num in range(math.ceil(len(dial["log"]) / 2)):
                 # # # turn number
@@ -241,14 +239,14 @@ class ReformatMultiWOZ22(ReformatBase):
                 # adding system response to next turn
                 context.append("<system> " + sys_resp)
 
+                dial_new.append(turn_new)
 
-                self.dials_form[dial_id + "-" + str(turn_num)] = turn
-                if dial_id in self.test_list:
-                    self.dials_test[dial_id + "-" + str(turn_num)] = turn
-                elif dial_id in self.val_list:
-                    self.dials_dev[dial_id + "-" + str(turn_num)] = turn
-                else:
-                    self.dials_train[dial_id + "-" + str(turn_num)] = turn
+            if dial_id in self.test_list:
+                self.dials_test[dial_id] = dial_new
+            elif dial_id in self.val_list:
+                self.dials_dev[dial_id] = dial_new
+            else:
+                self.dials_train[dial_id] = dial_new
 
         self.reformat_train_data_path = os.path.join(self.reformat_data_dir, "train.json")
         self.reformat_dev_data_path = os.path.join(self.reformat_data_dir, "dev.json")
@@ -292,33 +290,33 @@ class ReformatSGD(ReformatBase):
             sys.stdout.write('Reformating ' + data_type + ' data .... \n')
             for dial_id, dial in tqdm(self.dials.items()):
                 self.dials_form[dial_id] = []
-                turn_form = {}
+                turn_new = {}
                 turn_num = 0
                 bspan = {} # {dom:{slot_type:val, ...}, ...}
                 context = []
                 for turn in dial['turns']:
                     # turn number
-                    turn_form['turn_num'] = turn_num
+                    turn_new['turn_num'] = turn_num
                     
                     if turn['speaker'] == 'system':
-                        # turn_form['sys'] = self._tokenize_punc(turn['utterance'])
+                        # turn_new['sys'] = self._tokenize_punc(turn['utterance'])
                         context.append("<system> " + self._tokenize_punc(turn['utterance']))
 
                     if turn['speaker'] == 'user':
                         context.append("<user> " + self._tokenize_punc(turn['utterance']))
 
                         # dialog history/context
-                        turn_form["context"] = " ".join(context)
+                        turn_new["context"] = " ".join(context)
 
                         # belief span
-                        turn_form['slots_inf'], bspan = \
-                            self._extract_slots(bspan, turn['frames'], turn['utterance'], turn_form["context"])
+                        turn_new['slots_inf'], bspan = \
+                            self._extract_slots(bspan, turn['frames'], turn['utterance'], turn_new["context"])
 
                         # # user utterance
-                        # turn_form['utt'] = self._tokenize_punc(turn['utterance'])
+                        # turn_new['utt'] = self._tokenize_punc(turn['utterance'])
                     
-                        self.dials_form[dial_id].append(turn_form)
-                        turn_form = {}
+                        self.dials_form[dial_id].append(turn_new)
+                        turn_new = {}
                         turn_num += 1
                         
             # save reformatted dialogs

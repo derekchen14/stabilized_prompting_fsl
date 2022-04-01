@@ -5,6 +5,7 @@ import torch
 import random
 import json
 import re
+import shutil
 
 from collections import defaultdict
 from tqdm import tqdm as progress_bar
@@ -114,6 +115,8 @@ def reformat_data(args):
     if args.dataset == 'mwoz20':  # MultiWoz 2.0
       reformatter = ReformatMultiWOZ20(args.input_dir)
     elif args.dataset == 'mwoz21':  # MultiWoz 2.1
+      from utils.trade_proc import trade_process
+      trade_process(args)
       reformatter = ReformatMultiWOZ21(args.input_dir)
       shutil.copyfile(os.path.join(args.input_dir, "multiwoz_dst/MULTIWOZ2.1/ontology.json"), 
                       os.path.join(args.input_dir, args.dataset, "ontology.json"))
