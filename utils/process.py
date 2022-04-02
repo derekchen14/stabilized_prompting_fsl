@@ -55,91 +55,6 @@ def shift_tokens_right(targets, pad_token_id):
 
   return targets, labels
 
-def extract_act(user_acts, mapping):
-  act_list = [ua['type'] for ua in user_acts]
-  act_list.sort()
-  size = len(act_list)
-
-  if size == 0:
-    act = 'NONE'
-  elif size == 1:
-    act = act_list[0]
-  else:
-    if act_list[0] == "AFFIRM":
-      act = "AFFIRM"
-    elif "GOOD_BYE" in act_list and "THANK_YOU" in act_list:
-      act = "THANKS_GOODBYE"
-    elif "NEGATE" in act_list:
-      act = "NEGATE"
-    else:
-      act = ' '.join(act_list)
-  if act == "GREETING INFORM":
-    act = "GREET_INFORM"
-
-  act_id = mapping[act]  # does implicit assertion since invalid acts won't be in the ontology
-  return act_id
-
-def abcd_retrieval(convo, examples):
-  text_so_far = []
-  for turn in convo['conversation']:
-
-    if turn['targets'][1] == 'retrieve_utterance':  # otherwise is user_turn or action
-      context = ' '.join(text_so_far)
-      position = turn['targets'][4]  # target position of the utterance
-      assert(position >= 0)
-      candidates = turn['candidates']
-
-      example = {'dialogue': context, 'position': position, 'candidates': candidates}
-      examples.append(example)
-
-    text_so_far.append(turn['text'])
-  return examples
-
-def build_abcd(args, data, mapping):
-  examples = []
-  for convo in progress_bar(data, total=len(data)):
-    intent = convo['conversation'][0]['targets'][0]  # 0 is the intent/subflow
-    label_id = mapping[intent]
-
-    dialogue = []
-    for turn in convo['conversation']:
-      speaker = turn['speaker']
-      if speaker == 'action':  # skip action turns
-        if len(dialogue) > 3:  # complete if at least 3 turns
-          break
-        else:
-          continue
-
-      text = turn['text']
-      dialogue.append(f"{speaker} {text}")
-
-    dialog_string = ' '.join(dialogue)
-    example = {'dialogue': dialog_string, 'label': label_id}
-    examples.append(example)  
-  return examples
-
-def build_gsim(args, data, mapping):
-  examples = []
-  prompt = "The topic of conversation is about"
-
-  for conversation in progress_bar(data, total=len(data)):
-    text_so_far = []    
-    for turn in conversation['turns']:
-      if 'system_utterance' in turn:
-        sys_text = turn['system_utterance']['text']
-        sys_utt = f"<agent> {sys_text}"
-        text_so_far.append(sys_utt)
-
-      user_text = turn['user_utterance']['text']
-      user_utt = f"<customer> {user_text}"
-      text_so_far.append(user_utt)
-
-      context = ' '.join(text_so_far)
-      act_id = extract_act(turn['user_acts'], mapping)
-      examples.append({'context': context, 'prompt': prompt, 'label': act_id})  
-
-  return examples
-
 def extract_label(targets):
   # returns a list of (domain, slot, value) tuples when the domain is an active 
   swaps = {'not mentioned': 'none', 'dontcare': 'any', '': 'none'}
@@ -218,7 +133,7 @@ def build_mwoz(args, data, label_set):
     mapping = {label: idx for idx, label in enumerate(label_set)}
     return interact_mwoz(args, mapping)
 
-def fine_tune_mwoz(args, data, label_set):
+def fine_tune_mwoz21(args, data, label_set):
   ''' Written for raw v2.1 mwoz.  Since evaluation is done by a library
   based on the dialog_id, we will additionally pass some extra meta data along
   with the ground truth label for evaluation, which includes dialog_id '''
@@ -234,11 +149,9 @@ def fine_tune_mwoz(args, data, label_set):
       if len(context.split("<system>")) > args.context_len:
         context = "<system>".join(context.split("<system>")[-args.context_len:])
 
-      # construct extra information
-      extra = {
-        'convo_id': dial_id.split('.')[0].lower(),  # drop the ".json"
-        'active_domains': turn["potential_domains"],
-        'turn_count': int(turn['turn_num']) }
+      # construct extra information, which is a structured dict
+      target = { 'convo_id': dial_id.split('.')[0].lower(),  # drop the ".json"
+              'turn_count': int(turn['turn_num']) }
 
       # building slot dict
       slot_dict = {}
@@ -257,49 +170,11 @@ def fine_tune_mwoz(args, data, label_set):
             slot_value = slot_dict[domain][slot_type]
           else:
             slot_value = 'none'
-
-          extra['dsv'] = [domain, slot_type, slot_value]
-          example = {'context': context, 'prompt': prompt, 'label': slot_value, 'extra': extra}
-          examples.append(example)
+          target['domain'] = domain
+          target['slot'] = slot_type
+          target['value'] = slot_value
+          examples.append({'context': context, 'label': slot_value, 'target': target})
       
-  return examples
-
-def fine_tune_mwoz20(args, data, label_set):
-  ''' Written for raw v2.0 mwoz.  Requires extra pre-processing which comes from TRADE'''
-  examples = []
-  speakers = ["<customer>", "<agent>"]
-
-  for convo_id, conversation in progress_bar(data.items(), total=len(data)):
-    text_so_far = []
-    speaker_id = 0
-
-    for turn in conversation['log']:
-      text = turn['text']
-      speaker = speakers[speaker_id]
-      utterance = f"{speaker} {text}"
-      
-      if speaker_id == 0:
-        text_so_far.append(utterance)
-      elif speaker_id == 1:
-        domain, d_tracker = extract_domain(turn['metadata'], label_set, d_tracker)
-        prompt = make_prompt(args.prompt_style, domain, slot)
-        if len(domain) > 0:
-          context = ' '.join(text_so_far)
-          dialogue = context + '<label>'
-
-          dialog_id = convo_id.split('.')[0].lower()  # drop the ".json"
-          turn_count = str(len(text_so_far))
-          domain_string = ';'.join(active_domains)
-          meta_label = "_".join([dialog_id, turn_count, domain_string]) 
-
-          example = {'dialogue': dialogue, 'prompt': prompt, 'label': meta_label}
-          examples.append(example)
-        text_so_far.append(utterance)  # add agent utterance afterwards
-      
-      speaker_id = 1 - speaker_id
-      if len(text_so_far) > args.context_len:
-        text_so_far = text_so_far[-args.context_len:]
-
   return examples
 
 def fine_tune_mwoz(args, data, label_set):
@@ -321,9 +196,8 @@ def fine_tune_mwoz(args, data, label_set):
       
       if len(turn['frames']) > 0 and speaker == '<customer>':
         act_dom = [fr['service'] for fr in turn['frames'] if fr['state']['active_intent'] != "NONE"]
-        extra = {
+        target = {
           'convo_id': conversation['dialogue_id'].split('.')[0].lower(),  # drop the ".json"
-          'active_domains': act_dom,
           'turn_count': int(turn['turn_id']) }
         
         for frame in turn['frames']:
@@ -335,7 +209,7 @@ def fine_tune_mwoz(args, data, label_set):
               active_slots = [domain_slot.split('-')[1] for domain_slot, _ in slotvals.items()]
               
               for slot in DOMAIN_SLOTS[current_domain]:
-                prompt = find_prompt(args.prompt_style, current_domain, slot)
+                # prompt = find_prompt(args.prompt_style, current_domain, slot)
                 if slot in active_slots:
                   domain_slot = '-'.join([current_domain, slot])
                   value = slotvals[domain_slot][0]
@@ -343,15 +217,15 @@ def fine_tune_mwoz(args, data, label_set):
                   value = 'none'
 
                 context = ' '.join(text_so_far)
-                extra['dsv'] = [current_domain, slot, value]
-                example = {'dialogue': context, 'prompt': prompt, 'label': value, 'extra': extra}
-                examples.append(example)
+                target['domain'] = current_domain
+                target['slot'] = slot
+                target['value']  value
+                examples.append({'dialogue': context, 'label': value, 'target': target})
       
       if len(text_so_far) > args.context_len:
         text_so_far = text_so_far[-args.context_len:]
 
   return examples
-
 
 def interact_mwoz(data, mapping):
   examples = []
@@ -378,59 +252,55 @@ def interact_mwoz(data, mapping):
   return examples
 
 def build_dstc(args, data, mapping):
+  ''' extra contains the structured label as a value '''
   examples = []
-  prompt = "The topic of conversation is about"
 
-  for conversation in progress_bar(data, total=len(data)):
-    text_so_far = []    
+  for convo in progress_bar(data, total=len(data)):
+    text_so_far = []
 
-    for turn in conversation['turns']:    
-      utt = turn['utterance']
+    for turn in convo['conversation']:
+      target = {
+        'convo_id': convo['guid'],
+        'domain': 'restaurant',
+        'turn_count': turn['turn'] }
 
-      if turn['speaker'] == 'SYSTEM':
-        sys_text = f"<agent> {utt}"
+      if turn['speaker'] == 'agent':
+        sys_text = f"<agent> {turn['text']}"
         text_so_far.append(sys_text)
   
-      elif turn['speaker'] == 'USER':
-        user_text = f"<customer> {utt}"
+      elif turn['speaker'] == 'user':
+        user_text = f"<customer> {turn['text']}"
         text_so_far.append(user_text)
         context = ' '.join(text_so_far)
 
-        labels = extract_frame(turn)
-        """labels with number of keys equal to the number of services found in that turn
-        each of these will be turned into a training example
-        the targets of each training example has keys: intents, requests, slots, values
-        each of the four keys is a list containing the respectives items as strings """
+        for slot, value in turn['inform'].items():
+          # TODO: add negatives to predict "none"
+          target['slot'] = slot
+          target['value'] = value
+          examples.append({'dialogue': context, 'label': value, 'target': target})
 
-        for service, details in labels.items():
-          dialogue = context + f' <service> {service} <sep>'
-          fls = details['flattened']  # labels as a long, flattened string, split by service
-          sls = details['structured'] # labels as a dictionary, again split by service
-          if len(sls['intents']) > 0 and len(sls['slots']) > 0:
-            example = {'dialogue': dialogue, 'prompt': prompt, 'label': value, 'extra': extra}
-            examples.append(example)
-      if len(text_so_far) > 14:
-        text_so_far = text_so_far[-14:]
+      if len(text_so_far) > 10:
+        text_so_far = text_so_far[-10:]
 
   return examples
 
 def build_sgd(args, data, mapping, split):
   examples = []
-  prompt = "The topic of conversation is about"
 
   for conversation in progress_bar(data, total=len(data)):
     text_so_far = []    
 
     for turn in conversation['turns']:    
-      utt = turn['utterance']
+      text = turn['utterance']
+      target = {'convo_id': conversation['dialogue_id']}
 
       if turn['speaker'] == 'SYSTEM':
-        sys_text = f"<agent> {utt}"
-        text_so_far.append(sys_text)
+        sys_utt = f"<agent> {text}"
+        text_so_far.append(sys_utt)
   
       elif turn['speaker'] == 'USER':
-        user_text = f"<customer> {utt}"
-        text_so_far.append(user_text)
+        user_utt = f"<customer> {text}"
+        text_so_far.append(user_utt)
         context = ' '.join(text_so_far)
 
         labels = extract_frame(turn)
@@ -444,12 +314,15 @@ def build_sgd(args, data, mapping, split):
           fls = details['flattened']  # labels as a long, flattened string, split by service
           sls = details['structured'] # labels as a dictionary, again split by service
           if len(sls['intents']) > 0 and len(sls['slots']) > 0:
-            examples.append({'dialogue': dialogue, 'flattened': fls,  'structured': sls})
+            prompt = "The {slot} for {service} is"
+            target['domain'] = service
+            target['slot'] = slot
+            target['value'] = fls
+            examples.append({'dialogue': context, 'label': fls, 'extra': target})
       if len(text_so_far) > 14:
         text_so_far = text_so_far[-14:]
 
   return examples
-
 
 def extract_frame(turn):
   labels = {}
@@ -479,23 +352,94 @@ def extract_frame(turn):
     labels[service]['flattened'] = ';'.join(targets)
   return labels
 
-def build_tt(args, data, mapping):
+def build_tt(args, data, ontology):
   examples = []
-  for conversation in progress_bar(data, total=len(data)):
-    
+  for convo in progress_bar(data, total=len(data)):  
     text_so_far = []    
-    for turn in conversation:
-      current_utt = turn['utterance']
-      context = ' '.join(text_so_far).deepcopy()
 
-      labels = [mapping(label) for label in turn['labels']]
+    for turn in convo['utterances']:
+      text = turn['text']
 
-      example = {'context': context, 'utterance': current_utt, 'label': labels}
-      examples.append(example)
-  
-      text_so_far.append(current_utt)
+      if turn['speaker'] == 'assistant':
+        sys_utterance = f"<agent> {text}"
+        text_so_far.append(sys_utterance)
+
+      elif turn['speaker'] == 'user':
+        user_utterance = f"<customer> {text}"
+        text_so_far.append(user_utterance)
+        context = ' '.join(text_so_far)
+
+        if 'segments' in turn:
+          labels = extract_slotvals(turn['segments'], ontology)
+          for slot, value in labels.items():
+            target = {'domain': 'movies', 'slot': slot, 'value': value}
+            examples.append({'dialogue': context, 'label': value, 'target': target})
+
+      if len(text_so_far) > 7:
+        text_so_far = text_so_far[-7:]
+
   return examples
 
+def extract_slotvals(segments, ontology):
+  labels = {}
+  for segment in segments:
+    slot_candidate = segment['annotations'][0]['name']
+    value = segment['text']
+    if slot_candidate in ontology:
+      slot = ontology[slot_candidate]
+      labels[slot] = value
+  return labels
+
+def build_abcd(args, data, mapping):
+  examples = []
+  for convo in progress_bar(data, total=len(data)):
+    intent = convo['conversation'][0]['targets'][0]  # 0 is the intent/subflow
+    label_id = mapping[intent]
+
+    dialogue = []
+    for turn in convo['conversation']:
+      speaker = turn['speaker']
+      if speaker == 'action':  # skip action turns
+        if len(dialogue) > 3:  # complete if at least 3 turns
+          break
+        else:
+          continue
+
+      text = turn['text']
+      dialogue.append(f"{speaker} {text}")
+
+    dialog_string = ' '.join(dialogue)
+    example = {'dialogue': dialog_string, 'label': label_id}
+    examples.append(example)  
+  return examples
+
+def build_gsim(args, data, mapping):
+  examples = []
+
+  for conversation in progress_bar(data, total=len(data)):
+    text_so_far = []    
+    convo_id = conversation['dialogue_id']
+    domain = convo_id.split('_')[0]
+    extra = { 'convo_id': convo_id, 'domain': domain }
+
+    for turn in conversation['turns']:
+
+      if 'system_utterance' in turn:
+        sys_text = turn['system_utterance']['text']
+        sys_utt = f"<agent> {sys_text}"
+        text_so_far.append(sys_utt)
+
+      user_text = turn['user_utterance']['text']
+      user_utt = f"<customer> {user_text}"
+      text_so_far.append(user_utt)
+      context = ' '.join(text_so_far)
+
+      for state in turn['dialogue_state']:
+        extra['slot'] = state['slot']
+        extra['value'] = state['value']
+        examples.append({'dialogue': context, 'label': state['value'], 'target': extra})  
+
+  return examples
 
 def get_dataloader(args, dataset, split='train'):
   if args.model == 'trade':
@@ -521,7 +465,7 @@ def prepare_examples(args, data, label_set, split):
   elif args.dataset == 'sgd':   # Schema Guided Dialogue
     examples = build_mwoz(args, data, mapping, split) 
   elif args.dataset == 'tt':    # TicketTalk / TaskMaster 3
-    examples = build_tt(args, data, mapping) 
+    examples = build_tt(args, data, label_set) 
 
   return examples
 
