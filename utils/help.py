@@ -128,5 +128,7 @@ def reformat_data(args):
                       os.path.join(args.input_dir, args.dataset, "ontology.json"))
     elif args.dataset == 'sgd':   # Schema Guided Dialogue
       reformatter = ReformatSGD()
+    else:
+      reformatter = ReformatBase()
     # loads, reformats and saves the data in the background
     reformatter.reformat()

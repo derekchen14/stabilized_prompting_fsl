@@ -56,6 +56,43 @@ class ReformatBase(object):
         with open(self.reformat_data_path, "w") as tf:
             json.dump(self.dials_form, tf, indent=2)
 
+    def reformat(self):
+        """ Default reformatting does nothing """
+        pass
+
+class ReformatABCD(ReformatBase):
+    def __init__(self, input_dir="./assets/"):
+        super().__init__():
+        self.filename = 'abcd_v1.1.json'
+        self.splits = ['train', 'dev', 'test']
+    
+    def reformat(self):
+        file_path = os.path.join(self.input_dir, self.filename)
+        all_data = json.load(open(file_path, 'r'))
+
+        for split in self.splits:
+	    data = all_data[split]
+	    trimmed = []
+
+	    for convo in data:
+		turns = []
+		for delex, orig in zip(convo['delexed'], convo['original']):
+		    speaker, text = orig
+		    assert(speaker == delex['speaker'])
+		    tc = delex['turn_count']
+		    targets = delex['targets']
+
+		    new_turn = {'speaker': speaker, 'text': text, 'turn_count': tc, 'targets': targets}
+		    turns.append(new_turn)
+
+		new_convo = {'convo_id': convo['convo_id'], 'conversation': turns, 'scene': convo['scenario']}
+		trimmed.append(new_convo)
+
+            save_path = os.path.join(self.input_dir, f"{split}.json")
+	    json.dump(trimmed, open(save_path, 'w'))
+	    print(f"completed {split}")
+
+
 class ReformatMultiWOZ21(ReformatBase):
     """docstring for ReformatMultiWOZ21"""
     def __init__(self, input_dir="./assets/"):

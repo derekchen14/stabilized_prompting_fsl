@@ -138,9 +138,11 @@ class FineTuneDataset(BaseDataset):
 
     if self.split == 'train':
       for example in examples:
-        context = example['context']
-        value = example['label']
-        dialog = context + '<sep>' + example['prompt'] + '<label>' + value + eos
+        context = example['dialogue']
+        target = example['target']
+        domain, slot, value = target['domain'], target['slot'], target['value']
+        prompt = f" The {slot} for {domain} is "
+        dialog = context + '<sep>' + prompt + example['label'] + eos
         dialogues.append(dialog)
       inputs = self.tokenizer(dialogues, padding=True, max_length=1024,
                                 truncation=True, return_tensors='pt').to(device)
@@ -149,10 +151,13 @@ class FineTuneDataset(BaseDataset):
 
     elif self.split in ['dev', 'test']:
       for example in examples:
-        context = example['context']
-        dialog = context + '<sep>' + example['prompt'] + '<label>'
+        context = example['dialogue']
+        target = example['target']
+        domain, slot, value = target['domain'], target['slot'], target['value']
+        prompt = f" The {slot} for {domain} is "
+        dialog = context + '<sep>' + prompt
         dialogues.append(dialog)
-        extras.append(example['extra'])
+        extras.append(target)
       inputs = self.tokenizer(dialogues, padding=True, max_length=1000,
                                 truncation=True, return_tensors='pt').to(device)
       return inputs, extras

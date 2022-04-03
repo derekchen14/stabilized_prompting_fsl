@@ -38,6 +38,9 @@ def load_data(args):
 
 def load_support(args):
   support_data = {}
+  if args.num_shots == 'full' or args.task != 'meta_learn':
+    return support_data
+
   for dataset, full_name in DATASETS.items():
     if dataset != args.left_out:
       support_path = os.path.join(args.input_dir, dataset, "train.json")

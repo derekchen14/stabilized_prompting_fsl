@@ -4,7 +4,7 @@
 #       --model t5 --size small --num-shots full --max-len 1024 --prompt-style naive \
 #       --context-len 9 --batch-size 8 --log-interval 1200 --learning-rate 1e-4 --n-epochs 7
 python main.py --dataset abcd --task fine_tune --n-epochs 7 --do-train --debug \
-      --style dataset --model gpt --size small --num-shots full --batch-size 8 \
+      --style dataset --model gpt --size small --num-shots full --batch-size 6 \
       --learning-rate 1e-4  --max-len 512 --prompt-style naive
 # python main.py --dataset tt --task fine_tune --n-epochs 7 --do-train --debug \
 #       --style dataset --model gpt --size small --num-shots full --batch-size 8 \
