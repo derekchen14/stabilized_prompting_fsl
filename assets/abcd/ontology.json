@@ -45,8 +45,9 @@
         "enumerable": {
             "account_slotval": ["add service", "extend subscription", "remove service", "renew subscription"],
             "company_team": ["manager", "website team", "purchasing department"],
-            "customer_name": ["Alessandro Phoenix", "Joyce Wu", "Albert Sanders", "David Williams", "Sanya Afzal",
-                "Crystal Minh", "Chloe Zhang", "Rodriguez Domingo", "Joseph Banter", "Norman Bouchard"],
+            "customer_name": ["alessandro phoenix", "joyce wu", "albert sanders", "david williams",
+                "sanya afzal", "crystal minh", "chloe zhang", "rodriguez domingo",
+                "joseph banter", "norman bouchard"],
             "details_slotval": ["troubleshoot"],
             "membership_level": ["guest", "bronze", "silver", "gold"],
             "change_option": ["change address", "change date", "change item", "change method",
@@ -64,7 +65,7 @@
             "security_answer": ["Alexander", "Martinez", "Livingston", "Singh", "Ahmed"],
             "shipping_option": ["delivered", "in transit", "order received", "out for delivery"]
         }, 
-        "non_enumerable": ["amount", "product", "account_id", "email", "phone", "pin_number",
+        "non_enumerable": ["amount", "account_id", "email", "phone", "pin_number",
             "username", "full_address", "order_id", "street_address", "zip_code"
 	]
     },

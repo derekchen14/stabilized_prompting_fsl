@@ -251,6 +251,90 @@ def interact_mwoz(data, mapping):
 
   return examples
 
+
+def create_abcd_mappings(ontology):
+  intent_map = {}
+  for flow, subflows in ontology['intents'].items():
+    for intent in subflows:
+      intent_map[intent] = flow
+
+  enumerate_map = {}
+  for slot, values in ontology['values']['enumerable'].items():
+    enumerate_map[slot] = True
+  for slot in ontology['values']['non_enumerable']:
+    enumerate_map[slot] = False
+
+  validity_map = {}
+  for action, slots in ontology['actions']['has_slotval'].items():
+    validity_map[action] = True
+  for action in ontology['actions']['empty_slotval']:
+    validity_map[action] = False
+
+  mappings = {'intent': intent_map, 'enum': enumerate_map, 'valid': validity_map}
+  return mappings
+
+def make_dialogue_state(intent, action, value, ontology, mappings):
+  target = {}
+  valid = False
+  valid_actions = ontology['actions']['has_slotval']
+
+  cand_value = value.lower().strip()
+  if mappings['valid'][action]:
+    valid = True
+    candidate_slots = valid_actions[action]
+
+    target['domain'] = mappings['intent'][intent]
+    if len(candidate_slots) == 1:
+      target['slot'] = candidate_slots[0]
+      target['value'] = cand_value
+    else:
+      for cand_slot in candidate_slots:
+        if mappings['enum'][cand_slot]:
+          cand_values = ontology['values']['enumerable'][cand_slot]
+          if cand_value in cand_values:
+            target['slot'] = cand_slot
+            target['value'] = cand_value
+        elif cand_slot in ontology['values']['non_enumerable']:
+          target['slot'] = cand_slot
+          target['value'] = cand_value
+
+  return target, valid
+
+def build_abcd(args, data, ontology):
+  examples = []
+  mappings = create_abcd_mappings(ontology)
+
+  for convo in progress_bar(data, total=len(data)):
+    # each convo has keys: convo_id, scenario, original, delexed, conversation
+    utt_so_far = []
+    for turn in convo['conversation']:
+      # each turn has keys: speaker, text, targets, turn_count, candidates
+      speaker = turn['speaker']
+
+      if speaker == 'action':  # skip action turns
+        intent, nextstep, action, value, utt_rank = turn['targets']
+        # each target is a 5-part list: intent, nextstep, action, value, utt_rank
+        target, valid = make_dialogue_state(intent, action, value, ontology, mappings)
+        target['global_id'] = str(convo['convo_id']) + '_' + str(turn['turn_count'])
+  
+        if valid:
+          context = ' '.join(utt_so_far)
+          example = {'dialogue': context, 'label': value.lower(), 'target': target}
+
+          if random.random() < 0.1:
+            print(example['dialogue'])
+            print(example['target'])
+            pdb.set_trace()
+          examples.append(example)  
+      else:
+        text = turn['text']
+        utt_so_far.append(f"<{speaker}> {text}")
+
+    if len(utt_so_far) > args.context_len:
+      utt_so_far = utt_so_far[-args.context_len:]
+
+  return examples
+
 def build_dstc(args, data):
   ''' extra contains the structured label as a value '''
   examples = []
@@ -389,76 +473,6 @@ def extract_slotvals(segments, ontology):
       slot = ontology[slot_candidate]
       labels[slot] = value
   return labels
-
-def create_abcd_mappings(ontology):
-  intent_map = {}
-  for flow, subflows in ontology['intents'].items():
-    for intent in subflows:
-      intent_map[intent] = flow
-
-  enumerate_map = {}
-  for slot, values in ontology['values']['enumerable'].items():
-    enumerate_map[slot] = True
-  for slot in ontology['values']['non_enumerable']:
-    enumerate_map[slot] = False
-
-  validity_map = {}
-  for action, slots in ontology['actions']['has_slotval'].items():
-    validity_map[action] = True
-  for action in ontology['actions']['empty_slotval']:
-    validity_map[action] = False
-
-  mappings = {'intent': intent_map, 'enum': enumerate_map, 'valid': validity_map}
-  return mappings
-
-def make_dialogue_state(intent, action, value, ontology, mappings):
-  target = {}
-  valid = False
-  valid_actions = ontology['actions']['has_slotval']
-
-  if mappings['valid'][action]:
-    valid = True
-    candidate_slots = valid_actions[action]
-
-    target['domain'] = mappings['intent'][intent]
-    if len(candidate_slots) == 1:
-      
-      target['slot'] = candidate_slots[0]
-    else:
-      for cand_slot in candidate_slots:
-        pass
-
-  return target, valid
-
-def build_abcd(args, data, ontology):
-  examples = []
-  mappings = create_abcd_mappings(ontology)
-
-  for convo in progress_bar(data, total=len(data)):
-    # each convo has keys: convo_id, scenario, original, delexed, conversation
-    utt_so_far = []
-    for turn in convo['conversation']:
-      # each turn has keys: speaker, text, targets, turn_count, candidates
-      speaker = turn['speaker']
-
-      if speaker == 'action':  # skip action turns
-        intent, nextstep, action, value, utt_rank = turn['targets']
-        # each target is a 5-part list: intent, nextstep, action, value, utt_rank
-        target, valid = make_dialogue_state(intent, action, value, ontology, mappings)
-        target['global_id'] = str(convo['convo_id']) + '_' + str(turn['turn_count'])
-  
-        if valid:
-          context = ' '.join(utt_so_far)
-          example = {'dialogue': context, 'label': value, 'target': target}
-          examples.append(example)  
-      else:
-        text = turn['text']
-        utt_so_far.append(f"<{speaker}> {text}")
-
-    if len(utt_so_far) > args.context_len:
-      utt_so_far = utt_so_far[-args.context_len:]
-
-  return examples
 
 def build_gsim(args, data, mapping):
   examples = []
