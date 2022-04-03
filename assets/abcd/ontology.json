@@ -62,11 +62,11 @@
             "reason_slotval": ["subscription refund", "previous purchase", "promotional package",
                 "email", "spouse", "news", "competitor", "yesterday", "9 days", "5 days"],
             "security_answer": ["Alexander", "Martinez", "Livingston", "Singh", "Ahmed"],
-            "shipping_option": ["delivered", "in transit", "order received", "out for delivery"],
+            "shipping_option": ["delivered", "in transit", "order received", "out for delivery"]
         }, 
         "non_enumerable": ["amount", "product", "account_id", "email", "phone", "pin_number",
-            "username", "full_address", "order_id", "street_address", "zip_code"]
-        }
+            "username", "full_address", "order_id", "street_address", "zip_code"
+	]
     },
     "next_steps": ["retrieve_utterance", "take_action", "end_conversation"]
 }

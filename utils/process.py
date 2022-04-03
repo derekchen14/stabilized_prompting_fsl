@@ -397,7 +397,7 @@ def create_abcd_mappings(ontology):
       intent_map[intent] = flow
 
   enumerate_map = {}
-  for slot, values in in ontology['values']['enumerable'].items():
+  for slot, values in ontology['values']['enumerable'].items():
     enumerate_map[slot] = True
   for slot in ontology['values']['non_enumerable']:
     enumerate_map[slot] = False
@@ -445,7 +445,7 @@ def build_abcd(args, data, ontology):
         intent, nextstep, action, value, utt_rank = turn['targets']
         # each target is a 5-part list: intent, nextstep, action, value, utt_rank
         target, valid = make_dialogue_state(intent, action, value, ontology, mappings)
-        target['global_id'] = convo['convo_id'] + '_' + turn['turn_count']
+        target['global_id'] = str(convo['convo_id']) + '_' + str(turn['turn_count'])
   
         if valid:
           context = ' '.join(utt_so_far)
@@ -458,8 +458,6 @@ def build_abcd(args, data, ontology):
     if len(utt_so_far) > args.context_len:
       utt_so_far = utt_so_far[-args.context_len:]
 
-  print("runs correctly")
-  sys.exit()
   return examples
 
 def build_gsim(args, data, mapping):
