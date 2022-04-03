@@ -5,12 +5,14 @@ import torch
 import random
 import json
 import re
+import shutil
 
 from collections import defaultdict
 from tqdm import tqdm as progress_bar
 from assets.static_vars import device
 from copy import deepcopy
 from transformers import get_scheduler
+from utils.reformat import *
 
 def set_seed(args):
   random.seed(args.seed)
@@ -33,29 +35,32 @@ def check_directories(args):
   dataset_path = os.path.join(args.output_dir, args.dataset)
   save_path = os.path.join(dataset_path, args.task)
   if not os.path.exists(dataset_path):
-    os.mkdir(dataset_path)
+    os.makedirs(dataset_path)
     print(f"Created {dataset_path} for {args.dataset} results")
   if not os.path.exists(save_path):
-    os.mkdir(save_path)
+    os.makedirs(save_path)
     print(f"Created {save_path} directory")
   
   cache_path = os.path.join(args.input_dir, 'cache', args.dataset)
   if not os.path.exists(cache_path):
-    os.mkdir(cache_path)
+    os.makedirs(cache_path)
     print(f"Created {cache_path} directory")
 
   if args.debug:
     args.log_interval /= 10
   if args.num_shots in ['zero', 'few', 'percent']:
     assert(len(args.left_out) > 0)
+  if args.style == 'dataset':
+    assert(args.dataset == args.left_out)
   return args, save_path
 
 def trade_loss(predictions, targets):
-  returns loss
+  pass
 
 def prepare_inputs(batch):
   # change as needed
-  return inputs
+  pass
+  # return inputs
 
 def setup_optimization(args, model, total_steps):
   no_decay = ["bias", "LayerNorm.weight"]
@@ -99,3 +104,29 @@ def memstat(message):
   maxmem = torch.cuda.max_memory_allocated()
   human_maxmem = str(round( (maxmem / 1000000), 2)) + "MB"
   print(f"{message} -- Current memory: {human_malloc}, Max: {human_maxmem}")
+
+
+def reformat_data(args):
+  """
+  TODO:
+  add more dataset (GSIM, ABCD, TaskMaster)
+  """
+
+  if not os.path.exists(os.path.join(args.input_dir, args.dataset)) or args.ignore_cache:
+    os.makedirs(os.path.join(args.input_dir, args.dataset), exist_ok=True)
+    if args.dataset == 'mwoz20':  # MultiWoz 2.0
+      reformatter = ReformatMultiWOZ20(args.input_dir)
+    elif args.dataset == 'mwoz21':  # MultiWoz 2.1
+      from utils.trade_proc import trade_process
+      trade_process(args)
+      reformatter = ReformatMultiWOZ21(args.input_dir)
+      shutil.copyfile(os.path.join(args.input_dir, "multiwoz_dst/MULTIWOZ2.1/ontology.json"), 
+                      os.path.join(args.input_dir, args.dataset, "ontology.json"))
+    elif args.dataset == 'mwoz22':  # MultiWoz 2.2
+      reformatter = ReformatMultiWOZ22(args.input_dir)
+      shutil.copyfile(os.path.join(args.input_dir, "multiwoz_dst/MULTIWOZ2.2/otgy.json"), 
+                      os.path.join(args.input_dir, args.dataset, "ontology.json"))
+    elif args.dataset == 'sgd':   # Schema Guided Dialogue
+      reformatter = ReformatSGD()
+    # loads, reformats and saves the data in the background
+    reformatter.reformat()

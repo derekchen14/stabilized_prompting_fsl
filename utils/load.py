@@ -14,17 +14,18 @@ from transformers import GPT2LMHeadModel,GPT2ForSequenceClassification, GPT2Conf
                           BartForConditionalGeneration, BartConfig, BartTokenizer, \
                           T5ForConditionalGeneration, T5Config, T5Tokenizer
 from transformers import logging, GPTJForCausalLM, AutoTokenizer
-from assets.static_vars import device, CHECKPOINTS
+from assets.static_vars import device, DATASETS, CHECKPOINTS
 from components.embed import Embedder
+from components.trade import TradeModel
+from utils.trade_utils import prepare_data_seq
 
 logging.set_verbosity_error()
 
-def load_data(args):  
+def load_data(args):
   data = {}
   for split in ['train', 'dev', 'test', 'ontology']:
     split_path = os.path.join(args.input_dir, args.dataset, f"{split}.json")
     split_data = json.load(open(split_path, 'r'))
-
     if split == 'ontology':
       data[split] = split_data
       example_type = 'domains'
@@ -33,12 +34,25 @@ def load_data(args):
       example_type = 'conversations'
     if args.verbose:
       print(f"Loaded {split} data with {len(data[split])} {example_type}")
-
   return data
 
+def load_support(args):
+  support_data = {}
+  for dataset, full_name in DATASETS.items():
+    if dataset != args.left_out:
+      support_path = os.path.join(args.input_dir, dataset, "train.json")
+      sdata = json.load(open(support_path, 'r'))  # consider loading dev data too
+      if args.debug:
+        support_data[dataset]['data'] = sdata[:500]
+      else:
+        support_data[dataset]['data'] = sdata
+
+      sont = json.load(open(os.path.join(args.input_dir, dataset, "ontology.json"), 'r'))
+      support_data[dataset]['ont'] = sont
+  return support_data
+
 def load_tokenizer(args):
-  special = { 'additional_special_tokens': 
-          ['<customer>', '<agent>', '<label>']  }
+  special = { 'additional_special_tokens': ['<customer>', '<agent>', '<label>']  }
   token_ckpt = CHECKPOINTS[args.model][args.size]
 
   if args.model == 't5':
@@ -50,6 +64,9 @@ def load_tokenizer(args):
     special['pad_token'] = '<pad>'
   elif args.model == 'bart':
     tokenizer = BartTokenizer.from_pretrained(token_ckpt)
+  elif args.model == 'trade':
+    tokenizer = prepare_data_seq(args, tokenizer=True)
+    return tokenizer
   else:
     print(f'{args.model} not supported at this time')
     sys.exit()
@@ -77,6 +94,12 @@ def load_model(args, ontology, tokenizer, load_dir):
     model = BartForConditionalGeneration.from_pretrained(ckpt_name)
   elif args.model == 't5':
     model = T5ForConditionalGeneration.from_pretrained(ckpt_name)
+  elif args.model == 'trade':
+    model = TradeModel(args, tokenizer, ontology)
+    ckpt_path = os.path.join(args.input_dir, 'cache', f"{ckpt_name}.pt")
+    if os.path.exists(ckpt_path):
+      model.load_state_dict(torch.load(ckpt_path))
+    return model.to(device)
 
   if args.do_train or args.num_shots == 'percent': 
     model.config.pad_token = tokenizer.pad_token

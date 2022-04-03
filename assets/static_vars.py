@@ -15,10 +15,10 @@ STOP_TOKENS = ['done', 'exit', 'logout', 'finish', 'stop']
 
 DATASETS = {
     'abcd': 'Action-Based Conversations Dataset',
-    'sgd': 'Schema Guided Dialogue',
     'dstc': 'Dialogue State Tracking Challenge 2',
     'gsim': 'Google Simulated Dialogue',
-    'mwoz': 'MultiWoz',
+    'mwoz': 'MultiWoz 2.2',
+    'sgd': 'Schema Guided Dialogue',
     'tt': 'TicketTalk'
 }
 
@@ -34,7 +34,10 @@ CHECKPOINTS = {
     'bart': {
         'small': 'facebook/bart-base',
         'medium': 'facebook/bart-large',
-        'large': 'facebook/bart-xlarge'}
+        'large': 'facebook/bart-xlarge'},
+    'trade': {
+        'small' : 'trade.pt'
+    }
 }
 
 GENERAL_TYPO = {
