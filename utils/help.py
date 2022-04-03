@@ -50,8 +50,8 @@ def check_directories(args):
     args.log_interval /= 10
   if args.num_shots in ['zero', 'few', 'percent']:
     assert(len(args.left_out) > 0)
-  if args.style == 'dataset':
-    assert(args.dataset == args.left_out)
+    if args.style == 'dataset':
+      assert(args.dataset == args.left_out)
   return args, save_path
 
 def trade_loss(predictions, targets):

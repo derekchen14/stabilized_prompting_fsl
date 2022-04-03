@@ -219,7 +219,7 @@ def fine_tune_mwoz(args, data, label_set):
                 context = ' '.join(text_so_far)
                 target['domain'] = current_domain
                 target['slot'] = slot
-                target['value']  value
+                target['value'] = value
                 examples.append({'dialogue': context, 'label': value, 'target': target})
       
       if len(text_so_far) > args.context_len:
@@ -390,7 +390,7 @@ def extract_slotvals(segments, ontology):
       labels[slot] = value
   return labels
 
-def build_abcd(args, data, mapping):
+def build_abcd(args, data, ontology):
   examples = []
   for convo in progress_bar(data, total=len(data)):
     intent = convo['conversation'][0]['targets'][0]  # 0 is the intent/subflow
@@ -455,7 +455,7 @@ def prepare_examples(args, data, label_set, split):
   mapping = {label: idx for idx, label in enumerate(label_set)}
 
   if args.dataset == 'abcd':    # Action Based Conversations
-    examples = build_abcd(args, data, mapping) 
+    examples = build_abcd(args, data, label_set) 
   elif args.dataset == 'dstc':  # State Tracking Challenge 2
     examples = build_dstc(args, data, mapping) 
   elif args.dataset == 'gsim':  # Google Simulated Chats
