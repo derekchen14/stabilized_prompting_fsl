@@ -251,7 +251,7 @@ def interact_mwoz(data, mapping):
 
   return examples
 
-def build_dstc(args, data, mapping):
+def build_dstc(args, data):
   ''' extra contains the structured label as a value '''
   examples = []
 
@@ -260,9 +260,8 @@ def build_dstc(args, data, mapping):
 
     for turn in convo['conversation']:
       target = {
-        'convo_id': convo['guid'],
-        'domain': 'restaurant',
-        'turn_count': turn['turn'] }
+        'global_id': convo['guid'] + '_' + turn['turn'],
+        'domain': 'restaurant' }
 
       if turn['speaker'] == 'agent':
         sys_text = f"<agent> {turn['text']}"
@@ -292,7 +291,8 @@ def build_sgd(args, data, mapping, split):
 
     for turn in conversation['turns']:    
       text = turn['utterance']
-      target = {'convo_id': conversation['dialogue_id']}
+      turn_count = len(text_so_far) + 1
+      target = {'global_id': conversation['dialogue_id'] + '_' + str(turn_count) }
 
       if turn['speaker'] == 'SYSTEM':
         sys_utt = f"<agent> {text}"
@@ -319,8 +319,8 @@ def build_sgd(args, data, mapping, split):
             target['slot'] = slot
             target['value'] = fls
             examples.append({'dialogue': context, 'label': fls, 'extra': target})
-      if len(text_so_far) > 14:
-        text_so_far = text_so_far[-14:]
+      if len(text_so_far) > args.context_len:
+        text_so_far = text_so_far[-args.context_len:]
 
   return examples
 
@@ -375,8 +375,8 @@ def build_tt(args, data, ontology):
             target = {'domain': 'movies', 'slot': slot, 'value': value}
             examples.append({'dialogue': context, 'label': value, 'target': target})
 
-      if len(text_so_far) > 7:
-        text_so_far = text_so_far[-7:]
+      if len(text_so_far) > args.context_len:
+        text_so_far = text_so_far[-args.context_len:]
 
   return examples
 
@@ -390,27 +390,76 @@ def extract_slotvals(segments, ontology):
       labels[slot] = value
   return labels
 
+def create_abcd_mappings(ontology):
+  intent_map = {}
+  for flow, subflows in ontology['intents'].items():
+    for intent in subflows:
+      intent_map[intent] = flow
+
+  enumerate_map = {}
+  for slot, values in in ontology['values']['enumerable'].items():
+    enumerate_map[slot] = True
+  for slot in ontology['values']['non_enumerable']:
+    enumerate_map[slot] = False
+
+  validity_map = {}
+  for action, slots in ontology['actions']['has_slotval'].items():
+    validity_map[action] = True
+  for action in ontology['actions']['empty_slotval']:
+    validity_map[action] = False
+
+  mappings = {'intent': intent_map, 'enum': enumerate_map, 'valid': validity_map}
+  return mappings
+
+def make_dialogue_state(intent, action, value, ontology, mappings):
+  target = {}
+  valid = False
+  valid_actions = ontology['actions']['has_slotval']
+
+  if mappings['valid'][action]:
+    valid = True
+    candidate_slots = valid_actions[action]
+
+    target['domain'] = mappings['intent'][intent]
+    if len(candidate_slots) == 1:
+      
+      target['slot'] = candidate_slots[0]
+    else:
+      for cand_slot in candidate_slots:
+        pass
+
+  return target, valid
+
 def build_abcd(args, data, ontology):
   examples = []
+  mappings = create_abcd_mappings(ontology)
+
   for convo in progress_bar(data, total=len(data)):
-    intent = convo['conversation'][0]['targets'][0]  # 0 is the intent/subflow
-    label_id = mapping[intent]
-
-    dialogue = []
+    # each convo has keys: convo_id, scenario, original, delexed, conversation
+    utt_so_far = []
     for turn in convo['conversation']:
+      # each turn has keys: speaker, text, targets, turn_count, candidates
       speaker = turn['speaker']
+
       if speaker == 'action':  # skip action turns
-        if len(dialogue) > 3:  # complete if at least 3 turns
-          break
-        else:
-          continue
+        intent, nextstep, action, value, utt_rank = turn['targets']
+        # each target is a 5-part list: intent, nextstep, action, value, utt_rank
+        target, valid = make_dialogue_state(intent, action, value, ontology, mappings)
+        target['global_id'] = convo['convo_id'] + '_' + turn['turn_count']
+  
+        if valid:
+          context = ' '.join(utt_so_far)
+          example = {'dialogue': context, 'label': value, 'target': target}
+          examples.append(example)  
+      else:
+        text = turn['text']
+        utt_so_far.append(f"<{speaker}> {text}")
 
-      text = turn['text']
-      dialogue.append(f"{speaker} {text}")
+    if len(utt_so_far) > args.context_len:
+      utt_so_far = utt_so_far[-args.context_len:]
 
-    dialog_string = ' '.join(dialogue)
-    example = {'dialogue': dialog_string, 'label': label_id}
-    examples.append(example)  
+  print("runs correctly")
+  sys.exit()
   return examples
 
 def build_gsim(args, data, mapping):
@@ -451,21 +500,24 @@ def get_dataloader(args, dataset, split='train'):
   return dataloader
 
 
-def prepare_examples(args, data, label_set, split):
-  mapping = {label: idx for idx, label in enumerate(label_set)}
-
+def prepare_examples(args, data, ontology, split):
+  """ Each example is a dict which should have:
+    dialogue: the context utterances as input with speakers of <agent> and <customer>
+    label: the text value to predict in string format
+    target: a dictionary with keys global_id, domain, slot and value
+  """
   if args.dataset == 'abcd':    # Action Based Conversations
-    examples = build_abcd(args, data, label_set) 
+    examples = build_abcd(args, data, ontology) 
   elif args.dataset == 'dstc':  # State Tracking Challenge 2
-    examples = build_dstc(args, data, mapping) 
+    examples = build_dstc(args, data) 
   elif args.dataset == 'gsim':  # Google Simulated Chats
-    examples = build_gsim(args, data, mapping) 
+    examples = build_gsim(args, data) 
   elif args.dataset == 'mwoz':  # MultiWoz 2.2
-    examples = build_mwoz(args, data, label_set)
+    examples = build_mwoz(args, data, ontology)
   elif args.dataset == 'sgd':   # Schema Guided Dialogue
-    examples = build_mwoz(args, data, mapping, split) 
+    examples = build_sgd(args, data, ontology, split) 
   elif args.dataset == 'tt':    # TicketTalk / TaskMaster 3
-    examples = build_tt(args, data, label_set) 
+    examples = build_tt(args, data, ontology) 
 
   return examples
 
