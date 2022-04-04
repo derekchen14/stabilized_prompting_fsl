@@ -62,16 +62,20 @@ class InContextDataset(BaseDataset):
 
   def select_context(self, dialog, target):
     current_size = len(dialog)
+    contexts = []
+
     while current_size < self.max_length:
-      # TODO: find more context based on embedding of dialog and closest support embedding
-      context_example = random.choice(self.support)
-      context_prompt = select_prompt(context_example['target'])
-      added_context = example['dialogue'] + context_prompt
+      # TODO: find more context based on embedding of query and closest support embedding
+      context_example = search_similar_context(dialog, self.support, target)
+      context_target = context_example['target']
+      context_label = context_target['value']
+      context_prompt = find_prompt(context_target)
+      added_context = example['dialogue'] + context_prompt + context_label
       added_size = len(added_context)
       current_size += added_size
-
       contexts.append(added_context)
-    additional_context = ' '.join(added_context)
+
+    additional_context = ' <sep> '.join(contexts)
     return additional_context
 
   def collate_lm(self, examples):

@@ -215,7 +215,6 @@ def extract_domain(metadata, label_set, domain_tracker):
 
 
 def extract_domain_slot(targets):
-  
   for domain, slots in DOMAIN_SLOTS.items():
     for slot in slots:
       pass
