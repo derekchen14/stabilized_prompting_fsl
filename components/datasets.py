@@ -5,9 +5,10 @@ import mmap
 import torch
 from torch.utils.data import Dataset
 
-from assets.static_vars import device
+from assets.static_vars import device, DATASETS
 from utils.prompt import find_prompt
 from utils.meta_learn import select_context
+
 
 class BaseDataset(Dataset):
   def __init__(self, args, examples, tokenizer, split):
@@ -42,6 +43,14 @@ class BaseDataset(Dataset):
     target_tensor = torch.tensor(padded).to(device)
     return target_tensor
 
+  def add_support(self, supports, left_out):
+    self.supported_datasets = ['sgd', 'dstc']
+    # self.supported_datasets = [name for name, _ in DATASETS.items() if name != left_out]
+    for support_name, support_data in supports.items():
+      assert(support_name in self.supported_datasets)
+      setattr(self, f"{support_name}_data", support_data['data'])
+      setattr(self, f"{support_name}_ont", support_data['ont'])
+
   def collate_lm(self, examples):
     raise NotImplementedError
 
@@ -61,6 +70,8 @@ class InContextDataset(BaseDataset):
     self.support = support_set
 
   def select_context(self, dialog, target):
+    print("good enough for part 1")
+    sys.exit()
     current_size = len(dialog)
     contexts = []
 

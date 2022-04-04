@@ -127,9 +127,8 @@ if __name__ == "__main__":
 
   if args.do_train:
     if args.task == 'meta_learn':
-      supports = load_support(args)  # load support data
-      run_train(args, model, supports, exp_logger)
-    elif args.task == 'fine_tune':
-      run_train(args, model, datasets, exp_logger)
+      supports = load_support(args, datasets)
+      datasets.add_support(supports, args.left_out)
+    run_train(args, model, datasets, exp_logger)
   elif args.do_eval:
     run_eval(args, model, datasets, exp_logger, split='test')
