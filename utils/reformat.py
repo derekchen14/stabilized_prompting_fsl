@@ -58,11 +58,11 @@ class ReformatBase(object):
 
     def reformat(self):
         """ Default reformatting does nothing """
-        pass
+        raise NotImplementedError
 
 class ReformatABCD(ReformatBase):
     def __init__(self, input_dir="./assets/"):
-        super().__init__():
+        super().__init__()
         self.filename = 'abcd_v1.1.json'
         self.splits = ['train', 'dev', 'test']
     
@@ -71,26 +71,26 @@ class ReformatABCD(ReformatBase):
         all_data = json.load(open(file_path, 'r'))
 
         for split in self.splits:
-	    data = all_data[split]
-	    trimmed = []
+            data = all_data[split]
+            trimmed = []
 
-	    for convo in data:
-		turns = []
-		for delex, orig in zip(convo['delexed'], convo['original']):
-		    speaker, text = orig
-		    assert(speaker == delex['speaker'])
-		    tc = delex['turn_count']
-		    targets = delex['targets']
+            for convo in data:
+                turns = []
+                for delex, orig in zip(convo['delexed'], convo['original']):
+                    speaker, text = orig
+                    assert(speaker == delex['speaker'])
+                    tc = delex['turn_count']
+                    targets = delex['targets']
 
-		    new_turn = {'speaker': speaker, 'text': text, 'turn_count': tc, 'targets': targets}
-		    turns.append(new_turn)
+                    new_turn = {'speaker': speaker, 'text': text, 'turn_count': tc, 'targets': targets}
+                    turns.append(new_turn)
 
-		new_convo = {'convo_id': convo['convo_id'], 'conversation': turns, 'scene': convo['scenario']}
-		trimmed.append(new_convo)
+                new_convo = {'convo_id': convo['convo_id'], 'conversation': turns, 'scene': convo['scenario']}
+                trimmed.append(new_convo)
 
             save_path = os.path.join(self.input_dir, f"{split}.json")
-	    json.dump(trimmed, open(save_path, 'w'))
-	    print(f"completed {split}")
+        json.dump(trimmed, open(save_path, 'w'))
+        print(f"completed {split}")
 
 
 class ReformatMultiWOZ21(ReformatBase):
@@ -206,11 +206,11 @@ class ReformatMultiWOZ21(ReformatBase):
 
 class ReformatMultiWOZ22(ReformatBase):
     """docstring for ReformatMultiWOZ22"""
-    def __init__(self, data_dir="./assets/"):
+    def __init__(self, input_dir="./assets/"):
         super(ReformatMultiWOZ22, self).__init__()
         self.data_dir = os.path.join(input_dir, "multiwoz_dst/MULTIWOZ2.2/")
         self.data_path = os.path.join(self.data_dir, "data.json")
-        self.reformat_data_dir = "./assets/mwoz22"
+        self.reformat_data_dir = "./assets/mwoz"
         self.slot_accm = True
 
         self.val_path = os.path.join(self.data_dir, "valListFile.txt")
@@ -219,7 +219,7 @@ class ReformatMultiWOZ22(ReformatBase):
         self.test_list = self.load_txt(self.test_path)
             
 
-    def reformat_slots(self):
+    def reformat(self):
         """
         file={
             dial_id: [
@@ -276,7 +276,7 @@ class ReformatMultiWOZ22(ReformatBase):
                 # adding system response to next turn
                 context.append("<system> " + sys_resp)
 
-                dial_new.append(turn_new)
+                dial_new.append(turn)
 
             if dial_id in self.test_list:
                 self.dials_test[dial_id] = dial_new

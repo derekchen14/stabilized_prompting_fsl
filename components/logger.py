@@ -85,7 +85,7 @@ class ExperienceLogger:
     if len(self.past_metrics) >= 5:
       trail = self.past_metrics[-5:]
       if all(x == trail[0] for x in trail):
-      below_threshold = True
+        below_threshold = True
 
     if below_threshold:
       self.logger.info(f"Ran out of patience, early stopped at epoch {self.epoch}")
@@ -98,7 +98,7 @@ class ExperienceLogger:
       print(self.global_step)
     if self.global_step < 1000 and self.global_step % 100 == 0:
       if self.log_interval <= 500:
-      print(self.global_step)
+        print(self.global_step)
 
     if self.global_step % self.log_interval == 0:
       current_loss = (self.tr_loss - self.logging_loss) / self.log_interval
