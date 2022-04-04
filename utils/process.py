@@ -4,13 +4,15 @@ import json
 import math
 import pickle as pkl
 import numpy as np
+from collections import defaultdict
+from tqdm import tqdm as progress_bar
 
-from assets.static_vars import device, DATASETS, GENERAL_TYPO, DOMAIN_SLOTS
-from utils.prompt import find_prompt
 from components.datasets import MetaLearnDataset, InContextDataset, FineTuneDataset
 from torch.utils.data import DataLoader, RandomSampler, SequentialSampler
-from tqdm import tqdm as progress_bar
-from collections import defaultdict
+from assets.static_vars import device, DATASETS, GENERAL_TYPO, DOMAIN_SLOTS
+
+from utils.meta_learn import add_context
+from utils.prompt import find_prompt
 from utils.trade_utils import prepare_data_seq
 
 def check_cache(args):
@@ -173,7 +175,7 @@ def fine_tune_mwoz21(args, data, label_set):
           target['domain'] = domain
           target['slot'] = slot_type
           target['value'] = slot_value
-          examples.append({'context': context, 'label': slot_value, 'target': target})
+          examples.append({'dialogue': context, 'label': slot_value, 'target': target})
       
   return examples
 
@@ -258,7 +260,11 @@ def create_abcd_mappings(ontology):
     for intent in subflows:
       intent_map[intent] = flow
 
-  enumerable_values = ontology['values']['enumerable']
+  enumerate_map = {}
+  for slot, values in ontology['values']['enumerable'].items():
+    enumerate_map[slot] = True
+  for slot in ontology['values']['non_enumerable']:
+    enumerate_map[slot] = False
 
   validity_map = {}
   for action, slots in ontology['actions']['has_slotval'].items():
@@ -266,68 +272,61 @@ def create_abcd_mappings(ontology):
   for action in ontology['actions']['empty_slotval']:
     validity_map[action] = False
 
-  mappings = {'intent': intent_map, 'enum': enumerable_values, 'valid': validity_map}
+  mappings = {'intent': intent_map, 'enum': enumerate_map, 'valid': validity_map}
   return mappings
 
-def is_slotval(scenario, mappings, cand_slot, cand_val):
-  if cand_slot in mappings['enum']:
-    cand_values = mappings['enum'][cand_slot]
-    if cand_val in cand_values:
-      return True
-  else:
-    for category, scene in scenario.items():
-      for slot, value in scene.items():
-        if cand_slot == slot and cand_val == value:
-          return True
-  # if we find no matches, then this candidate value is not valid
-  return False
+def make_dialogue_state(intent, action, value, ontology, mappings):
+  target = {}
+  valid = False
+  valid_actions = ontology['actions']['has_slotval']
 
-def make_dialogue_state(intent, action, values, scene, mappings):
-  targets = []
-
+  cand_value = value.lower().strip()
   if mappings['valid'][action]:
-    for value in values:
-      cand_val = value.lower().strip() 
-      candidate_slots = mappings['valid_actions'][action]
-   
-      domain = mappings['intent'][intent].replace('_', ' ')
-      target = { 'domain': domain }
-      if len(candidate_slots) == 1:
-        target['slot'] = candidate_slots[0].replace('_', ' ')
-        target['value'] = cand_val
-        targets.append(target)
-      else:
-        for cand_slot in candidate_slots:
-          scenario = {k: v for k, v in scene.items() if not k.endswith('flow')}
-          if is_slotval(scenario, mappings, cand_slot, cand_val):
-            target['slot'] = cand_slot.replace('_', ' ')
-            target['value'] = cand_val
-            targets.append(target)
-            break
+    valid = True
+    candidate_slots = valid_actions[action]
 
-  return targets
+    target['domain'] = mappings['intent'][intent]
+    if len(candidate_slots) == 1:
+      target['slot'] = candidate_slots[0]
+      target['value'] = cand_value
+    else:
+      for cand_slot in candidate_slots:
+        if mappings['enum'][cand_slot]:
+          cand_values = ontology['values']['enumerable'][cand_slot]
+          if cand_value in cand_values:
+            target['slot'] = cand_slot
+            target['value'] = cand_value
+        elif cand_slot in ontology['values']['non_enumerable']:
+          target['slot'] = cand_slot
+          target['value'] = cand_value
+
+  return target, valid
 
 def build_abcd(args, data, ontology):
   examples = []
   mappings = create_abcd_mappings(ontology)
-  mappings['valid_actions'] = ontology['actions']['has_slotval']
 
   for convo in progress_bar(data, total=len(data)):
-    # each convo has keys: convo_id, scene, conversation
+    # each convo has keys: convo_id, scenario, original, delexed, conversation
     utt_so_far = []
     for turn in convo['conversation']:
       # each turn has keys: speaker, text, targets, turn_count, candidates
       speaker = turn['speaker']
 
       if speaker == 'action':  # skip action turns
-        intent, nextstep, action, values, utt_rank = turn['targets']
+        intent, nextstep, action, value, utt_rank = turn['targets']
         # each target is a 5-part list: intent, nextstep, action, value, utt_rank
-        targets = make_dialogue_state(intent, action, values, convo['scene'], mappings)
+        target, valid = make_dialogue_state(intent, action, value, ontology, mappings)
+        target['global_id'] = str(convo['convo_id']) + '_' + str(turn['turn_count'])
   
-        for target in targets:
-          target['global_id'] = str(convo['convo_id']) + '_' + str(turn['turn_count'])
+        if valid:
           context = ' '.join(utt_so_far)
-          example = {'dialogue': context, 'label': target['value'], 'target': target}
+          example = {'dialogue': context, 'label': value.lower(), 'target': target}
+
+          if random.random() < 0.1:
+            print(example['dialogue'])
+            print(example['target'])
+            pdb.set_trace()
           examples.append(example)  
       else:
         text = turn['text']
@@ -594,11 +593,7 @@ def process_data(args, raw_data, tokenizer):
       print(f"Running with {len(datasets[split])} {split} examples")
     if args.model == 'trade':
       train, dev, test = prepare_data_seq(args, tokenizer=False)
-      datasets = {
-        "train": train,
-        "dev"  : dev,
-        "test" : test,
-      }
+      datasets = {"train": train, "dev": dev, "test": test}
     pkl.dump(datasets, open(cache_results, 'wb'))
 
   datasets = hold_out(args, datasets)

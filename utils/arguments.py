@@ -41,7 +41,7 @@ def solicit_params():
                 help="Maximum length of sequences for model input")
     parser.add_argument("--prompt-style", default="informed", type=str, help='type of prompt', 
                 choices=["schema", "question", "informed", "naive", "human", "none", "random"])
-    parser.add_argument("--context-len", default=8, type=int,
+    parser.add_argument("--context-len", default=2, type=int,
                 help="Number of turns to look back into dialogue context, eats into token length")
 
     # Key settings
