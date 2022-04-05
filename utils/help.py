@@ -13,7 +13,6 @@ from assets.static_vars import device
 from copy import deepcopy
 from transformers import get_scheduler
 from utils.reformat import *
-from utils.trade_proc import trade_process
 
 def set_seed(args):
   random.seed(args.seed)
@@ -54,9 +53,6 @@ def check_directories(args):
     if args.style == 'dataset':
       assert(args.dataset == args.left_out)
   return args, save_path
-
-def trade_loss(predictions, targets):
-  pass
 
 def prepare_inputs(batch):
   # change as needed
@@ -110,13 +106,8 @@ def memstat(message):
 def reformat_data(args):
   if not os.path.exists(os.path.join(args.input_dir, args.dataset)) or args.ignore_cache:
     os.makedirs(os.path.join(args.input_dir, args.dataset), exist_ok=True)
-    if args.dataset == 'mwoz20':  # MultiWoz 2.0
-      reformatter = ReformatMultiWOZ20(args.input_dir)
-    elif args.dataset == 'mwoz21':  # MultiWoz 2.1
-      trade_process(args)
-      reformatter = ReformatMultiWOZ21(args.input_dir)
-      shutil.copyfile(os.path.join(args.input_dir, "multiwoz_dst/MULTIWOZ2.1/ontology.json"), 
-                      os.path.join(args.input_dir, args.dataset, "ontology.json"))
+    if args.dataset == 'abcd':  # MultiWoz 2.0
+      reformatter = ReformatABCD(args.input_dir)
     elif args.dataset == 'mwoz' or args.dataset == 'mwoz22':  # MultiWoz 2.2
       reformatter = ReformatMultiWOZ22(args.input_dir)
       shutil.copyfile(os.path.join(args.input_dir, "multiwoz_dst/MULTIWOZ2.2/otgy.json"), 

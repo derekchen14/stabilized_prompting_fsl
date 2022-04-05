@@ -7,9 +7,8 @@ import csv
 import pickle as pkl
 import numpy as np
 import pandas as pd
+import torch
 
-from torch import load as torch_load
-from torch import float16 as torch_float16
 from tqdm import tqdm as progress_bar
 from transformers import GPT2LMHeadModel,GPT2ForSequenceClassification, GPT2Config, GPT2Tokenizer, \
                           BartForConditionalGeneration, BartConfig, BartTokenizer, \
@@ -17,8 +16,6 @@ from transformers import GPT2LMHeadModel,GPT2ForSequenceClassification, GPT2Conf
 from transformers import logging, GPTJForCausalLM, AutoTokenizer
 from assets.static_vars import device, DATASETS, CHECKPOINTS
 from components.embed import Embedder
-from components.trade import TradeModel
-from utils.trade_utils import prepare_data_seq
 
 logging.set_verbosity_error()
 
@@ -68,9 +65,6 @@ def load_tokenizer(args):
     special['pad_token'] = '<pad>'
   elif args.model == 'bart':
     tokenizer = BartTokenizer.from_pretrained(token_ckpt)
-  elif args.model == 'trade':
-    tokenizer = prepare_data_seq(args, tokenizer=True)
-    return tokenizer
   else:
     print(f'{args.model} not supported at this time')
     sys.exit()
@@ -90,7 +84,7 @@ def load_model(args, ontology, tokenizer, load_dir):
   if args.model == 'gpt':
     if args.size == 'large':
       model = GPTJForCausalLM.from_pretrained(ckpt_name,
-               revision="float16", torch_dtype=torch_float16, low_cpu_mem_usage=True)
+               revision="float16", torch_dtype=torch.float16, low_cpu_mem_usage=True)
     else:
       model = GPT2LMHeadModel.from_pretrained(ckpt_name)
     # use GPTJForCausalLM: https://huggingface.co/docs/transformers/model_doc/gptj
@@ -98,12 +92,6 @@ def load_model(args, ontology, tokenizer, load_dir):
     model = BartForConditionalGeneration.from_pretrained(ckpt_name)
   elif args.model == 't5':
     model = T5ForConditionalGeneration.from_pretrained(ckpt_name)
-  elif args.model == 'trade':
-    model = TradeModel(args, tokenizer, ontology)
-    ckpt_path = os.path.join(args.input_dir, 'cache', f"{ckpt_name}.pt")
-    if os.path.exists(ckpt_path):
-      model.load_state_dict(torch_load(ckpt_path))
-    return model.to(device)
 
   if args.do_train or args.num_shots == 'percent': 
     model.config.pad_token = tokenizer.pad_token
@@ -153,7 +141,7 @@ def load_best_model(args, ontology, load_dir):
     ckpt_path = os.path.join(load_dir, top_folder)
     print(f'Attempting to load {ckpt_path} as best model')
   
-  # checkpoint = torch_load(ckpt_path, map_location='cpu')
+  # checkpoint = torch.load(ckpt_path, map_location='cpu')
   # model.load_state_dict(checkpoint)
   model = load_model(args, ontology, {}, ckpt_path)
   model.eval()

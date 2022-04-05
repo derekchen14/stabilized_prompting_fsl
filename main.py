@@ -15,12 +15,9 @@ from assets.static_vars import device, debug_break, STOP_TOKENS
 
 def run_train(args, model, datasets, exp_logger):
   train_dataloader = get_dataloader(args, datasets['train'])
-  if args.model == 'trade':
-    return run_trade(args, model, datasets, exp_logger)
-  else:
-    total_steps = len(train_dataloader) // args.grad_accum_steps * args.n_epochs
-    optimizer, scheduler = setup_optimization(args, model, total_steps)
-    exp_logger.update_optimization(optimizer, scheduler)
+  total_steps = len(train_dataloader) // args.grad_accum_steps * args.n_epochs
+  optimizer, scheduler = setup_optimization(args, model, total_steps)
+  exp_logger.update_optimization(optimizer, scheduler)
 
   for epoch_count in range(exp_logger.num_epochs):
     exp_logger.start_epoch(train_dataloader)
@@ -52,29 +49,6 @@ def run_train(args, model, datasets, exp_logger):
 
   return model
 
-def run_trade(args, model, datasets, exp_logger):
-  avg_best = 0
-  train_dataloader = get_dataloader(args, datasets['train'])
-  for epoch_count in range(args.n_epochs):
-    model.train()
-    pbar = tqdm(enumerate(train_dataloader), total=len(train_dataloader))
-    for step, batch in pbar:
-      model.train_batch(batch, reset=(step==0))
-      model.optimize()
-      pbar.set_description(model.print_loss())
-
-    acc = model.evaluate(datasets['dev'], avg_best, None)
-    model.scheduler.step(acc)
-    if(acc >= avg_best):
-      avg_best, best_model = acc, model
-      count = 0
-    else:
-      count += 1
-    if count == 6 or acc == 1.0: 
-      print("Ran out of patience, early stop on epoch {epoch_count}")
-      break
-
-  return model
 
 def run_inference(args, model, dataloader, exp_logger, split):
   ''' goes through model generation without backprop, rather than classification '''

@@ -10,7 +10,6 @@ from components.datasets import MetaLearnDataset, InContextDataset, FineTuneData
 from torch.utils.data import DataLoader, RandomSampler, SequentialSampler
 from tqdm import tqdm as progress_bar
 from collections import defaultdict
-from utils.trade_utils import prepare_data_seq
 
 def check_cache(args):
   cache_file = f'{args.dataset}_{args.task}.pkl'
@@ -92,7 +91,7 @@ def build_mwoz21(args, data, label_set):
 def build_mwoz(args, data):
   ''' Written for raw v2.2 mwoz. This follows the schema format built by SGD'''
   examples = []
-  speakers = {'USER': '<customer>', 'SYSTEM': '<agent>'}
+  speakers = {'user': '<customer>', 'system': '<agent>'}
   allowed_domains = list(DOMAIN_SLOTS.keys())
 
   for conversation in progress_bar(data, total=len(data)):
@@ -403,8 +402,6 @@ def extract_slotvals(segments, ontology):
   return labels
 
 def get_dataloader(args, dataset, split='train'):
-  if args.model == 'trade':
-    return dataset
   sampler = RandomSampler(dataset) if dataset.shuffle else SequentialSampler(dataset)
   collate = dataset.collate_func
   dataloader = DataLoader(dataset, sampler=sampler, batch_size=args.batch_size, collate_fn=collate)
@@ -435,8 +432,6 @@ def prepare_examples(args, data, ontology, split):
   return examples
 
 def hold_out(args, datasets):
-  if args.model == "trade":
-    return datasets
   if args.num_shots == 'zero':
 
     for split in ['train', 'dev', 'test']:
@@ -490,13 +485,6 @@ def process_data(args, raw_data, tokenizer):
       elif args.task == 'fine_tune':
         datasets[split] = FineTuneDataset(args, examples, tokenizer, split)
       print(f"Running with {len(datasets[split])} {split} examples")
-    if args.model == 'trade':
-      train, dev, test = prepare_data_seq(args, tokenizer=False)
-      datasets = {
-        "train": train,
-        "dev"  : dev,
-        "test" : test,
-      }
     pkl.dump(datasets, open(cache_results, 'wb'))
 
   datasets = hold_out(args, datasets)
