@@ -164,9 +164,9 @@ class FineTuneDataset(BaseDataset):
     dialogues, labels = [], []
 
     for example in examples:
-      dialog = example['context'] + '<sep>' + example['prompt']
+      dialog = example['history'] + '<sep>' + example['current']
       dialogues.append(dialog)
-      labels.append(example['label'] if self.split == 'train' else example['target'])
+      labels.append(example['target']['value'] if self.split == 'train' else example['target'])
 
     # self.tokenizer.pad_token = self.tokenizer.eos_token
     inputs = self.tokenizer(dialogues, padding='longest', max_length=1000,
