@@ -37,11 +37,11 @@ def solicit_params():
                 then we meta learn on [taxi, hotel, restaurant, train] and test on [attraction].")
     parser.add_argument("--left-out", default='', type=str,   # see args.style
                 help="Name of the domain or dataset left out of training and used for testing only")
-    parser.add_argument("--max-len", default=1024, type=int,
-                help="Maximum length of sequences for model input")
     parser.add_argument("--prompt-style", default="informed", type=str, help='type of prompt', 
                 choices=["schema", "question", "informed", "naive", "human", "none", "random"])
-    parser.add_argument("--context-len", default=2, type=int,
+    parser.add_argument("--maximum-length", default=1024, type=int,
+                help="Maximum length of sequences for model input")
+    parser.add_argument("--context-length", default=2, type=int,
                 help="Number of turns to look back into dialogue context, eats into token length")
 
     # Key settings
