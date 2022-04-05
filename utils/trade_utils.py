@@ -146,7 +146,6 @@ class Dataset(data.Dataset):
         return domains[turn_domain]
 
 
-
 def collate_fn(data):
     def merge(sequences):
         '''
@@ -316,7 +315,7 @@ def read_langs(file_name, gating_dict, SLOTS, split, lang, mem_lang, sequicity, 
                 turn_num = turn["turn_num"]
                 turn_uttr = turn["context"].split("<system>")[-1].strip()
                 dialog_history = turn["context"].strip()
-                turn_belief_dict = fix_general_label_error(turn["slots_inf"], False, SLOTS) # TODO
+                turn_belief_dict = fix_general_label_error(turn["slots_inf"], False, SLOTS)
                 turn_belief_list = [str(k)+'-'+str(v) for k, v in turn_belief_dict.items()]
 
                 # Generate domain-dependent slot list
@@ -420,6 +419,8 @@ def prepare_data_seq(args, task="dst", sequicity=0, tokenizer=True, split='train
     # load domain-slot pairs from ontology
     ontology = json.load(open(os.path.join(args.input_dir, args.dataset, "ontology.json"), 'r'))
     ALL_SLOTS = get_slot_information(ontology)
+    if args.dataset == 'mwoz':
+        ALL_SLOTS = [slot.replace('--','-') for slot in ALL_SLOTS]
     gating_dict = {"ptr":0, "dontcare":1, "none":2}
     # Vocabulary
     lang, mem_lang = Lang(), Lang()
