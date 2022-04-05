@@ -1,8 +1,8 @@
 import os, sys, pdb
 import numpy as np
 import random
-import torch
 
+from torch import nn, no_grad
 from tqdm import tqdm as progress_bar
 from components.logger import ExperienceLogger
 
@@ -35,7 +35,7 @@ def run_train(args, model, datasets, exp_logger):
       loss.backward()
 
       if (step + 1) % args.grad_accum_steps == 0:
-        torch.nn.utils.clip_grad_norm_(model.parameters(), 5.0)
+        nn.utils.clip_grad_norm_(model.parameters(), 5.0)
         exp_logger.optimizer.step()  # backprop to update the weights
         exp_logger.scheduler.step()  # Update learning rate schedule
         model.zero_grad()
@@ -84,7 +84,7 @@ def run_inference(args, model, dataloader, exp_logger, split):
   for inputs, target_dict in progress_bar(dataloader, total=len(dataloader)):
     all_targets.extend(target_dict)   # notice this is "extend", not "append"
 
-    with torch.no_grad():
+    with no_grad():
       # defaults to greedy sampling, for param details see https://huggingface.co/docs/transformers/
       #        v4.15.0/en/main_classes/model#transformers.generation_utils.GenerationMixin.generate 
       outputs = model.generate(**inputs, max_length=args.max_len, early_stopping=True, do_sample=False)

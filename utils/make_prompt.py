@@ -221,7 +221,8 @@ def extract_domain_slot(targets):
 
   return domain, slot
 
-def find_prompt(style, domain, slot):
+def find_prompt(style, target):
+  domain, slot = target['domain'], target['slot']
   if style == 'schema':
     return schema_descriptions[domain][slot]
   elif style == 'question':
