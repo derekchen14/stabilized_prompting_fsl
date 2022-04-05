@@ -6,8 +6,8 @@ import torch
 from torch.utils.data import Dataset
 
 from assets.static_vars import device, DATASETS
-from utils.prompt import find_prompt
-from utils.meta_learn import select_context
+from utils.make_prompt import find_prompt
+from utils.meta_learn import search_similar_context
 
 
 class BaseDataset(Dataset):
@@ -66,12 +66,8 @@ class BaseDataset(Dataset):
 
 class InContextDataset(BaseDataset):
 
-  def __init__(self, args, examples, support_set, tokenizer, split):
-    super().__init__(args, examples, tokenizer, split)
-    self.support = support_set
-
-  def select_context(self, dialog, target):
-    print("good enough for part 1")
+  def select_context(self, example, target):
+    dialog = example['history'] + ' ' + example['current']
     sys.exit()
     current_size = len(dialog)
     contexts = []
@@ -95,11 +91,14 @@ class InContextDataset(BaseDataset):
     assert(self.split not in ['train', 'dev'])
 
     for example in examples:
+      history = example['history'][-self.ctx_len:]
+      current_utt = example['current']
       target = example['target']
-      prompt = select_prompt(target)
-      dialog = example['dialogue'] + prompt
-      # additional_context = self.select_context(example['dialogue'], target)
+      domain, slot, value = target['domain'], target['slot'], target['value']
+      prompt = find_prompt(self.prompt_style, target)
+      dialog = history + ' ' + current_utt + '<sep>' + prompt
 
+      additional_context = self.select_context(example, target)
       contexts.append(additional_context)
       dialogues.append(dialog)
       labels.append(target)

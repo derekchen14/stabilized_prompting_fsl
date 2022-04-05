@@ -13,7 +13,7 @@ from collections import defaultdict
 from utils.trade_utils import prepare_data_seq
 
 def check_cache(args):
-  cache_file = f'{args.task}_{args.style}.pkl'
+  cache_file = f'{args.dataset}_{args.task}.pkl'
   cache_path = os.path.join(args.input_dir, 'cache', args.dataset, cache_file)
   use_cache = not args.ignore_cache
 
@@ -89,7 +89,7 @@ def build_mwoz21(args, data, label_set):
 
   return examples
 
-def build_mwoz(args, data, label_set):
+def build_mwoz(args, data):
   ''' Written for raw v2.2 mwoz. This follows the schema format built by SGD'''
   examples = []
   speakers = {'USER': '<customer>', 'SYSTEM': '<agent>'}
@@ -129,8 +129,8 @@ def build_mwoz(args, data, label_set):
                 example = {'history': history, 'current': utterance, 'target': target}
                 examples.append(example)
       
-      if len(text_so_far) > args.context_len:
-        text_so_far = text_so_far[-args.context_len:]
+      if len(text_so_far) > 10:
+        text_so_far = text_so_far[-10:]
   return examples
 
 def interact_mwoz(data, mapping):
@@ -426,9 +426,9 @@ def prepare_examples(args, data, ontology, split):
   elif args.dataset == 'gsim':    # Google Simulated Chats
     examples = build_tt(args, data, ontology) 
   elif args.dataset.startswith('mwoz'):  # MultiWoz 2.1 or 2.2
-    examples = build_mwoz(args, data, label_set)
+    examples = build_mwoz(args, data)
   elif args.dataset == 'sgd':   # Schema Guided Dialogue
-    examples = build_mwoz(args, data, mapping, split) 
+    examples = build_sgd(args, data, ontology, split) 
   elif args.dataset == 'tt':    # TicketTalk / TaskMaster 3
     examples = build_tt(args, data, ontology) 
 

@@ -26,11 +26,13 @@ DICT_SIZE = 400
 MAX_LENGTH = 50
 IGNORE_KEYS_IN_GOAL = ['eod', 'topic', 'messageLen', 'message']
 
-fin = open('./assets/multiwoz_dst/MULTIWOZ2.1/mapping.pair','r')
-replacements = []
-for line in fin.readlines():
-    tok_from, tok_to = line.replace('\n', '').split('\t')
-    replacements.append((' ' + tok_from + ' ', ' ' + tok_to + ' '))
+def pull_replacements():
+    fin = open('./assets/multiwoz_dst/MULTIWOZ2.1/mapping.pair','r')
+    replacements = []
+    for line in fin.readlines():
+        tok_from, tok_to = line.replace('\n', '').split('\t')
+        replacements.append((' ' + tok_from + ' ', ' ' + tok_to + ' '))
+    return replacements
 
 # class TradePreprocess(object):
 #     def __init__(self, data_dir):
@@ -58,6 +60,8 @@ def insertSpace(token, text):
     return text
 
 def normalize(text, clean_value=True):
+    replacements = pull_replacements()
+
     # lower case every word
     text = text.lower()
 

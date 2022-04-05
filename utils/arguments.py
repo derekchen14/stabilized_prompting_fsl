@@ -30,7 +30,7 @@ def solicit_params():
                     an untrained model, percent loads a model fine-tuned on <threshold>% of data")
     parser.add_argument("--threshold", default=0.25, type=float,
                 help="Determines the amount of data used for pre-training the model; See num-shots")
-    parser.add_argument("--temperature", default=1.4, type=float,
+    parser.add_argument("--temperature", default=1.2, type=float,
                 help="Temperature for increasing diversity when decoding, mainly for paraphrase")
     parser.add_argument("--style", default='domain', type=str, choices=['domain', 'dataset'],
                 help="Subset of data held out for testing. For example, if domain is the chosen style, \
