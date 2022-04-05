@@ -223,7 +223,6 @@ class ReformatMultiWOZ22(ReformatBase):
 
     def reformat_from_data(self):
         """
-        TODO - needs to be redone!!!
         use conver_to_multiwoz_format.py first to create data.json file, then do the reformat based
         on that.
 

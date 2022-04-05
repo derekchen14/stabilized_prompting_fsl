@@ -77,3 +77,19 @@ DOMAIN_SLOTS = {
   "hotel": ["area", "bookday", "bookstay", "bookpeople", "internet", "name", "parking", "pricerange", "stars", "type"],
   "attraction": ["area", "name", "type"]
 }
+
+"""
+<customer> i would like some soup and crackers.
+<agent> what kind of soup do you want?
+<customer> i want cream of broccoli.
+
+speaker is "customer"
+text is "i would like cream of broccoli."
+utterance is "<customer> i would like cream of broccoli."
+    utterance includes: speaker + text
+    there are 3 utterances in this conversation
+history is first two utterances
+we do not use the term "context" anywhere
+    context will always refer to support set examples
+history + current_utt = dialogue
+"""

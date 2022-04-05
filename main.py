@@ -16,7 +16,7 @@ from assets.static_vars import device, debug_break, STOP_TOKENS
 def run_train(args, model, datasets, exp_logger):
   train_dataloader = get_dataloader(args, datasets['train'])
   if args.model == 'trade':
-    return run_trade(args, model, train_dataloader, exp_logger)
+    return run_trade(args, model, datasets, exp_logger)
   else:
     total_steps = len(train_dataloader) // args.grad_accum_steps * args.n_epochs
     optimizer, scheduler = setup_optimization(args, model, total_steps)
@@ -52,14 +52,12 @@ def run_train(args, model, datasets, exp_logger):
 
   return model
 
-def run_trade(args, model, dataloader, exp_logger):
+def run_trade(args, model, datasets, exp_logger):
   avg_best = 0
-
-  for epoch_count in range(exp_logger.num_epochs):
-    exp_logger.start_epoch(dataloader)
+  train_dataloader = get_dataloader(args, datasets['train'])
+  for epoch_count in range(args.n_epochs):
     model.train()
-    
-    pbar = tqdm(enumerate(dataloader), total=len(dataloader))
+    pbar = tqdm(enumerate(train_dataloader), total=len(train_dataloader))
     for step, batch in pbar:
       model.train_batch(batch, reset=(step==0))
       model.optimize()
@@ -127,9 +125,8 @@ if __name__ == "__main__":
 
   if args.do_train:
     if args.task == 'meta_learn':
-      supports = load_support(args)  # load support data
-      run_train(args, model, supports, exp_logger)
-    elif args.task == 'fine_tune':
-      run_train(args, model, datasets, exp_logger)
+      supports = load_support(args, datasets)
+      datasets.add_support(supports, args.left_out)
+    run_train(args, model, datasets, exp_logger)
   elif args.do_eval:
     run_eval(args, model, datasets, exp_logger, split='test')

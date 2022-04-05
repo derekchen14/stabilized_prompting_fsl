@@ -5,9 +5,10 @@ import mmap
 import torch
 from torch.utils.data import Dataset
 
-from assets.static_vars import device
+from assets.static_vars import device, DATASETS
 from utils.prompt import find_prompt
 from utils.meta_learn import select_context
+
 
 class BaseDataset(Dataset):
   def __init__(self, args, examples, tokenizer, split):
@@ -18,7 +19,8 @@ class BaseDataset(Dataset):
 
     self.tokenizer = tokenizer
     self.task = args.task
-    self.max_length = args.max_len
+    self.max_len = args.maximum_length
+    self.ctx_len = args.context_length
     self.model_type = args.model
     self.prompt_style = args.prompt_style
 
@@ -42,6 +44,14 @@ class BaseDataset(Dataset):
     target_tensor = torch.tensor(padded).to(device)
     return target_tensor
 
+  def add_support(self, supports, left_out):
+    self.supported_datasets = ['sgd', 'dstc']
+    # self.supported_datasets = [name for name, _ in DATASETS.items() if name != left_out]
+    for support_name, support_data in supports.items():
+      assert(support_name in self.supported_datasets)
+      setattr(self, f"{support_name}_data", support_data['data'])
+      setattr(self, f"{support_name}_ont", support_data['ont'])
+
   def collate_lm(self, examples):
     raise NotImplementedError
 
@@ -61,17 +71,23 @@ class InContextDataset(BaseDataset):
     self.support = support_set
 
   def select_context(self, dialog, target):
+    print("good enough for part 1")
+    sys.exit()
     current_size = len(dialog)
+    contexts = []
+
     while current_size < self.max_length:
-      # TODO: find more context based on embedding of dialog and closest support embedding
-      context_example = random.choice(self.support)
-      context_prompt = select_prompt(context_example['target'])
-      added_context = example['dialogue'] + context_prompt
+      # TODO: find more context based on embedding of query and closest support embedding
+      context_example = search_similar_context(dialog, self.support, target)
+      context_target = context_example['target']
+      context_label = context_target['value']
+      context_prompt = find_prompt(context_target)
+      added_context = example['dialogue'] + context_prompt + context_label
       added_size = len(added_context)
       current_size += added_size
-
       contexts.append(added_context)
-    additional_context = ' '.join(added_context)
+
+    additional_context = ' <sep> '.join(contexts)
     return additional_context
 
   def collate_lm(self, examples):
@@ -82,15 +98,21 @@ class InContextDataset(BaseDataset):
       target = example['target']
       prompt = select_prompt(target)
       dialog = example['dialogue'] + prompt
-      additional_context = self.select_context(example['dialogue'], target)
+      # additional_context = self.select_context(example['dialogue'], target)
 
       contexts.append(additional_context)
       dialogues.append(dialog)
       labels.append(target)
 
     inputs = self.tokenizer(contexts, dialogues, padding=pad_style,
-                              truncation='only_first', return_tensors='pt').to(device)
-    # targets = torch.tensor(labels, dtype=torch.long, device=device) # or torch.float of BCEWithLogits
+                              truncation='only_first', return_tensors='pt').to(device) 
+   
+    trick = inputs['input_ids']
+    treat = self.tokenizer.batch_decode(trick)
+    for entry in treat:
+      print(entry.replace('<pad>', '|'))
+      pdb.set_trace()
+
     return inputs, labels
 
 class MetaLearnDataset(InContextDataset):
@@ -108,8 +130,8 @@ class MetaLearnDataset(InContextDataset):
       for example in examples:
         target = example['target']
         prompt = select_prompt(target)
-        dialog = example['dialogue'] + prompt + target['value'] + eos
-        additional_context = self.select_context(example['dialogue'], target)
+        dialog = example['history'] + prompt + target['value'] + eos
+        additional_context = self.select_context(example['current'], target)
 
         contexts.append(additional_context)
         dialogues.append(dialog)
@@ -162,28 +184,25 @@ class FineTuneDataset(BaseDataset):
     dialogues, labels = [], []
     eos = self.tokenizer.eos_token
 
-    if self.split == 'train':
-      for example in examples:
-        context = example['dialogue']
-        target = example['target']
-        domain, slot, value = target['domain'], target['slot'], target['value']
-        prompt = f" The {slot} for {domain} is "
-        dialog = context + '<sep>' + prompt + value + eos
-        dialogues.append(dialog)
-      inputs = self.tokenizer(dialogues, padding=True, max_length=1024,
-                                truncation=True, return_tensors='pt').to(device)
-      targets = inputs['input_ids']
-      return inputs, targets
+    for example in examples:
+      history = example['history'][-self.ctx_len:]
+      current_utt = example['current']
+      target = example['target']
+      domain, slot, value = target['domain'], target['slot'], target['value']
+      prompt = select_prompt(target)
 
-    elif self.split in ['dev', 'test']:
-      for example in examples:
-        context = example['dialogue']
-        target = example['target']
-        domain, slot, value = target['domain'], target['slot'], target['value']
-        prompt = f" The {slot} for {domain} is "
-        dialog = context + '<sep>' + prompt
-        dialogues.append(dialog)
-        labels.append(target)
-      inputs = self.tokenizer(dialogues, padding=True, max_length=1000,
-                                truncation=True, return_tensors='pt').to(device)
+      if self.split == 'train':
+        dialog = history + ' ' + current_utt + '<sep>' + prompt + value + eos
+        max_length = self.max_len
+      elif self.split in ['dev', 'test']:
+        dialog = history + ' ' + current_utt + '<sep>' + prompt
+        max_length = self.max_len - 10
+      dialogues.append(dialog)
+      labels.append(target)
+
+    inputs = self.tokenizer(dialogues, padding=True, max_length=max_length,
+                              truncation=True, return_tensors='pt').to(device)
+    if self.split == 'train':
+      return inputs, inputs['input_ids']
+    else:
       return inputs, labels
