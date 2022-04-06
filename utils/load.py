@@ -69,7 +69,7 @@ def load_tokenizer(args):
     print(f'{args.model} not supported at this time')
     sys.exit()
 
-  if args.do_train or args.num_shots == 'percent':
+  if args.do_train or args.num_shots == 'percent' or args.task == 'in_context':
     print(f"Adding special tokens {special}")
     tokenizer.add_special_tokens(special)
   tokenizer.padding_side = 'left'
@@ -93,7 +93,7 @@ def load_model(args, ontology, tokenizer, load_dir):
   elif args.model == 't5':
     model = T5ForConditionalGeneration.from_pretrained(ckpt_name)
 
-  if args.do_train or args.num_shots == 'percent': 
+  if args.do_train or args.num_shots == 'percent' or args.task == 'in_context': 
     model.config.pad_token = tokenizer.pad_token
     model.config.pad_token_id = tokenizer.pad_token_id
     model.resize_token_embeddings(len(tokenizer))  # transformer_check
