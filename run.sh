@@ -51,9 +51,9 @@ python main.py --dataset mwoz --task fine_tune --style dataset --do-train --do-s
 # python main.py --dataset sgd --task in_context --style domain --do-eval --seed 15 \
 #       --model gpt --size large --num-shots full --qualify --maximum-len 1020 --context-len 14 \
 #       --threshold 1.4   --temperature 0.8 --prompt-style statement
-# python main.py --dataset mwoz --task in_context --style dataset --do-eval --seed 14 \
-#       --model gpt --size small --num-shots full --maximumimum-length 512 --prompt-style informed \
-#       --temperature 0.8 --verbose --context-length 5
+python main.py --dataset sgd --task in_context --style dataset --do-eval --seed 14 \
+      --model gpt --size small --num-shots full --maximum-length 512 --prompt-style naive \
+      --temperature 0.8 --verbose --context-length 5 --ignore-cache
 # python main.py --dataset mwoz --task in_context --style domain --do-eval --seed 15 \
 #       --model gpt --size small --num-shots full --maximum-len 512 --prompt-style schema \
 #       --temperature 0.8 --threshold 1.4 --context-len 3 --left-out hotel

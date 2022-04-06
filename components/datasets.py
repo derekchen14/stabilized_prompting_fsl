@@ -7,7 +7,7 @@ from torch.utils.data import Dataset
 
 from assets.static_vars import device, DATASETS
 from utils.make_prompt import find_prompt
-from utils.meta_learn import search_similar_context
+from utils.meta_learn import search_for_similar
 
 
 class BaseDataset(Dataset):
@@ -18,6 +18,8 @@ class BaseDataset(Dataset):
     self.size = len(self.data)
 
     self.tokenizer = tokenizer
+    self.supported_datasets = []
+    
     self.task = args.task
     self.max_len = args.maximum_length
     self.ctx_len = args.context_length
@@ -45,12 +47,12 @@ class BaseDataset(Dataset):
     return target_tensor
 
   def add_support(self, supports, left_out):
-    self.supported_datasets = ['sgd', 'dstc']
     # self.supported_datasets = [name for name, _ in DATASETS.items() if name != left_out]
     for support_name, support_data in supports.items():
-      assert(support_name in self.supported_datasets)
-      setattr(self, f"{support_name}_data", support_data['data'])
-      setattr(self, f"{support_name}_ont", support_data['ont'])
+      if support_name != left_out:
+        setattr(self, f"{support_name}_data", support_data['data'])
+        setattr(self, f"{support_name}_ont", support_data['ont'])
+        self.supported_datasets.append(support_name)
 
   def collate_lm(self, examples):
     raise NotImplementedError
@@ -67,14 +69,20 @@ class BaseDataset(Dataset):
 class InContextDataset(BaseDataset):
 
   def select_context(self, example, target):
-    dialog = example['history'] + ' ' + example['current']
-    sys.exit()
+    history = ' '.join(example['history'][-self.ctx_len:])
+    dialog = history + ' ' + example['current']
     current_size = len(dialog)
     contexts = []
 
-    while current_size < self.max_length:
+    while current_size < self.max_len:
       # TODO: find more context based on embedding of query and closest support embedding
-      context_example = search_similar_context(dialog, self.support, target)
+      if len(self.supported_datasets) > 0:
+        for name, _ in DATASETS.items():
+          support = getattr(self, f"{name}_data")
+          context_example = search_for_similar(example, support, target)
+      else:
+        context_example = search_for_similar(dialog, self.data, target)
+
       context_target = context_example['target']
       context_label = context_target['value']
       context_prompt = find_prompt(context_target)
@@ -84,6 +92,7 @@ class InContextDataset(BaseDataset):
       contexts.append(added_context)
 
     additional_context = ' <sep> '.join(contexts)
+    pdb.set_trace()
     return additional_context
 
   def collate_lm(self, examples):

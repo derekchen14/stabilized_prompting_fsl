@@ -302,13 +302,13 @@ def build_sgd(args, data, mapping, split):
   prompt = "The topic of conversation is about"
 
   for conversation in progress_bar(data, total=len(data)):
-    text_so_far = []    
+    text_so_far = []
 
-    for turn in conversation['turns']:    
-      utt = turn['utterance']
+    for turn_count, turn in enumerate(conversation['turns']):    
+      text = turn['utterance']
 
       if turn['speaker'] == 'SYSTEM':
-        sys_text = f"<agent> {utt}"
+        sys_text = f"<agent> {text}"
         text_so_far.append(sys_text)
   
       elif turn['speaker'] == 'USER':
@@ -316,53 +316,19 @@ def build_sgd(args, data, mapping, split):
         context = ' '.join(text_so_far)
         text_so_far.append(user_utt)
 
-        labels = extract_frame(turn)
-        """labels with number of keys equal to the number of services found in that turn
-        each of these will be turned into a training example
-        the targets of each training example has keys: intents, requests, slots, values
-        each of the four keys is a list containing the respectives items as strings """
+        for frame in turn['frames']:
+          service = frame['service'].split('_')[0]
 
-        for service, details in labels.items():
-          fls = details['flattened']  # labels as a long, flattened string, split by service
-          sls = details['structured'] # labels as a dictionary, again split by service
-
-          if len(sls['intents']) > 0 and len(sls['slots']) > 0:
-            target['domain'] = service
-            target['slot'] = slot
-            target['value'] = fls
-            examples.append({'history': context, 'current': user_utt, 'target': target})
+          if 'state' in frame:
+            for slot, value in frame['state']['slot_values'].items():
+              target = {'domain': service, 'slot': slot, 'value': value[0],
+                    'global_id': conversation['dialogue_id'] + '_' + str(turn_count+1) }
+              examples.append({'history': context, 'current': user_utt, 'target': target})
 
       if len(text_so_far) > 10:
         text_so_far = text_so_far[-10:]
+  
   return examples
-
-def extract_frame(turn):
-  labels = {}
-
-  for frame in turn['frames']:
-    service = frame['service']
-    targets = []
-    labels[service] = { 'structured': defaultdict(list) }
-
-    if 'state' in frame:
-      active_intent = frame['state']['active_intent']
-      labels[service]['structured']['intents'].append(active_intent)
-      
-      requested = frame['state']['requested_slots']
-      labels[service]['structured']['requests'].extend(requested)
-      for req in requested:
-        req_target = f"{active_intent}(request={req})"
-        targets.append(req_target)
-
-      for slot, value in frame['state']['slot_values'].items():
-        val = value[0]
-        labels[service]['structured']['slots'].append(slot)
-        labels[service]['structured']['values'].append(val)
-        inf_target = f"{active_intent}({slot}={val})"
-        targets.append(inf_target)
-
-    labels[service]['flattened'] = ';'.join(targets)
-  return labels
 
 def build_tt(args, data, ontology):
   examples = []
@@ -469,7 +435,7 @@ def hold_out(args, datasets):
   return datasets
 
 def process_data(args, raw_data, tokenizer):
-  label_set = raw_data['ontology']
+  label_set = [] # raw_data['ontology']
 
   cache_results, already_exist = check_cache(args)
   if already_exist:

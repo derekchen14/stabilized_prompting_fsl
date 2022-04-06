@@ -90,7 +90,7 @@ if __name__ == "__main__":
   args, save_path = check_directories(args)
   set_seed(args)
 
-  reformat_data(args)
+  # reformat_data(args)
   raw_data = load_data(args)
   tokenizer = load_tokenizer(args)
   datasets, ontology = process_data(args, raw_data, tokenizer)
