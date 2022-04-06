@@ -61,7 +61,7 @@ def run_inference(args, model, dataloader, exp_logger, split):
     with no_grad():
       # defaults to greedy sampling, for param details see https://huggingface.co/docs/transformers/
       #        v4.15.0/en/main_classes/model#transformers.generation_utils.GenerationMixin.generate 
-      outputs = model.generate(**inputs, max_length=args.max_len, early_stopping=True, do_sample=False)
+      outputs = model.generate(**inputs, max_length=args.maximum_length, early_stopping=True)
       output_strings = tokenizer.batch_decode(outputs.detach(), skip_special_tokens=True)
       all_outputs.extend(output_strings)
 
@@ -69,6 +69,7 @@ def run_inference(args, model, dataloader, exp_logger, split):
       exp_logger.eval_loss = 0  # no loss, since inference only
       exp_logger.eval_step += 1
       if args.debug and exp_logger.eval_step >= debug_break: break
+
   return all_outputs, all_targets
 
 def run_eval(args, model, datasets, exp_logger, split='dev'):
@@ -90,7 +91,7 @@ if __name__ == "__main__":
   args, save_path = check_directories(args)
   set_seed(args)
 
-  # reformat_data(args)
+  reformat_data(args)
   raw_data = load_data(args)
   tokenizer = load_tokenizer(args)
   datasets, ontology = process_data(args, raw_data, tokenizer)

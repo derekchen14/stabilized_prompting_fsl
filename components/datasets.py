@@ -84,23 +84,24 @@ class InContextDataset(BaseDataset):
         context_example = search_for_similar(dialog, self.data, target)
 
       context_target = context_example['target']
-      context_label = context_target['value']
-      context_prompt = find_prompt(context_target)
-      added_context = example['dialogue'] + context_prompt + context_label
+      context_label = context_target['value'].strip()
+      context_prompt = find_prompt(self.prompt_style, context_target)
+      ctx_history = ' '.join(context_example['history'][-3:])
+      added_context = ctx_history + example['current'] + f" {context_prompt} {context_label}"
       added_size = len(added_context)
       current_size += added_size
       contexts.append(added_context)
 
     additional_context = ' <sep> '.join(contexts)
-    pdb.set_trace()
     return additional_context
 
   def collate_lm(self, examples):
     """ train and dev splits should not occur since you do not need gradient based training """
     assert(self.split not in ['train', 'dev'])
+    contexts, dialogues, labels = [], [], []
 
     for example in examples:
-      history = example['history'][-self.ctx_len:]
+      history = ' '.join(example['history'][-self.ctx_len:])
       current_utt = example['current']
       target = example['target']
       domain, slot, value = target['domain'], target['slot'], target['value']
@@ -112,15 +113,15 @@ class InContextDataset(BaseDataset):
       dialogues.append(dialog)
       labels.append(target)
 
-    inputs = self.tokenizer(contexts, dialogues, padding=pad_style,
+    inputs = self.tokenizer(contexts, dialogues, padding=True,
                               truncation='only_first', return_tensors='pt').to(device) 
-   
+    """ 
     trick = inputs['input_ids']
     treat = self.tokenizer.batch_decode(trick)
     for entry in treat:
       print(entry.replace('<pad>', '|'))
       pdb.set_trace()
-
+    """
     return inputs, labels
 
 class MetaLearnDataset(InContextDataset):

@@ -222,21 +222,36 @@ def extract_domain_slot(targets):
   return domain, slot
 
 def find_prompt(style, target):
-  domain, slot = target['domain'], target['slot']
+  domain = target['domain'].lower()
+  slot = target['slot'].lower()
+  if domain.endswith('s'):
+    domain = domain[:-1]
+
   if style == 'schema':
     return schema_descriptions[domain][slot]
   elif style == 'question':
     return question_descriptions[domain][slot]
   elif style == 'informed':
-    return slot_informed_descriptions[domain][slot]
+    return slot_informed(domain, slot)
   elif style == 'naive':
-    return naive_descriptions[domain][slot]
+    return naive_style(domain, slot)
   elif style == 'human':
     return human_descriptions[domain][slot]
   elif style == 'none':
     return " "
   elif style == 'random':
     return "random"
+
+def slot_informed(domain, slot):
+  desc = slot_informed_descriptions[domain][slot] + " is "
+  return desc
+
+def naive_style(domain, slot):
+  try:
+    desc = naive_descriptions[domain][slot] + " is "
+  except(KeyError):
+    desc = f"{slot} of the {domain} is "
+  return desc
 
 def topic_prompts(style):
   if style == 'schema':

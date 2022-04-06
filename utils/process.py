@@ -313,8 +313,6 @@ def build_sgd(args, data, mapping, split):
   
       elif turn['speaker'] == 'USER':
         user_utt = f"<customer> {text}"
-        context = ' '.join(text_so_far)
-        text_so_far.append(user_utt)
 
         for frame in turn['frames']:
           service = frame['service'].split('_')[0]
@@ -323,7 +321,9 @@ def build_sgd(args, data, mapping, split):
             for slot, value in frame['state']['slot_values'].items():
               target = {'domain': service, 'slot': slot, 'value': value[0],
                     'global_id': conversation['dialogue_id'] + '_' + str(turn_count+1) }
-              examples.append({'history': context, 'current': user_utt, 'target': target})
+              examples.append({'history': text_so_far, 'current': user_utt, 'target': target})
+        text_so_far.append(user_utt)
+
 
       if len(text_so_far) > 10:
         text_so_far = text_so_far[-10:]
