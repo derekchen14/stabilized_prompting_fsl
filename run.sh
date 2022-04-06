@@ -1,7 +1,7 @@
 # ________ Fine-tuned Model Training ________
 # Training with all available data
 python main.py --dataset mwoz --task fine_tune --style dataset --do-train --do-save \
-      --model t5 --size small --num-shots full --maximum-len 1024 --prompt-style none \
+      --model t5 --size small --num-shots full --maximum-length 1024 --prompt-style none \
       --context-len 4 --batch-size 8 --log-interval 1200 --learning-rate 1e-4 --n-epochs 7 #--ignore-cache
 # python main.py --dataset abcd --task fine_tune --n-epochs 7 --do-train --debug \
 #       --style dataset --model gpt --size small --num-shots full --batch-size 6 \

@@ -114,6 +114,8 @@ def reformat_data(args):
                       os.path.join(args.input_dir, args.dataset, "ontology.json"))
     elif args.dataset == 'sgd':   # Schema Guided Dialogue
       reformatter = ReformatSGD()
+      shutil.copyfile(os.path.join(args.input_dir, "google_sgd/ontology.json"),
+                      os.path.join(args.input_dir, args.dataset, "ontology.json"))
     else:
       reformatter = ReformatBase()
     # loads, reformats and saves the data in the background
