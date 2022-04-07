@@ -69,8 +69,7 @@ class BaseDataset(Dataset):
 class InContextDataset(BaseDataset):
 
   def select_context(self, example, target):
-    history = ' '.join(example['history'][-self.ctx_len:])
-    dialog = history + ' ' + example['current']
+    dialog = ' '.join(example['utterances'][-self.ctx_len:])
     current_size = len(dialog)
     contexts = []
 
@@ -84,7 +83,7 @@ class InContextDataset(BaseDataset):
         context_example = search_for_similar(dialog, self.data, target)
 
       context_target = context_example['target']
-      context_label = context_target['value'].strip()
+      context_label = context_target['value']
       context_prompt = find_prompt(self.prompt_style, context_target)
       ctx_history = ' '.join(context_example['history'][-3:])
       added_context = ctx_history + example['current'] + f" {context_prompt} {context_label}"
@@ -101,12 +100,11 @@ class InContextDataset(BaseDataset):
     contexts, dialogues, labels = [], [], []
 
     for example in examples:
-      history = ' '.join(example['history'][-self.ctx_len:])
-      current_utt = example['current']
+      dialog = ' '.join(example['history'][-self.ctx_len:])
       target = example['target']
       domain, slot, value = target['domain'], target['slot'], target['value']
       prompt = find_prompt(self.prompt_style, target)
-      dialog = history + ' ' + current_utt + '<sep>' + prompt
+      dialog += f' {prompt}'
 
       additional_context = self.select_context(example, target)
       contexts.append(additional_context)
@@ -152,7 +150,7 @@ class MetaLearnDataset(InContextDataset):
       for example in examples:
         target = example['target']
         prompt = select_prompt(target)
-        dialog = example['dialogue'] + prompt
+        dialog = ' '.join(example['history'][-self.ctx_len:]) + prompt
         additional_context = self.select_context(example['dialogue'], target)
 
         contexts.append(additional_context)
@@ -174,7 +172,7 @@ class FineTuneDataset(BaseDataset):
     dialogues, labels = [], []
 
     for example in examples:
-      dialog = example['history'] + '<sep>' + example['current']
+      dialog = ' '.join(example['history'][-self.ctx_len:])
       dialogues.append(dialog)
       labels.append(example['target']['value'] if self.split == 'train' else example['target'])
 
@@ -194,17 +192,16 @@ class FineTuneDataset(BaseDataset):
     eos = self.tokenizer.eos_token
 
     for example in examples:
-      history = example['history'][-self.ctx_len:]
-      current_utt = example['current']
+      dialog = ' '.join(example['history'][-self.ctx_len:])
       target = example['target']
       domain, slot, value = target['domain'], target['slot'], target['value']
       prompt = select_prompt(target)
 
       if self.split == 'train':
-        dialog = history + ' ' + current_utt + '<sep>' + prompt + value + eos
+        dialog = history + '<sep>' + prompt + value + eos
         max_length = self.max_len
       elif self.split in ['dev', 'test']:
-        dialog = history + ' ' + current_utt + '<sep>' + prompt
+        dialog = history + '<sep>' + prompt
         max_length = self.max_len - 10
       dialogues.append(dialog)
       labels.append(target)

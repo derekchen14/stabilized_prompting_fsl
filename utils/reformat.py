@@ -114,14 +114,6 @@ class ReformatGSIM(object):
         super(ReformatGSIM, self).__init__()
         self.arg = arg
 
-
-class ReformatABCD(object):
-    """docstring for ReformatABCD"""
-    def __init__(self, arg):
-        super(ReformatABCD, self).__init__()
-        self.arg = arg
-        
-
 class ReformatTaskMaster(object):
     """docstring for ReformatTaskMaster"""
     def __init__(self, arg):
@@ -129,10 +121,10 @@ class ReformatTaskMaster(object):
         self.arg = arg
         
 
-class ReformatReddit(object):
-    """docstring for ReformatReddit"""
+class ReformatDSTC(object):
+    """docstring for ReformatDSTC"""
     def __init__(self, arg):
-        super(ReformatReddit, self).__init__()
+        super(ReformatDSTC, self).__init__()
         self.arg = arg
         
 
