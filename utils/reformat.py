@@ -8,7 +8,7 @@ import pdb
 class ReformatBase(object):
     """docstring for ReformatBase"""
     def __init__(self):
-        super(ReformatBase, self).__init__()
+        self.splits = ['train', 'dev', 'test']
         
     def load_json(self, data_path=None):
         if data_path is None:
@@ -92,12 +92,41 @@ class ReformatMultiWOZ22(ReformatBase):
 
 
     def reformat(self):
-        for data_type in ['train', 'dev', 'test']:
-            dials = self.load_data_folder(data_type, self.data_dir)
-            reformat_data_path = os.path.join(self.reformat_data_dir, data_type + ".json")
+        for split in self.splits:
+            dials = self.load_data_folder(split, self.data_dir)
+            reformat_data_path = os.path.join(self.reformat_data_dir, split + ".json")
             with open(reformat_data_path, "w") as tf:
                 json.dump(dials, tf, indent=2)
 
+class ReformatDSTC(object):
+    """docstring for ReformatDSTC"""
+    def __init__(self, arg):
+        super(ReformatDSTC, self).__init__()
+        self.arg = arg
+
+    def extract_data(self, row):
+        data_dir = row.strip('\n')
+        label_path = os.path.join('data', data_dir, 'label.json')
+        log_path = os.path.join('data', data_dir, 'log.json')
+
+        label_data = json.load(open(label_path, 'r'))
+        log_data = json.load(open(log_path, 'r'))
+
+        example = {
+            'sid': log_data['session-id'],
+            'conversation': log_data['turns'],
+            'label': label_data['turns']
+        }
+        return example
+
+    def reformat(self):
+        for split in self.splits:
+            with open(f'data/dstc2_{split}.txt', 'r') as file:
+                for row in file:
+                    example = self.extract_data(row)
+                    all_data[split].append(example)
+            print(f'{split} size:', len(all_data[split]))
+            json.dump(all_data[split], open(f'data/raw_{split}.json', 'w'))
 
 class ReformatSGD(ReformatMultiWOZ22):
     """docstring for ReformatSGD"""
@@ -105,8 +134,6 @@ class ReformatSGD(ReformatMultiWOZ22):
         super(ReformatSGD, self).__init__()
         self.data_dir = os.path.join(input_dir, "multiwoz_dst/google_sgd/")
         self.reformat_data_dir = "./assets/sgd"
-
-
 
 class ReformatGSIM(object):
     """docstring for ReformatGSIM"""
@@ -121,11 +148,6 @@ class ReformatTaskMaster(object):
         self.arg = arg
         
 
-class ReformatDSTC(object):
-    """docstring for ReformatDSTC"""
-    def __init__(self, arg):
-        super(ReformatDSTC, self).__init__()
-        self.arg = arg
         
 
 def main():
