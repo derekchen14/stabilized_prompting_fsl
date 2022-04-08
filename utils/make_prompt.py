@@ -5,7 +5,7 @@ from assets.static_vars import DOMAIN_SLOTS
 schema_descriptions = {
   "taxi": {
     "leaveat": "what time you want the taxi to leave your departure location by",
-    "destination": "destination of taxi",
+    "destination": "what place do you want the taxi to go",
     "departure": "what place do you want to meet the taxi",
     "arriveby": "when you want the taxi to drop you off at your destination" }, 
   "restaurant": {

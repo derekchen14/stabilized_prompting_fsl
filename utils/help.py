@@ -104,7 +104,7 @@ def memstat(message):
 
 
 def reformat_data(args):
-  if not os.path.exists(os.path.join(args.input_dir, args.dataset)) or args.ignore_cache:
+  if not os.path.exists(os.path.join(args.input_dir, args.dataset)) and args.ignore_cache:
     os.makedirs(os.path.join(args.input_dir, args.dataset), exist_ok=True)
     if args.dataset == 'abcd':  # MultiWoz 2.0
       reformatter = ReformatABCD(args.input_dir)
