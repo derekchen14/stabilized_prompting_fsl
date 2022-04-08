@@ -347,13 +347,15 @@ def build_tt(args, data, ontology):
         text_so_far.append(user_utterance)
 
         if 'segments' in turn:
-          labels = extract_slotvals(turn['segments'], ontology)
+          labels = extract_slotvals(turn['segments'], ontology['slotvals'])
           for slot, value in labels.items():
             target = {'domain': 'movies', 'slot': slot, 'value': value}
             examples.append({'history': context, 'current': user_utterance, 'target': target})
 
       if len(text_so_far) > 10:
         text_so_far = text_so_far[-10:]
+  
+  pdb.set_trace()
   return examples
 
 def extract_slotvals(segments, ontology):
@@ -434,7 +436,7 @@ def hold_out(args, datasets):
   return datasets
 
 def process_data(args, raw_data, tokenizer):
-  label_set = [] # raw_data['ontology']
+  label_set = raw_data['ontology']
 
   cache_results, already_exist = check_cache(args)
   if already_exist:
