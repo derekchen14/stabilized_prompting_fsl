@@ -12,7 +12,7 @@ from tqdm import tqdm as progress_bar
 from collections import defaultdict
 
 def check_cache(args):
-  cache_file = f'{args.dataset}_{args.task}.pkl'
+  cache_file = f'{args.dataset}_{args.model}.pkl'
   cache_path = os.path.join(args.input_dir, 'cache', args.dataset, cache_file)
   use_cache = not args.ignore_cache
 
@@ -282,7 +282,7 @@ def build_gsim(data, mapping):
       user_utt = f"<customer> {user_text}"
       text_so_far.append(user_utt)
 
-      for state in turn['dialoge_state']:
+      for state in turn['dialogue_state']:
         target = {'domain': domain, 
                     'slot': state['slot'],
                    'value': state['value'],  
@@ -381,7 +381,7 @@ def prepare_examples(args, data, ontology, split):
   elif args.dataset == 'dstc':  # State Tracking Challenge 2
     examples = build_dstc(args, data) 
   elif args.dataset == 'gsim':    # Google Simulated Chats
-    examples = build_tt(args, data, ontology) 
+    examples = build_gsim(data, ontology) 
   elif args.dataset.startswith('mwoz'):  # MultiWoz 2.1 or 2.2
     examples = build_mwoz(args, data)
   elif args.dataset == 'sgd':   # Schema Guided Dialogue
