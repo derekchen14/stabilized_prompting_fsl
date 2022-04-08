@@ -241,7 +241,7 @@ def build_dstc(args, data):
 
     for turn in convo['conversation']:
       target = {
-        'global_id': convo['guid'] + '_' + turn['turn'],
+        'global_id': convo['guid'] + '_' + str(turn['turn']),
         'domain': 'restaurant' }
 
       if turn['speaker'] == 'agent':
@@ -260,7 +260,7 @@ def build_dstc(args, data):
 
       if len(text_so_far) > 10:
         text_so_far = text_so_far[-10:]
-
+  
   return examples
 
 def build_gsim(data, mapping):
