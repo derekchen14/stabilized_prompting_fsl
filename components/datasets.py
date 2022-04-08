@@ -68,7 +68,7 @@ class BaseDataset(Dataset):
 
 class InContextDataset(BaseDataset):
 
-  def select_context(self, example, target):
+  def select_context(self, example):
     dialog = ' '.join(example['utterances'][-self.ctx_len:])
     current_size = len(dialog)
     contexts = []
@@ -78,15 +78,15 @@ class InContextDataset(BaseDataset):
       if len(self.supported_datasets) > 0:
         for name, _ in DATASETS.items():
           support = getattr(self, f"{name}_data")
-          context_example = search_for_similar(example, support, target)
+          context_example = search_for_similar(example, support)
       else:
-        context_example = search_for_similar(dialog, self.data, target)
+        context_example = search_for_similar(example, self.data)
 
       context_target = context_example['target']
       context_label = context_target['value']
       context_prompt = find_prompt(self.prompt_style, context_target)
-      ctx_history = ' '.join(context_example['history'][-3:])
-      added_context = ctx_history + example['current'] + f" {context_prompt} {context_label}"
+      ctx_history = ' '.join(context_example['utterances'][-3:])
+      added_context = ctx_history + f" {context_prompt} {context_label}"
       added_size = len(added_context)
       current_size += added_size
       contexts.append(added_context)
@@ -102,11 +102,10 @@ class InContextDataset(BaseDataset):
     for example in examples:
       dialog = ' '.join(example['history'][-self.ctx_len:])
       target = example['target']
-      domain, slot, value = target['domain'], target['slot'], target['value']
       prompt = find_prompt(self.prompt_style, target)
       dialog += f' {prompt}'
 
-      additional_context = self.select_context(example, target)
+      additional_context = self.select_context(example)
       contexts.append(additional_context)
       dialogues.append(dialog)
       labels.append(target)
@@ -135,14 +134,15 @@ class MetaLearnDataset(InContextDataset):
     if self.split == 'train':
       eos = self.tokenizer.eos_token
       for example in examples:
+        history = ' '.join(example['history'][-self.ctx_len:])
         target = example['target']
         prompt = select_prompt(target)
-        dialog = example['history'] + prompt + target['value'] + eos
-        additional_context = self.select_context(example['current'], target)
+        dialog = history + prompt + target['value'] + eos
+        additional_context = self.select_context(example)
 
         contexts.append(additional_context)
         dialogues.append(dialog)
-      inputs = self.tokenizer(contexts, dialogues, padding=pad_style,
+      inputs = self.tokenizer(contexts, dialogues, padding=True,
                                 truncation='only_first', return_tensors='pt').to(device)
       labels = inputs['input_ids']
 
@@ -151,16 +151,18 @@ class MetaLearnDataset(InContextDataset):
         target = example['target']
         prompt = select_prompt(target)
         dialog = ' '.join(example['history'][-self.ctx_len:]) + prompt
-        additional_context = self.select_context(example['dialogue'], target)
+        additional_context = self.select_context(example)
 
         contexts.append(additional_context)
         dialogues.append(dialog)
         labels.append(target)
-      inputs = self.tokenizer(contexts, dialogues, padding=pad_style, max_length=1010,
+
+      max_length = self.max_len - 14
+      inputs = self.tokenizer(contexts, dialogues, padding=True, max_length=max_length,
                                 truncation='only_first', return_tensors='pt').to(device)
 
     elif self.split == 'test':
-      inputs,labels = super().collate_lm(examples)
+      inputs, labels = super().collate_lm(examples)
 
     return inputs, labels
 
@@ -176,8 +178,8 @@ class FineTuneDataset(BaseDataset):
       dialogues.append(dialog)
       labels.append(example['target']['value'] if self.split == 'train' else example['target'])
 
-    # self.tokenizer.pad_token = self.tokenizer.eos_token
-    inputs = self.tokenizer(dialogues, padding='longest', max_length=1000,
+    max_length = self.max_len - 14
+    inputs = self.tokenizer(dialogues, padding='longest', max_length=max_length,
                                 truncation=True, return_tensors='pt').to(device)
     if self.split == 'train':
       targets = self.tokenizer(labels) # we do not want tensors
@@ -194,15 +196,14 @@ class FineTuneDataset(BaseDataset):
     for example in examples:
       dialog = ' '.join(example['history'][-self.ctx_len:])
       target = example['target']
-      domain, slot, value = target['domain'], target['slot'], target['value']
       prompt = select_prompt(target)
 
       if self.split == 'train':
-        dialog = history + '<sep>' + prompt + value + eos
+        dialog = history + '<sep>' + prompt + target['value'] + eos
         max_length = self.max_len
       elif self.split in ['dev', 'test']:
         dialog = history + '<sep>' + prompt
-        max_length = self.max_len - 10
+        max_length = self.max_len - 14
       dialogues.append(dialog)
       labels.append(target)
 

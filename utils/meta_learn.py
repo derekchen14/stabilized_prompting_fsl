@@ -2,7 +2,7 @@ import os, pdb, sys
 import numpy as np
 import random
 
-def search_for_similar(dialog, candidates, target):
+def search_for_similar(example, candidates):
   """
   TODO: use TF_IDF / SBERT / Roberta
   embedding = roberta_model(dialog)
@@ -16,6 +16,7 @@ def search_for_similar(dialog, candidates, target):
       distance = current_distance
   return closest
   """
+  target = example['target']
   gid = target['global_id']
   domain = target['domain']
 
