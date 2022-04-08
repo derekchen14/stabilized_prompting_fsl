@@ -210,7 +210,7 @@ def make_dialogue_state(intent, action, values, scene, mappings):
 
   return targets
 
-def build_abcd(args, data, ontology):
+def build_abcd(data, ontology):
   examples = []
   mappings = create_abcd_mappings(ontology)
   mappings['valid_actions'] = ontology['actions']['has_slotval']
@@ -223,14 +223,13 @@ def build_abcd(args, data, ontology):
       speaker = turn['speaker']
 
       if speaker == 'action':  # skip action turns
-        intent, nextstep, action, value, utt_rank = turn['targets']
+        intent, nextstep, action, values, utt_rank = turn['targets']
         # each target is a 5-part list: intent, nextstep, action, value, utt_rank
         targets = make_dialogue_state(intent, action, values, convo['scene'], mappings)
   
         for target in targets:
           target['global_id'] = str(convo['convo_id']) + '_' + str(turn['turn_count'])
-          context = ' '.join(utt_so_far)
-          example = {'dialogue': context, 'label': target['value'], 'target': target}
+          example = {'utterances': utt_so_far, 'target': target}
           examples.append(example)
       else:
         text = turn['text']
@@ -241,7 +240,7 @@ def build_abcd(args, data, ontology):
 
   return examples
 
-def build_dstc(args, data):
+def build_dstc(data):
   ''' extra contains the structured label as a value '''
   examples = []
 
@@ -386,9 +385,9 @@ def prepare_examples(args, data, ontology, split):
     target: a dictionary with keys global_id, domain, slot and value
   """
   if args.dataset == 'abcd':    # Action Based Conversations
-    examples = build_abcd(args, data) 
+    examples = build_abcd(data, ontology) 
   elif args.dataset == 'dstc':  # State Tracking Challenge 2
-    examples = build_dstc(args, data) 
+    examples = build_dstc(data) 
   elif args.dataset == 'gsim':    # Google Simulated Chats
     examples = build_gsim(data, ontology) 
   elif args.dataset.startswith('mwoz'):  # MultiWoz 2.1 or 2.2
