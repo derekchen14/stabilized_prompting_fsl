@@ -70,6 +70,7 @@ def build_mwoz21(args, data, label_set):
       text = turn['text']
       speaker = speakers[speaker_id]
       utterance = f"{speaker} {text}"
+      text_so_far.append(utterance)  # add agent utterance afterwards
       
       if speaker == '<agent>':
         domain, d_tracker = extract_domain(targets, label_set, d_tracker)
@@ -77,10 +78,9 @@ def build_mwoz21(args, data, label_set):
         targets = extract_label(turn['metadata'])
         for domain, slot, value in targets:
           target = {'domain': domain, 'slot': slot, 'value': value}
-          example = {'history': context, 'current': utterance, 'target': target}
+          example = {'utterances': text_so_far, 'target': target}
           examples.append(example)
 
-      text_so_far.append(utterance)  # add agent utterance afterwards
       
       speaker_id = 1 - speaker_id
       if len(text_so_far) > args.context_len:
@@ -121,11 +121,10 @@ def build_mwoz(args, data):
                 else:
                   value = 'none'
 
-                history = ' '.join(text_so_far[:-1])
                 target = {'domain': current_domain, 'slot': slot, 'value': value,
                         'global_id': conversation['dialogue_id'] + '_' + turn['turn_id'] }
 
-                example = {'history': history, 'current': utterance, 'target': target}
+                example = {'utterances': text_so_far, 'target': target}
                 examples.append(example)
       
       if len(text_so_far) > 10:
@@ -222,9 +221,7 @@ def build_abcd(args, data, ontology):
         target['global_id'] = str(convo['convo_id']) + '_' + str(turn['turn_count'])
   
         if valid:
-          context = ' '.join(utt_so_far[:-1])
-          current_utt = utt_so_far[-1]
-          example = {'history': context, 'current': current_utt, 'target': target}
+          example = {'utterances': utt_so_far, 'target': target}
           examples.append(example)  
       else:
         text = turn['text']
@@ -253,14 +250,13 @@ def build_dstc(args, data):
   
       elif turn['speaker'] == 'user':
         user_text = f"<customer> {turn['text']}"
-        history = ' '.join(text_so_far)
         text_so_far.append(user_text)
 
         for slot, value in turn['inform'].items():
           # TODO: add negatives to predict "none"
           target['slot'] = slot
           target['value'] = value
-          examples.append({'history': history, 'current': user_text, 'target': target})
+          examples.append({'utterances': text_so_far, 'target': target})
 
       if len(text_so_far) > 10:
         text_so_far = text_so_far[-10:]
@@ -284,7 +280,6 @@ def build_gsim(data, mapping):
 
       user_text = turn['user_utterance']['text']
       user_utt = f"<customer> {user_text}"
-      context = ' '.join(text_so_far)
       text_so_far.append(user_utt)
 
       for state in turn['dialoge_state']:
@@ -292,7 +287,7 @@ def build_gsim(data, mapping):
                     'slot': state['slot'],
                    'value': state['value'],  
                'global_id': dialog_id + '_' + str(turn_count + 1) }
-        example = {'history': context, 'current': user_utt, 'target': target}
+        example = {'utterances': text_so_far, 'target': target}
         examples.append(example)
 
   return examples
@@ -343,14 +338,13 @@ def build_tt(args, data, ontology):
 
       elif turn['speaker'] == 'user':
         user_utterance = f"<customer> {text}"
-        context = ' '.join(text_so_far)
         text_so_far.append(user_utterance)
 
         if 'segments' in turn:
           labels = extract_slotvals(turn['segments'], ontology)
           for slot, value in labels.items():
             target = {'domain': 'movies', 'slot': slot, 'value': value}
-            examples.append({'history': context, 'current': user_utterance, 'target': target})
+            examples.append({'utterances': text_so_far, 'target': target})
 
       if len(text_so_far) > 10:
         text_so_far = text_so_far[-10:]
