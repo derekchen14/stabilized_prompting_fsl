@@ -100,7 +100,7 @@ class InContextDataset(BaseDataset):
     contexts, dialogues, labels = [], [], []
 
     for example in examples:
-      dialog = ' '.join(example['history'][-self.ctx_len:])
+      dialog = ' '.join(example['utterances'][-self.ctx_len:])
       target = example['target']
       prompt = find_prompt(self.prompt_style, target)
       dialog += f' {prompt}'
@@ -134,9 +134,9 @@ class MetaLearnDataset(InContextDataset):
     if self.split == 'train':
       eos = self.tokenizer.eos_token
       for example in examples:
-        history = ' '.join(example['history'][-self.ctx_len:])
+        history = ' '.join(example['utterances'][-self.ctx_len:])
         target = example['target']
-        prompt = select_prompt(target)
+        prompt = find_prompt(self.prompt_style, target)
         dialog = history + prompt + target['value'] + eos
         additional_context = self.select_context(example)
 
@@ -149,8 +149,8 @@ class MetaLearnDataset(InContextDataset):
     elif self.split == 'dev':
       for example in examples:
         target = example['target']
-        prompt = select_prompt(target)
-        dialog = ' '.join(example['history'][-self.ctx_len:]) + prompt
+        prompt = find_prompt(self.prompt_style, target)
+        dialog = ' '.join(example['utterances'][-self.ctx_len:]) + prompt
         additional_context = self.select_context(example)
 
         contexts.append(additional_context)
@@ -174,7 +174,7 @@ class FineTuneDataset(BaseDataset):
     dialogues, labels = [], []
 
     for example in examples:
-      dialog = ' '.join(example['history'][-self.ctx_len:])
+      dialog = ' '.join(example['utterances'][-self.ctx_len:])
       dialogues.append(dialog)
       labels.append(example['target']['value'] if self.split == 'train' else example['target'])
 
@@ -194,15 +194,15 @@ class FineTuneDataset(BaseDataset):
     eos = self.tokenizer.eos_token
 
     for example in examples:
-      dialog = ' '.join(example['history'][-self.ctx_len:])
+      dialog = ' '.join(example['utterances'][-self.ctx_len:])
       target = example['target']
-      prompt = select_prompt(target)
+      prompt = find_prompt(self.prompt_style, target)
 
       if self.split == 'train':
-        dialog = history + '<sep>' + prompt + target['value'] + eos
+        dialog += prompt + target['value'] + eos
         max_length = self.max_len
       elif self.split in ['dev', 'test']:
-        dialog = history + '<sep>' + prompt
+        dialog += prompt
         max_length = self.max_len - 14
       dialogues.append(dialog)
       labels.append(target)

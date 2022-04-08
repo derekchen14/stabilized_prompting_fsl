@@ -349,7 +349,6 @@ def build_tt(args, data, ontology):
       if len(text_so_far) > 10:
         text_so_far = text_so_far[-10:]
   
-  pdb.set_trace()
   return examples
 
 def extract_slotvals(segments, ontology):
