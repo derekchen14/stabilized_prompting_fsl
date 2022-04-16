@@ -22,7 +22,6 @@ def run_train(args, model, datasets, exp_logger):
   for epoch_count in range(exp_logger.num_epochs):
     exp_logger.start_epoch(train_dataloader)
     model.train()
-    
     for step, batch in enumerate(train_dataloader):
       inputs, targets = batch
       review_inputs(args, targets, datasets['train'].tokenizer)
