@@ -83,8 +83,11 @@ def load_model(args, ontology, tokenizer, load_dir):
   ckpt_name = CHECKPOINTS[args.model][args.size]
   if args.model == 'gpt':
     if args.size == 'large':
+      # model = GPTJForCausalLM.from_pretrained(ckpt_name,
+      #          revision="float16", torch_dtype=torch.float16, low_cpu_mem_usage=True)
       model = GPTJForCausalLM.from_pretrained(ckpt_name,
-               revision="float16", torch_dtype=torch.float16, low_cpu_mem_usage=True)
+               revision="float16", torch_dtype=torch.float16)
+      # model = GPTJForCausalLM.from_pretrained("EleutherAI/gpt-j-6B")
     else:
       model = GPT2LMHeadModel.from_pretrained(ckpt_name)
     # use GPTJForCausalLM: https://huggingface.co/docs/transformers/model_doc/gptj
@@ -97,8 +100,20 @@ def load_model(args, ontology, tokenizer, load_dir):
     model.config.pad_token = tokenizer.pad_token
     model.config.pad_token_id = tokenizer.pad_token_id
     model.resize_token_embeddings(len(tokenizer))  # transformer_check
-  
-  return model.to(device)
+
+  if args.parallel:
+    # device_map = {
+    #     0: [0, 1, 2, 3],
+    #     1: [4, 5, 6, 7, 8, 9],
+    #     2: [10, 11, 12, 13, 14, 15,],
+    #     3: [16, 17, 18, 19, 20, 21,],
+    #     4: [22, 23, 24, 25, 26, 27,],
+    # }
+    # model.parallelize(device_map)
+    model.parallelize()
+  else:
+    model.to(device)
+  return model
 
 def load_glove(size=300):
   if size > 0:
