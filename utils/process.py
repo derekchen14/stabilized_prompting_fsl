@@ -213,7 +213,7 @@ def build_abcd(args, data, ontology):
       speaker = turn['speaker']
 
       if speaker == 'action':  # skip action turns
-        intent, nextstep, action, value, utt_rank = turn['targets']
+        intent, nextstep, action, values, utt_rank = turn['targets']
         # each target is a 5-part list: intent, nextstep, action, value, utt_rank
         targets = make_dialogue_state(intent, action, values, convo['scene'], mappings)
   
@@ -370,7 +370,7 @@ def prepare_examples(args, data, ontology, split):
     target: a dictionary with keys global_id, domain, slot and value
   """
   if args.dataset == 'abcd':    # Action Based Conversations
-    examples = build_abcd(args, data) 
+    examples = build_abcd(args, data, ontology) 
   elif args.dataset == 'dstc':  # State Tracking Challenge 2
     examples = build_dstc(args, data) 
   elif args.dataset == 'gsim':    # Google Simulated Chats
