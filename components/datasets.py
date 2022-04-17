@@ -69,7 +69,7 @@ class BaseDataset(Dataset):
 class InContextDataset(BaseDataset):
 
   def select_context(self, example):
-    dialog = ' '.join(example['utterances'][-self.ctx_len:])
+    dialog = ' '.join(example['utterances'])
     current_size = len(dialog)
     contexts = []
 
@@ -100,7 +100,7 @@ class InContextDataset(BaseDataset):
     contexts, dialogues, labels = [], [], []
 
     for example in examples:
-      dialog = ' '.join(example['utterances'][-self.ctx_len:])
+      dialog = ' '.join(example['utterances'])
       target = example['target']
       prompt = find_prompt(self.prompt_style, target)
       dialog += f' {prompt}'
@@ -134,7 +134,7 @@ class MetaLearnDataset(InContextDataset):
     if self.split == 'train':
       eos = self.tokenizer.eos_token
       for example in examples:
-        history = ' '.join(example['utterances'][-self.ctx_len:])
+        history = ' '.join(example['utterances'])
         target = example['target']
         prompt = find_prompt(self.prompt_style, target)
         dialog = history + prompt + target['value'] + eos
@@ -150,7 +150,7 @@ class MetaLearnDataset(InContextDataset):
       for example in examples:
         target = example['target']
         prompt = find_prompt(self.prompt_style, target)
-        dialog = ' '.join(example['utterances'][-self.ctx_len:]) + prompt
+        dialog = ' '.join(example['utterances']) + prompt
         additional_context = self.select_context(example)
 
         contexts.append(additional_context)
@@ -174,7 +174,7 @@ class FineTuneDataset(BaseDataset):
     dialogues, labels = [], []
 
     for example in examples:
-      dialog = ' '.join(example['utterances'][-self.ctx_len:])
+      dialog = ' '.join(example['utterances'])
       dialogues.append(dialog)
       labels.append(example['target']['value'] if self.split == 'train' else example['target'])
 
@@ -194,7 +194,7 @@ class FineTuneDataset(BaseDataset):
     eos = self.tokenizer.eos_token
 
     for example in examples:
-      dialog = ' '.join(example['utterances'][-self.ctx_len:])
+      dialog = ' '.join(example['utterances'])
       target = example['target']
       prompt = find_prompt(self.prompt_style, target)
 

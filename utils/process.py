@@ -12,7 +12,7 @@ from tqdm import tqdm as progress_bar
 from collections import defaultdict
 
 def check_cache(args):
-  cache_file = f'{args.dataset}_{args.model}.pkl'
+  cache_file = f'{args.model}_lookback{args.context_length}.pkl'
   cache_path = os.path.join(args.input_dir, 'cache', args.dataset, cache_file)
   use_cache = not args.ignore_cache
 
@@ -78,9 +78,9 @@ def build_mwoz21(args, data, label_set):
         targets = extract_label(turn['metadata'])
         for domain, slot, value in targets:
           target = {'domain': domain, 'slot': slot, 'value': value}
-          example = {'utterances': text_so_far, 'target': target}
-          examples.append(example)
-
+          use_target, history = select_utterances(args, text_so_far, target)
+          if use_target:
+            examples.append({'utterances': history, 'target': target})
       
       speaker_id = 1 - speaker_id
       if len(text_so_far) > args.context_len:
@@ -123,36 +123,9 @@ def build_mwoz(args, data):
 
                 target = {'domain': current_domain, 'slot': slot, 'value': value,
                         'global_id': conversation['dialogue_id'] + '_' + turn['turn_id'] }
-
-                example = {'utterances': text_so_far, 'target': target}
-                examples.append(example)
-      
-      if len(text_so_far) > 10:
-        text_so_far = text_so_far[-10:]
-  return examples
-
-def interact_mwoz(data, mapping):
-  examples = []
-  speakers = ["Customer: ", "Agent: "]
-
-  for convo_id, conversation in progress_bar(data.items(), total=len(data)):
-    text_so_far = []
-    speaker_id = 0
-    
-    for turn in conversation['log']:
-      text = turn['text']
-      speaker = speakers[speaker_id]
-      utterance = f"{speaker} {text}"
-      text_so_far.append(utterance)
-      context = ' '.join(text_so_far)
-      
-      if speaker == 'Agent: ':
-        examples.append({'context': context, 'prompt': 'n/a', 'label': 'n/a'})  
-      
-      speaker_id = 1 - speaker_id
-      if len(text_so_far) > 10:
-        text_so_far = text_so_far[-10:]
-
+                use_target, history = select_utterances(args, text_so_far, target)
+                if use_target:
+                  examples.append({'utterances': history, 'target': target})      
   return examples
 
 def create_abcd_mappings(ontology):
@@ -210,6 +183,23 @@ def make_dialogue_state(intent, action, values, scene, mappings):
 
   return targets
 
+def select_utterances(args, utt_so_far, target):
+  use_target = False
+  if args.context_length == 1:
+    history = ' '.join(utt_so_far)
+    use_target = True
+  else:
+    slot, value = target['slot'], target['value']
+    lookback = -args.context_length
+    selected_utt = utt_so_far[lookback:]
+    history = ' '.join(selected_utt)
+    if value in history:
+      use_target = True
+    if value.lower() in ['yes', 'no'] and slot in history:
+      use_target = True  # to handle the internet and parking use cases
+
+  return use_target, history
+
 def build_abcd(args, data, ontology):
   examples = []
   mappings = create_abcd_mappings(ontology)
@@ -229,15 +219,12 @@ def build_abcd(args, data, ontology):
   
         for target in targets:
           target['global_id'] = str(convo['convo_id']) + '_' + str(turn['turn_count'])
-          context = ' '.join(utt_so_far)
-          example = {'dialogue': context, 'label': target['value'], 'target': target}
-          examples.append(example)
+          use_target, history = select_utterances(args, utt_so_far, target)
+          if use_target:
+            examples.append({'utterances': history, 'target': target})
       else:
         text = turn['text']
         utt_so_far.append(f"<{speaker}> {text}")
-
-    if len(utt_so_far) > 10:
-      utt_so_far = utt_so_far[-10:]
 
   return examples
 
@@ -265,10 +252,9 @@ def build_dstc(args, data):
           # TODO: add negatives to predict "none"
           target['slot'] = slot
           target['value'] = value
-          examples.append({'utterances': text_so_far, 'target': target})
-
-      if len(text_so_far) > 10:
-        text_so_far = text_so_far[-10:]
+          use_target, history = select_utterances(args, text_so_far, target)
+          if use_target:
+            examples.append({'utterances': history, 'target': target})
   
   return examples
 
@@ -296,8 +282,9 @@ def build_gsim(data, mapping):
                     'slot': state['slot'],
                    'value': state['value'],  
                'global_id': dialog_id + '_' + str(turn_count + 1) }
-        example = {'utterances': text_so_far, 'target': target}
-        examples.append(example)
+        use_target, history = select_utterances(args, text_so_far, target)
+        if use_target:
+          examples.append({'utterances': history, 'target': target})
 
   return examples
 
@@ -326,11 +313,10 @@ def build_sgd(args, data, mapping, split):
             for slot, value in frame['state']['slot_values'].items():
               target = {'domain': service, 'slot': slot, 'value': value[0].strip(),
                     'global_id': conversation['dialogue_id'] + '_' + str(turn_count+1) }
-              examples.append({'utterances': text_so_far, 'target': target})
+              use_target, history = select_utterances(args, text_so_far, target)
+              if use_target:
+                examples.append({'utterances': history, 'target': target})
 
-      if len(text_so_far) > 10:
-        text_so_far = text_so_far[-10:]
-  
   return examples
 
 def build_tt(args, data, ontology):
@@ -353,11 +339,9 @@ def build_tt(args, data, ontology):
           labels = extract_slotvals(turn['segments'], ontology['slotvals'])
           for slot, value in labels.items():
             target = {'domain': 'movies', 'slot': slot, 'value': value}
-            examples.append({'utterances': text_so_far, 'target': target})
-
-      if len(text_so_far) > 10:
-        text_so_far = text_so_far[-10:]
-  
+            use_target, history = select_utterances(args, text_so_far, target)
+            if use_target:
+              examples.append({'utterances': history, 'target': target})  
   return examples
 
 def extract_slotvals(segments, ontology):
