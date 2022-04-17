@@ -9,7 +9,7 @@ from assets.static_vars import device, DATASETS, GENERAL_TYPO, DOMAIN_SLOTS
 from components.datasets import MetaLearnDataset, InContextDataset, FineTuneDataset
 from torch.utils.data import DataLoader, RandomSampler, SequentialSampler
 from tqdm import tqdm as progress_bar
-from collections import defaultdict
+from collections import defaultdict, Counter
 
 def check_cache(args):
   cache_file = f'{args.model}_lookback{args.context_length}.pkl'
@@ -99,7 +99,7 @@ def build_mwoz(args, data):
 
     for turn in conversation['turns']:
       text = turn['utterance']
-      speaker = speakers[turn['speaker']]
+      speaker = speakers[turn['speaker'].lower()]
       utterance = f"{speaker} {text}"
       text_so_far.append(utterance)
       
@@ -185,7 +185,7 @@ def make_dialogue_state(intent, action, values, scene, mappings):
 
 def select_utterances(args, utt_so_far, target):
   use_target = False
-  if args.context_length == 1:
+  if args.context_length < 0:
     history = ' '.join(utt_so_far)
     use_target = True
   else:

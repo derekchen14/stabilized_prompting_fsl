@@ -52,12 +52,8 @@ def check_directories(args):
     assert(len(args.left_out) > 0)
     if args.style == 'dataset':
       assert(args.dataset == args.left_out)
+  assert(args.context_length != 0)
   return args, save_path
-
-def prepare_inputs(batch):
-  # change as needed
-  pass
-  # return inputs
 
 def setup_optimization(args, model, total_steps):
   no_decay = ["bias", "LayerNorm.weight"]
