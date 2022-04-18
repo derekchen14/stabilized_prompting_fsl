@@ -6,9 +6,9 @@
 python main.py --dataset sgd --task fine_tune --n-epochs 7 --do-train --debug \
       --style dataset --model gpt --size small --num-shots full --batch-size 6 \
       --learning-rate 1e-4  --maximum-len 512 --prompt-style naive --ignore-cache
-# python main.py --dataset abcd --task fine_tune --n-epochs 7 --do-train --debug \
-#       --style dataset --model gpt --size small --num-shots full --batch-size 8 \
-#       --learning-rate 1e-4  --maximum-len 512 --prompt-style naive --context-length 3
+# python main.py --dataset abcd --task fine_tune --n-epochs 7 --do-train --do-save \
+#       --style dataset --model gpt --size large --parallel --num-shots full --batch-size 16 \
+#       --learning-rate 1e-4  --maximum-len 512 --prompt-style naive
 # python main.py --dataset dstc --task fine_tune --n-epochs 7 --do-train --do-save \
 #       --style dataset --model gpt --size small --num-shots full --batch-size 8 \
 #       --learning-rate 1e-4  --maximum-len 512 --prompt-style naive
