@@ -96,6 +96,8 @@ class InContextDataset(BaseDataset):
 
   def collate_lm(self, examples):
     """ train and dev splits should not occur since you do not need gradient based training """
+    import pdb
+    pdb.set_trace()
     assert(self.split not in ['train', 'dev'])
     contexts, dialogues, labels = [], [], []
 
@@ -119,6 +121,7 @@ class InContextDataset(BaseDataset):
       print(entry.replace('<pad>', '|'))
       pdb.set_trace()
     """
+
     return inputs, labels
 
 class MetaLearnDataset(InContextDataset):
@@ -196,19 +199,20 @@ class FineTuneDataset(BaseDataset):
     for example in examples:
       dialog = ' '.join(example['utterances'])
       target = example['target']
-      prompt = find_prompt(self.prompt_style, target)
+      prompt = find_prompt(self.prompt_style, target).strip()
 
       if self.split == 'train':
-        dialog += prompt + target['value'] + eos
+        dialog += f" {prompt} {target['value']} {eos}"
         max_length = self.max_len
       elif self.split in ['dev', 'test']:
-        dialog += prompt
+        dialog += f" {prompt}"
         max_length = self.max_len - 14
       dialogues.append(dialog)
       labels.append(target)
 
     inputs = self.tokenizer(dialogues, padding=True, max_length=max_length,
                               truncation=True, return_tensors='pt').to(device)
+
     if self.split == 'train':
       return inputs, inputs['input_ids']
     else:

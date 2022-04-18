@@ -12,7 +12,8 @@ from tqdm import tqdm as progress_bar
 from collections import defaultdict, Counter
 
 def check_cache(args):
-  cache_file = f'{args.model}_lookback{args.context_length}.pkl'
+  left_out = 'none' if args.left_out == '' else args.left_out
+  cache_file = f'{args.model}_{args.task}_leftout{left_out}_lookback{args.context_length}.pkl'
   cache_path = os.path.join(args.input_dir, 'cache', args.dataset, cache_file)
   use_cache = not args.ignore_cache
 
