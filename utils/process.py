@@ -187,13 +187,12 @@ def make_dialogue_state(intent, action, values, scene, mappings):
 def select_utterances(args, utt_so_far, target):
   use_target = False
   if args.context_length < 0:
-    history = ' '.join(utt_so_far)
+    history = utt_so_far
     use_target = True
   else:
     slot, value = target['slot'], target['value']
     lookback = -args.context_length
-    selected_utt = utt_so_far[lookback:]
-    history = ' '.join(selected_utt)
+    history = utt_so_far[lookback:]
     if value in history:
       use_target = True
     if value.lower() in ['yes', 'no'] and slot in history:
