@@ -43,6 +43,8 @@ def solicit_params():
                 help="Maximum length of sequences for model input")
     parser.add_argument("--context-length", default=2, type=int,
                 help="Number of turns to look back into dialogue context, eats into token length")
+    parser.add_argument("--auto-carry", action="store_true",
+                help="Automatically carryover slot values, assumes training is done differently")
 
     # Key settings
     parser.add_argument("--ignore-cache", action="store_true",

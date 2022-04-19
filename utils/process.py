@@ -55,8 +55,8 @@ def extract_label(targets):
         labels.append((domain, slot, value))
   return labels
 
-def build_mwoz21(args, data, label_set):
-  # written for MultiWoz v2.1, 2.3 and 2.4
+def build_mwoz(args, data, label_set):
+  # written for MultiWoz v2.0, 2.1 and 2.3
   examples = []
   speakers = ["<customer>", "<agent>"]
 
@@ -81,15 +81,11 @@ def build_mwoz21(args, data, label_set):
           target = {'domain': domain, 'slot': slot, 'value': value}
           use_target, history = select_utterances(args, text_so_far, target)
           if use_target:
-            examples.append({'utterances': history, 'target': target})
-      
+            examples.append({'utterances': history, 'target': target})      
       speaker_id = 1 - speaker_id
-      if len(text_so_far) > args.context_len:
-        text_so_far = text_so_far[-args.context_len:]
-
   return examples
 
-def build_mwoz(args, data):
+def build_mwoz22(args, data):
   ''' Written for raw v2.2 mwoz. This follows the schema format built by SGD'''
   examples = []
   speakers = {'user': '<customer>', 'system': '<agent>'}

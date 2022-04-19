@@ -4,6 +4,8 @@ import random
 
 def search_for_similar(example, candidates):
   """
+  candidates is a list of examples
+
   TODO: use TF_IDF / SBERT / Roberta
   embedding = roberta_model(dialog)
 
