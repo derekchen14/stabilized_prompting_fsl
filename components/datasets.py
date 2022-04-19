@@ -96,8 +96,6 @@ class InContextDataset(BaseDataset):
 
   def collate_lm(self, examples):
     """ train and dev splits should not occur since you do not need gradient based training """
-    import pdb
-    pdb.set_trace()
     assert(self.split not in ['train', 'dev'])
     contexts, dialogues, labels = [], [], []
 
@@ -105,7 +103,7 @@ class InContextDataset(BaseDataset):
       dialog = ' '.join(example['utterances'])
       target = example['target']
       prompt = find_prompt(self.prompt_style, target)
-      dialog += f' {prompt}'
+      dialog += f' {prompt} <label>'
 
       additional_context = self.select_context(example)
       contexts.append(additional_context)
@@ -140,7 +138,7 @@ class MetaLearnDataset(InContextDataset):
         history = ' '.join(example['utterances'])
         target = example['target']
         prompt = find_prompt(self.prompt_style, target)
-        dialog = history + prompt + target['value'] + eos
+        dialog = history + prompt + '<label>' + target['value'] + eos
         additional_context = self.select_context(example)
 
         contexts.append(additional_context)
@@ -153,7 +151,7 @@ class MetaLearnDataset(InContextDataset):
       for example in examples:
         target = example['target']
         prompt = find_prompt(self.prompt_style, target)
-        dialog = ' '.join(example['utterances']) + prompt
+        dialog = ' '.join(example['utterances']) + prompt + '<label>'
         additional_context = self.select_context(example)
 
         contexts.append(additional_context)
@@ -202,7 +200,7 @@ class FineTuneDataset(BaseDataset):
       prompt = find_prompt(self.prompt_style, target).strip()
 
       if self.split == 'train':
-        dialog += f" {prompt} {target['value']} {eos}"
+        dialog += f" {prompt} <label> {target['value']} {eos}"
         max_length = self.max_len
       elif self.split in ['dev', 'test']:
         dialog += f" {prompt}"

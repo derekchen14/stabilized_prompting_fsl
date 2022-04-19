@@ -36,7 +36,7 @@ class ExperienceLogger:
     self.num_epochs = args.n_epochs
 
     self.best_score = { 'epoch': 1 }
-    self.metric = 'accuracy'
+    self.metric = 'jga'
     self.best_score[self.metric] = 0
     self.do_save = args.do_save
     self.differences = []

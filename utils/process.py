@@ -28,9 +28,9 @@ def check_cache(args):
     print(f'Creating new dataset for {args.dataset.upper()} from scratch ...')
     return cache_path, False
 
-def extract_label(targets):
+def extract_label(targets, prior_values):
   # returns a list of (domain, slot, value) tuples when the domain is an active 
-  swaps = {'not mentioned': 'none', 'dontcare': 'any', '': 'none'}
+  swaps = {'not mentioned': '<none>', 'dontcare': 'any', '': '<none>'}
   labels = []
 
   for domain, domain_data in targets.items():
@@ -46,13 +46,19 @@ def extract_label(targets):
         if not isinstance(value, list):
           if value in swaps:
             value = swaps[value]
+          if value == '<none>' and prior_values[slot] != '<none>':
+            value = '<remove>'
           labels.append((domain, slot, value))
+
       for slot, value in domain_data['semi'].items():
         if value in swaps:
           value = swaps[value]
         if value in GENERAL_TYPO:
           value = GENERAL_TYPO[value]
+        if value == '<none>' and prior_values[slot] != '<none>':
+          value = '<remove>'
         labels.append((domain, slot, value))
+
   return labels
 
 def build_mwoz(args, data, label_set):
@@ -67,6 +73,7 @@ def build_mwoz(args, data, label_set):
     if len(goals['police']) > 0 or len(goals['hospital']) > 0:
       continue
 
+    prior_values = {}
     for turn in conversation['log']:
       text = turn['text']
       speaker = speakers[speaker_id]
@@ -76,12 +83,17 @@ def build_mwoz(args, data, label_set):
       if speaker == '<agent>':
         domain, d_tracker = extract_domain(targets, label_set, d_tracker)
         context = ' '.join(text_so_far)
-        targets = extract_label(turn['metadata'])
+        targets = extract_label(turn['metadata'], prior_values)
+
+        new_values = {}
         for domain, slot, value in targets:
           target = {'domain': domain, 'slot': slot, 'value': value}
           use_target, history = select_utterances(args, text_so_far, target)
           if use_target:
-            examples.append({'utterances': history, 'target': target})      
+            examples.append({'utterances': history, 'target': target})
+          new_values[slot] = value
+        prior_values = new_values
+
       speaker_id = 1 - speaker_id
   return examples
 
