@@ -103,7 +103,7 @@ class InContextDataset(BaseDataset):
       dialog = ' '.join(example['utterances'])
       target = example['target']
       prompt = find_prompt(self.prompt_style, target)
-      dialog += f' {prompt} <label>'
+      dialog += f' {prompt}'
 
       additional_context = self.select_context(example)
       contexts.append(additional_context)
@@ -130,7 +130,7 @@ class MetaLearnDataset(InContextDataset):
         history = ' '.join(example['utterances'])
         target = example['target']
         prompt = find_prompt(self.prompt_style, target)
-        dialog = history + prompt + '<label>' + target['value'] + eos
+        dialog = history + prompt + target['value'] + eos
         additional_context = self.select_context(example)
 
         contexts.append(additional_context)
@@ -143,7 +143,7 @@ class MetaLearnDataset(InContextDataset):
       for example in examples:
         target = example['target']
         prompt = find_prompt(self.prompt_style, target)
-        dialog = ' '.join(example['utterances']) + prompt + '<label>'
+        dialog = ' '.join(example['utterances']) + prompt
         additional_context = self.select_context(example)
 
         contexts.append(additional_context)
@@ -192,7 +192,7 @@ class FineTuneDataset(BaseDataset):
       prompt = find_prompt(self.prompt_style, target).strip()
 
       if self.split == 'train':
-        dialog += f" {prompt} <label> {target['value']} {eos}"
+        dialog += f" {prompt} {target['value']} {eos}"
         max_length = self.max_len
       elif self.split in ['dev', 'test']:
         dialog += f" {prompt}"
@@ -202,7 +202,7 @@ class FineTuneDataset(BaseDataset):
 
     inputs = self.tokenizer(dialogues, padding=True, max_length=max_length,
                               truncation=True, return_tensors='pt').to(device)
-    """ 
+    """
     trick = inputs['input_ids']
     treat = self.tokenizer.batch_decode(trick)
     for entry in treat:

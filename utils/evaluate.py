@@ -26,7 +26,7 @@ def parse_output(generated_string, model_type):
     try:
       pred_string = generated_string.split('<label>')[1]
     except(IndexError):
-      print("unable to split by label")
+      print("unable to split by prompt")
       pred_string = generated_string
     pred_string = pred_string.replace(' <pad>', '')
     
@@ -125,7 +125,7 @@ def normalize_text(s):
   s = ' '.join(s.split())
   return s
 
-def group_by_convo(predictions, targets):
+def group_by_convo(args, predictions, targets):
   """groups all predictions by conversation, parses the output, and then sorts by turn
   predictions: list of the raw string out from the model
   targets: list of targets extracted from examples
@@ -133,7 +133,7 @@ def group_by_convo(predictions, targets):
   convos = defaultdict(dict)
   for pred, target in zip(predictions, targets):
     convo_id, turn_count = target['global_id'].split('_')
-    parsed = parse_output(pred)
+    parsed = parse_output(pred, args.model)
     turn_tuple = (parsed, target['slot'], target['value'])
     if turn_count not in convos[convo_id]:
       convos[convo_id][turn_count] = []
@@ -220,7 +220,7 @@ def eval_quantify(args, predictions, targets, exp_logger, tokenizer, split):
 
   if args.style == 'dataset':
     # the left out query set is MWOZ or SGD
-    grouped_preds = group_by_convo(predictions, targets)
+    grouped_preds = group_by_convo(args, predictions, targets)
     final_preds = fill_carryover(args, grouped_preds)
     results = calculate_jga(results, final_preds)
 

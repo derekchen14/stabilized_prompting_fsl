@@ -238,7 +238,7 @@ def find_prompt(style, target):
   elif style == 'human':
     return human_descriptions[domain][slot]
   elif style == 'none':
-    return " "
+    return "<sep> {domain} {slot} <label>"
   elif style == 'random':
     return "random"
 
@@ -251,7 +251,7 @@ def naive_style(domain, slot):
     desc = naive_descriptions[domain][slot] + " is "
   except(KeyError):
     desc = f"{slot} of the {domain} is "
-  return desc
+  return '<label> ' + desc
 
 def topic_prompts(style):
   if style == 'schema':

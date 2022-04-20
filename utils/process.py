@@ -31,9 +31,12 @@ def check_cache(args):
 def extract_label(targets, prior_values):
   # returns a list of (domain, slot, value) tuples when the domain is an active 
   swaps = {'not mentioned': '<none>', 'dontcare': 'any', '': '<none>'}
+  valid_domains = DOMAIN_SLOTS.keys()
   labels = []
 
   for domain, domain_data in targets.items():
+    if domain not in valid_domains:
+      continue
     domain_data = targets[domain]
     active_domain = False
 
@@ -43,58 +46,55 @@ def extract_label(targets, prior_values):
 
     if active_domain:
       for slot, value in domain_data['book'].items():
-        if not isinstance(value, list):
+        if not isinstance(value, list) and slot != 'ticket':
           if value in swaps:
             value = swaps[value]
-          if value == '<none>' and prior_values[slot] != '<none>':
+          if value == '<none>' and prior_values[slot.lower()] != '<none>':
             value = '<remove>'
-          labels.append((domain, slot, value))
+          labels.append((domain, slot.lower(), value))
 
       for slot, value in domain_data['semi'].items():
         if value in swaps:
           value = swaps[value]
         if value in GENERAL_TYPO:
           value = GENERAL_TYPO[value]
-        if value == '<none>' and prior_values[slot] != '<none>':
+        if value == '<none>' and prior_values[slot.lower()] != '<none>':
           value = '<remove>'
-        labels.append((domain, slot, value))
+        labels.append((domain, slot.lower(), value))
 
   return labels
 
-def build_mwoz(args, data, label_set):
+def build_mwoz(args, data, label_set, split):
   # written for MultiWoz v2.0, 2.1 and 2.3
   examples = []
   speakers = ["<customer>", "<agent>"]
-
   for convo_id, conversation in progress_bar(data.items(), total=len(data)):
     text_so_far = []
     speaker_id = 0
-    goals = conversation['goal']
-    if len(goals['police']) > 0 or len(goals['hospital']) > 0:
-      continue
+    turn_count = 0
 
-    prior_values = {}
+    prior_values = {slot: '<none>' for domain, slots in DOMAIN_SLOTS.items() for slot in slots}
     for turn in conversation['log']:
+      turn_count += 1
       text = turn['text']
       speaker = speakers[speaker_id]
       utterance = f"{speaker} {text}"
-      text_so_far.append(utterance)  # add agent utterance afterwards
       
       if speaker == '<agent>':
-        domain, d_tracker = extract_domain(targets, label_set, d_tracker)
-        context = ' '.join(text_so_far)
         targets = extract_label(turn['metadata'], prior_values)
 
-        new_values = {}
         for domain, slot, value in targets:
-          target = {'domain': domain, 'slot': slot, 'value': value}
+          target = {'domain': domain, 'slot': slot, 'value': value,
+              'global_id': f'{convo_id}_{turn_count}' }
           use_target, history = select_utterances(args, text_so_far, target)
-          if use_target:
+          if use_target or split in ['dev', 'test']:
             examples.append({'utterances': history, 'target': target})
-          new_values[slot] = value
-        prior_values = new_values
-
+          pval = '<none>' if value == '<remove>' else value
+          prior_values[slot] = pval
+      
+      text_so_far.append(utterance)  # add agent utterance afterwards
       speaker_id = 1 - speaker_id
+  
   return examples
 
 def build_mwoz22(args, data):
@@ -195,18 +195,22 @@ def make_dialogue_state(intent, action, values, scene, mappings):
 def select_utterances(args, utt_so_far, target):
   use_target = False
   if args.context_length < 0:
-    history = utt_so_far
+    utterances = utt_so_far
     use_target = True
   else:
     slot, value = target['slot'], target['value']
     lookback = -args.context_length
-    history = utt_so_far[lookback:]
-    if value in history:
-      use_target = True
-    if value.lower() in ['yes', 'no'] and slot in history:
-      use_target = True  # to handle the internet and parking use cases
+    utterances = utt_so_far[lookback:]
+    history = ' '.join(utterances)
 
-  return use_target, history
+    if value in history or value in ['<remove>', 'any']:
+      use_target = True
+    elif value.lower() in ['yes', 'no'] and slot in history:
+      use_target = True  # to handle the internet and parking use cases
+    elif value == '<none>' and random.random() < 0.3:
+      use_target = True
+
+  return use_target, utterances
 
 def build_abcd(args, data, ontology):
   examples = []
@@ -384,7 +388,7 @@ def prepare_examples(args, data, ontology, split):
   elif args.dataset == 'gsim':    # Google Simulated Chats
     examples = build_gsim(data, ontology) 
   elif args.dataset.startswith('mwoz'):  # MultiWoz 2.1 or 2.2
-    examples = build_mwoz(args, data)
+    examples = build_mwoz(args, data, ontology, split)
   elif args.dataset == 'sgd':   # Schema Guided Dialogue
     examples = build_sgd(args, data, ontology, split) 
   elif args.dataset == 'tt':    # TicketTalk / TaskMaster 3
