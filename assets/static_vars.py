@@ -71,10 +71,10 @@ GENERAL_TYPO = {
 }
 
 DOMAIN_SLOTS = {
-  "restaurant": ["area", "bookpeople", "bookday", "booktime", "food", "name", "pricerange"],
+  "restaurant": ["area", "people", "day", "time", "food", "name", "pricerange"],
   "taxi": ["arriveby", "destination", "departure", "leaveat"],
-  "train": ["arriveby", "bookpeople", "day", "destination", "departure", "leaveat"],
-  "hotel": ["area", "bookday", "bookstay", "bookpeople", "internet", "name", "parking", "pricerange", "stars", "type"],
+  "train": ["arriveby", "people", "day", "destination", "departure", "leaveat"],
+  "hotel": ["area", "day", "stay", "people", "internet", "name", "parking", "pricerange", "stars", "type"],
   "attraction": ["area", "name", "type"]
 }
 
