@@ -48,7 +48,6 @@ def run_train(args, model, datasets, exp_logger):
 
   return model
 
-
 def run_inference(args, model, dataloader, exp_logger, split):
   ''' goes through model generation without backprop, rather than classification '''
   all_outputs, all_targets = [], []
@@ -61,7 +60,7 @@ def run_inference(args, model, dataloader, exp_logger, split):
       # defaults to greedy sampling, for param details see https://huggingface.co/docs/transformers/
       #        v4.15.0/en/main_classes/model#transformers.generation_utils.GenerationMixin.generate 
       outputs = model.generate(**inputs, max_length=args.maximum_length, early_stopping=True)
-      output_strings = tokenizer.batch_decode(outputs.detach(), skip_special_tokens=True)
+      output_strings = tokenizer.batch_decode(outputs.detach(), skip_special_tokens=False)
       all_outputs.extend(output_strings)
 
     if split == 'dev':

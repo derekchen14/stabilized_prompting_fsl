@@ -63,12 +63,9 @@ def load_tokenizer(args):
   elif args.model == 'gpt':
     tokenizer = AutoTokenizer.from_pretrained(token_ckpt)
     special['sep_token'] = '<sep>'
-    special['pad_token'] = '<pad>'
   elif args.model == 'bart':
     tokenizer = BartTokenizer.from_pretrained(token_ckpt)
-  else:
-    print(f'{args.model} not supported at this time')
-    sys.exit()
+    special['sep_token'] = '<sep>'
 
   if args.do_train or args.num_shots == 'percent' or args.task == 'in_context':
     print(f"Adding special tokens {special}")

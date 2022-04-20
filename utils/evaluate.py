@@ -25,21 +25,23 @@ def parse_output(args, generated_string):
   elif args.model == 'gpt':
     pred_string = parse_gpt(args.prompt_style, generated_string)
 
-  if '<' in pred_string:  # represents the start of a special token
-    eos_index = pred_string.index('<')
-  else:
-    eos_index = len(pred_string)  # just return the entire string
+  eos_index = len(pred_string)
+  for tok in ['<pad>', '<sep>', '</s>', '<|endoftext|>']:
+    cand_index = pred_string.find(tok)  # returns -1 if not found
+    if 0 < cand_index and cand_index < eos_index:
+      eos_index = cand_index
+
   pred_string = pred_string[:eos_index]
   parsed_str = normalize_text(pred_string)
   return parsed_str 
 
-def parse_gpt(prompt_style, generated_string):
+def parse_gpt(style, generated_string):
   if style in ['schema', 'question', 'informed', 'naive', 'human']:
     prompt_with_pred = generated_string.split('<sep>')[1]
     pred_string = prompt_with_pred.split(' is')[1]
   elif style in ['none', 'random']:
     pred_string = generated_string.split('<label>')[1]
-  return pred_string = pred_string.strip().replace(' <pad>', '')
+  return pred_string.strip().replace(' <pad>', '')
 
 def calculate_prec_rec(predicted_outputs, labels):
   label_keys = ['intents', 'requests', 'slots', 'values']  # services is part of input
@@ -69,7 +71,7 @@ def calculate_prec_rec(predicted_outputs, labels):
 
 
 re_art = re.compile(r'\b(a|an|the)\b')
-re_punc = re.compile(r'[!"#$%&()*+,-./:;<=>?@\[\]\\^`{|}~_\']')
+re_punc = re.compile(r'[!"#$%&()*+,-./:;=?@\[\]\\^`{|}~_\']')
 
 def normalize_text(s):
   # Lower text and remove punctuation, articles and extra whitespace.
@@ -86,44 +88,54 @@ def group_by_convo(args, predictions, targets):
   """
   convos = defaultdict(dict)
   for pred, target in zip(predictions, targets):
-    convo_id, turn_count = target['global_id'].split('_')
+    convo_id, turn_string = target['global_id'].split('_')
+    turn_count = int(turn_string)
     parsed = parse_output(args, pred)
-    turn_tuple = (parsed, target['slot'], target['value'])
+    turn_tuple = (parsed, target['domain'], target['slot'], target['value'])
     if turn_count not in convos[convo_id]:
       convos[convo_id][turn_count] = []
     convos[convo_id][turn_count].append(turn_tuple)
-  
-  for convo_id, turns in convos.items():
-    turns.sort(key=turn_count)
   return convos
 
-def pred_to_dialog_state(grouped_preds):
-  generated_convos = {}
-  for convo_id, convo_turns in grouped_preds.items():
-    # convo turns is a dictionary with keys of turn_count and values of turn_tuples
-    max_turn = max(list(convo_turns.keys()))   # largest turn count in the convo
-    generated_turns = order_by_turn_group_by_ds(convo_turns, max_turn+1)
-    generated_convos[convo_id] = generated_turns
-  return generated_convos
-
-def order_by_turn_group_by_ds(convo_turns, max_turns):
-  generated_turns = []
-
-  for turn_index in range(max_turns):
-    if turn_index in convo_turns:
-      turn_tuples = convo_turns[turn_index]
-      gen_turn = {'state': defaultdict(dict), 'active_domains': turn_tuples[0][2]}
-      
-      # Group by domain
-      response_tokens = []
-      for pred_value, dsv, _ in turn_tuples:
-        domain, slot, target_value = dsv
-        gen_turn['state'][domain][slot] = pred_value
-        response_tokens.extend([domain, slot, target_value])
-      gen_turn['response'] = ' '.join(response_tokens)  # filler to satisfy evaluator
-      generated_turns.append(gen_turn)  # in order due to looping by turn_count
+def sort_by_turn(conversations):
+  """ returns sorted conversations which is 
+   a dict {key is convo_id : value is a list of turns in order }
+   each turn has key of slot, and value is a tuple of (pred_val, target_val)
+  """
+  sorted_convos = defaultdict(list) 
+  for convo_id, turns in conversations.items():
+    max_turns = max(list(turns.keys())) + 1  # largest turn count in the convo
     
-  return generated_turns
+    for turn_index in range(max_turns):
+      if turn_index in turns:
+        turn_data = turns[turn_index]
+        group_by_ds = {}
+        for pred_val, domain, slot, target_val in turn_data:
+          group_by_ds[f'{domain}_{slot}'] = (pred_val, target_val)
+        sorted_convos[convo_id].append(group_by_ds)  # in order due to looping by turn_count
+  return sorted_convos
+
+def fill_carryover(conversations):
+  """ Automatically carry over slots when the current estimate is none"""
+  filled = defaultdict(list) 
+  for convo_id, turns in conversations.items():
+
+    carry = {}
+    for turn_data in turns:
+      
+      dialog_state = {}
+      for domain_slot, turn_data in turn_data.items():
+        pred_val, target_val = turn_data
+        if pred_val == '<none>' and domain_slot in carry:
+          pred_val = carry[domain_slot] # then carry over the old value
+        elif pred_val == '<remove>':
+          pred_val = '<none>'
+
+        dialog_state[domain_slot] = (pred_val, target_val)
+        carry[domain_slot] = pred_val  # store it for the next round
+      
+      filled[convo_id].append(dialog_state)
+  return filled
 
 def calculate_jga(results, final_preds):
   """ Does not currently calculate JGA, just gives a sketch 
@@ -132,42 +144,25 @@ def calculate_jga(results, final_preds):
   possible, correct = 0, 0
   joint_possible, joint_correct = 0, 0
 
-  for convo_id, convo_turns in grouped_preds.items():
+  for convo_id, filled_turns in progress_bar(final_preds.items(), total=len(final_preds)):
     
     turn_correct = True
-    for turn_count, turn_tuple in convo_turns.items():
-      pred, slot, value = turn_tuple
-      if value != '<none>':
-        if pred == value:
-          correct += 1
-        else:
-          turn_correct = False
-        possible += 1
+    for dialog_state in filled_turns:
+      for domain_slot, (pred_val, target_val) in dialog_state.items():
+        if target_val != '<none>':
+          if pred_val == target_val:
+            correct += 1
+          else:
+            turn_correct = False
+          possible += 1
 
-    if turn_correct:
-      joint_correct += 1
-    joint_possible += 1
+      if turn_correct:
+        joint_correct += 1
+      joint_possible += 1
 
   results['accuracy'] = round(float(correct) / possible, 3)
   results['jga'] = round(float(joint_correct) / joint_possible, 3)
   return results
-
-def fill_carryover(args, preds):
-  for convo_id, convo_turns in progress_bar(preds.items(), total=len(preds)):
-
-    predicted_values = {}
-    for turn_count, turn_tuple in convo_turns.items():
-      pred, slot, value = turn_tuple
-
-      if pred == '<none>':
-        pred = predicted_values[slot] # then carry over the old value
-      elif pred == '<remove>':
-        pred = '<none>'
-
-      convo_turns[turn_count] = (pred, slot, value)
-      predicted_values[slot] = pred  # store it for the next round
-
-  return preds
 
 def eval_quantify(args, predictions, targets, exp_logger, tokenizer, split):
   results = {'epoch': exp_logger.epoch }  # 'loss': exp_logger.eval_loss  (no loss by default)
@@ -175,16 +170,15 @@ def eval_quantify(args, predictions, targets, exp_logger, tokenizer, split):
   if args.style == 'dataset':
     # the left out query set is MWOZ or SGD
     grouped_preds = group_by_convo(args, predictions, targets)
-    final_preds = fill_carryover(args, grouped_preds)
+    sorted_preds = sort_by_turn(grouped_preds)
+    final_preds = fill_carryover(sorted_preds)
     results = calculate_jga(results, final_preds)
 
   elif args.style == 'domain':
     # the left out query set is hotel, attraction, taxi, etc.
     pass
-
   exp_logger.log_info(results)
   return results
-
 
 def eval_qualify(args, predictions, targets, contexts, exp_logger, tokenizer):
   preds = torch.argmax(predictions, axis=1) 
