@@ -2,6 +2,100 @@ import os, pdb, sys
 import numpy as np
 from assets.static_vars import DOMAIN_SLOTS
 
+def find_prompt(style, target):
+  domain = target['domain'].lower()
+  slot = target['slot'].lower()
+  if domain.endswith('s'):
+    domain = domain[:-1]
+
+  if style == 'schema':
+    return schema_descriptions[domain][slot]
+  elif style == 'question':
+    return question_descriptions[domain][slot]
+  elif style == 'informed':
+    return slot_informed(domain, slot)
+  elif style == 'naive':
+    return naive_style(domain, slot)
+  elif style == 'human':
+    return human_descriptions[domain][slot]
+  elif style == 'none':
+    return f"<sep> {domain} {slot} <label>"
+  elif style == 'random':
+    return random_style(domain, slot)
+
+def random_style(domain, slot):
+  colors = ['red', 'blue', 'green', 'indigo', 'violet', 'yellow', 'orange', 'pink', 'purple',
+      'brown', 'black', 'white', 'gray', 'rose', 'cerulean', 'navy', 'magenta', 'cyan']
+  animals = ['alligator','buffalo','cheetah','dog','elephant','fish','girrafe','hippo',
+      'iguana','jaguar','kangaroo','lion','mammoth','newt','octopus','parrot','squirrel',
+      'racoon','shark','tiger','unicorn','vulture','whale','lynx','yak','zebra']
+  # slots are replaced with a random color
+  # domains are replaced with a random animal
+  pass
+
+def slot_informed(domain, slot):
+  desc = slot_informed_descriptions[domain][slot] + " is "
+  return desc
+
+def extract_domain(metadata, label_set, domain_tracker):
+  for domain in label_set:
+    domain_data = metadata[domain]
+
+    slotvals = []
+    for slot, value in domain_data['book'].items():
+      if len(value) > 0 and not isinstance(value, list):
+        slotvals.append(value)
+    for slot, value in domain_data['semi'].items():
+      if len(value) > 0:
+        slotvals.append(value)
+
+    previous = domain_tracker[domain]
+    current = '_'.join(slotvals)
+    if current != previous:
+      domain_tracker[domain] = current
+      return domain, domain_tracker  # index
+
+  # could not find anything 
+  return "", domain_tracker
+
+def extract_domain_slot(targets):
+  for domain, slots in DOMAIN_SLOTS.items():
+    for slot in slots:
+      pass
+
+  return domain, slot
+
+
+def naive_style(domain, slot):
+  try:
+    desc = naive_descriptions[domain][slot] + " is "
+  except(KeyError):
+    desc = f"{slot} of the {domain} is "
+  return '<label> ' + desc
+
+def topic_prompts(style):
+  if style == 'schema':
+    prompt = "topic of conversation"
+  elif style == 'question':
+    prompt = "What is the customer looking for?"
+  elif style == 'statement':
+    prompt = " The topic of conversation is about a" 
+  elif style == 'token':
+    prompt = "Topic:"
+  return prompt
+
+def train_prompts(style):
+  if style == 'schema':
+    prompt = "destination location of the train"
+  elif style == 'question':
+    prompt = "Where does the user want to go?"
+  elif style == 'statement':
+    prompt = "The user wants to ride the train to"
+  elif style == 'token':
+    prompt = "Destination:"
+  return prompt
+
+
 schema_descriptions = {
   "taxi": {
     "leaveat": "what time you want the taxi to leave your departure location by",
@@ -191,87 +285,3 @@ question_descriptions = {
     "name": "What is the name of the attraction that the user is interested in?",
     "type": "What is the type of the attraction that the user is interested in?"}
 }
-
-def extract_domain(metadata, label_set, domain_tracker):
-  for domain in label_set:
-    domain_data = metadata[domain]
-
-    slotvals = []
-    for slot, value in domain_data['book'].items():
-      if len(value) > 0 and not isinstance(value, list):
-        slotvals.append(value)
-    for slot, value in domain_data['semi'].items():
-      if len(value) > 0:
-        slotvals.append(value)
-
-    previous = domain_tracker[domain]
-    current = '_'.join(slotvals)
-    if current != previous:
-      domain_tracker[domain] = current
-      return domain, domain_tracker  # index
-
-  # could not find anything 
-  return "", domain_tracker
-
-
-def extract_domain_slot(targets):
-  for domain, slots in DOMAIN_SLOTS.items():
-    for slot in slots:
-      pass
-
-  return domain, slot
-
-def find_prompt(style, target):
-  domain = target['domain'].lower()
-  slot = target['slot'].lower()
-  if domain.endswith('s'):
-    domain = domain[:-1]
-
-  if style == 'schema':
-    return schema_descriptions[domain][slot]
-  elif style == 'question':
-    return question_descriptions[domain][slot]
-  elif style == 'informed':
-    return slot_informed(domain, slot)
-  elif style == 'naive':
-    return naive_style(domain, slot)
-  elif style == 'human':
-    return human_descriptions[domain][slot]
-  elif style == 'none':
-    return "<sep> {domain} {slot} <label>"
-  elif style == 'random':
-    return "random"
-
-def slot_informed(domain, slot):
-  desc = slot_informed_descriptions[domain][slot] + " is "
-  return desc
-
-def naive_style(domain, slot):
-  try:
-    desc = naive_descriptions[domain][slot] + " is "
-  except(KeyError):
-    desc = f"{slot} of the {domain} is "
-  return '<label> ' + desc
-
-def topic_prompts(style):
-  if style == 'schema':
-    prompt = "topic of conversation"
-  elif style == 'question':
-    prompt = "What is the customer looking for?"
-  elif style == 'statement':
-    prompt = " The topic of conversation is about a" 
-  elif style == 'token':
-    prompt = "Topic:"
-  return prompt
-
-def train_prompts(style):
-  if style == 'schema':
-    prompt = "destination location of the train"
-  elif style == 'question':
-    prompt = "Where does the user want to go?"
-  elif style == 'statement':
-    prompt = "The user wants to ride the train to"
-  elif style == 'token':
-    prompt = "Destination:"
-  return prompt
-
