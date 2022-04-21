@@ -49,7 +49,7 @@ def extract_label(targets, prior_values):
         if not isinstance(value, list) and slot != 'ticket':
           if value in swaps:
             value = swaps[value]
-          if value == '<none>' and prior_values[slot.lower()] != '<none>':
+          if value == '<none>' and prior_values[f'{domain}_{slot.lower()}'] != '<none>':
             value = '<remove>'
           labels.append((domain, slot.lower(), value))
 
@@ -58,7 +58,7 @@ def extract_label(targets, prior_values):
           value = swaps[value]
         if value in GENERAL_TYPO:
           value = GENERAL_TYPO[value]
-        if value == '<none>' and prior_values[slot.lower()] != '<none>':
+        if value == '<none>' and prior_values[f'{domain}_{slot.lower()}'] != '<none>':
           value = '<remove>'
         labels.append((domain, slot.lower(), value))
 
@@ -73,7 +73,7 @@ def build_mwoz(args, data, label_set, split):
     speaker_id = 0
     turn_count = 0
 
-    prior_values = {slot: '<none>' for domain, slots in DOMAIN_SLOTS.items() for slot in slots}
+    prior_values = {f'{domain}_{slot}': '<none>' for domain, slots in DOMAIN_SLOTS.items() for slot in slots}
     for turn in conversation['log']:
       turn_count += 1
       text = turn['text']
@@ -83,18 +83,26 @@ def build_mwoz(args, data, label_set, split):
       if speaker == '<agent>':
         targets = extract_label(turn['metadata'], prior_values)
 
-        for domain, slot, value in targets:
+        for domain, slot, value in targets: 
           target = {'domain': domain, 'slot': slot, 'value': value,
               'global_id': f'{convo_id}_{turn_count}' }
           use_target, history = select_utterances(args, text_so_far, target)
           if use_target or split in ['dev', 'test']:
             examples.append({'utterances': history, 'target': target})
           pval = '<none>' if value == '<remove>' else value
-          prior_values[slot] = pval
+          prior_values[f'{domain}_{slot}'] = pval
       
       text_so_far.append(utterance)  # add agent utterance afterwards
       speaker_id = 1 - speaker_id
-  
+    
+  if args.verbose: 
+    for i, example in enumerate(examples):
+      if i > 114 and i < 195:
+        et = example['target']
+        if et['value'] != '<none>':
+          print(example['utterances'][0])
+          print(et['domain'], et['slot'], et['value'])
+    pdb.set_trace()
   return examples
 
 def build_mwoz22(args, data):
@@ -203,9 +211,9 @@ def select_utterances(args, utt_so_far, target):
     utterances = utt_so_far[lookback:]
     history = ' '.join(utterances)
 
-    if value in history or value in ['<remove>', 'any']:
+    if value in history.lower() or value in ['<remove>', 'any']:
       use_target = True
-    elif value.lower() in ['yes', 'no'] and slot in history:
+    elif value.lower() in ['yes', 'no'] and (slot in history or 'wifi' in history):
       use_target = True  # to handle the internet and parking use cases
     elif value == '<none>' and random.random() < 0.3:
       use_target = True

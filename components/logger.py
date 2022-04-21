@@ -81,7 +81,7 @@ class ExperienceLogger:
     
     if self.epoch > 3 and self.args.debug:
       below_threshold = True
-    # self.past_metrics.append(metric)
+    self.past_metrics.append(metric)
     if len(self.past_metrics) >= 4:
       trail = self.past_metrics[-4:]
       if all(x == trail[0] for x in trail):
