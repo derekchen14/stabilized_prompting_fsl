@@ -1,14 +1,8 @@
 # ________ Fine-tuned Model Training ________
 # Training with all available data
-python main.py --dataset mwoz --task fine_tune --style dataset --do-train --do-save \
-      --model gpt --size small --num-shots full --maximum-len 512 --prompt-style none \
-      --prune-keep 2 --log-interval 1200 --context-len 1 --batch-size 16 --learning-rate 1e-5
-python main.py --dataset mwoz --task fine_tune --style dataset --do-train --do-save \
-      --model gpt --size small --num-shots full --maximum-len 512 --prompt-style none \
-      --prune-keep 2 --log-interval 1200 --context-len 1 --batch-size 16 --learning-rate 1e-4
-python main.py --dataset mwoz --task fine_tune --style dataset --do-train --do-save \
-      --model gpt --size medium --num-shots full --maximum-len 512 --prompt-style none \
-      --prune-keep 2 --log-interval 1200 --context-len 1 --batch-size 10 --learning-rate 1e-5
+# python main.py --dataset mwoz --task fine_tune --style dataset --do-train --do-save --n-epochs 10 \
+#       --model gpt --size small --num-shots full --maximum-len 512 --prompt-style none \
+#       --prune-keep 2 --log-interval 1200 --context-len 1 --batch-size 16 --learning-rate 1e-4
 # python main.py --dataset sgd --task fine_tune --n-epochs 7 --do-train --debug \
 #       --style dataset --model gpt --size small --num-shots full --batch-size 6 \
 #       --learning-rate 1e-4  --maximum-len 512 --prompt-style naive --ignore-cache
@@ -80,6 +74,6 @@ python main.py --dataset mwoz --task fine_tune --style dataset --do-train --do-s
 #       --model gpt --size medium --batch-size 7 --num-shots zero --threshold 1.4 \
 #       --temperature 1.2
 # >> Evaluation Mode
-# python main.py --dataset sgd --task track --style dataset --do-eval \
-#       --model t5 --size small --num-shots few --prompt-style naive \
-#       --maximum-len 512 --temperature 0.8 --threshold 1.4 --context-len 8
+python main.py --dataset mwoz --task fine_tune --do-eval --context-len 1 --batch-size 16 \
+      --model gpt --size small --num-shots full --maximum-len 512 --prompt-style none
+

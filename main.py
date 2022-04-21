@@ -9,7 +9,8 @@ from components.logger import ExperienceLogger
 from utils.help import *
 from utils.process import process_data, get_dataloader
 from utils.arguments import solicit_params
-from utils.load import load_tokenizer, load_model, load_data, load_support
+from utils.load import load_tokenizer, load_model, load_data, load_best_model
+from utils.load import load_support
 from utils.evaluate import eval_quantify, eval_qualify
 from assets.static_vars import device, debug_break, STOP_TOKENS
 
@@ -74,8 +75,8 @@ def run_eval(args, model, datasets, exp_logger, split='dev'):
   dataloader = get_dataloader(args, datasets[split], split)
   tokenizer = datasets[split].tokenizer
 
-  if split == 'test' and args.task in ['meta_learn', 'fine_tune']:       
-    model = load_best_model(args, model)  # loads the learned weights
+  if split == 'test' and args.task in ['meta_learn', 'fine_tune']:
+    model = load_best_model(args, exp_logger, tokenizer)
   model.eval()
 
   outputs = run_inference(args, model, dataloader, exp_logger, split)
@@ -94,12 +95,12 @@ if __name__ == "__main__":
   tokenizer = load_tokenizer(args)
   datasets, ontology = process_data(args, raw_data, tokenizer)
   exp_logger = ExperienceLogger(args, ontology, save_path)
-  model = load_model(args, ontology, tokenizer, save_path)
 
   if args.do_train:
+    model = load_model(args, ontology, tokenizer, save_path)
     if args.task == 'meta_learn':
       supports = load_support(args, datasets)
       datasets.add_support(supports, args.left_out)
     run_train(args, model, datasets, exp_logger)
   elif args.do_eval:
-    run_eval(args, model, datasets, exp_logger, split='test')
+    run_eval(args, {}, datasets, exp_logger, split='test')

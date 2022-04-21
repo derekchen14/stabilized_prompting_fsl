@@ -75,8 +75,8 @@ def load_tokenizer(args):
 
 def load_model(args, ontology, tokenizer, load_dir):
   print(f"Setting up {args.size} {args.model} model for {args.num_shots} shot learning")
-  if args.num_shots == 'percent':
-    return load_best_model(args, ontology, load_dir)
+  # if args.num_shots == 'percent':
+  #   return load_best_model(args, ontology, load_dir)  causes a circular loop
   
   ckpt_name = CHECKPOINTS[args.model][args.size]
   if args.model == 'gpt':
@@ -94,7 +94,7 @@ def load_model(args, ontology, tokenizer, load_dir):
   elif args.model == 't5':
     model = T5ForConditionalGeneration.from_pretrained(ckpt_name)
 
-  if args.do_train or args.num_shots == 'percent' or args.task == 'in_context': 
+  if args.do_train or args.num_shots == 'percent' or args.task != 'meta_learn': 
     model.config.pad_token = tokenizer.pad_token
     model.config.pad_token_id = tokenizer.pad_token_id
     model.resize_token_embeddings(len(tokenizer))  # transformer_check
@@ -124,8 +124,10 @@ def load_glove(size=300):
   else:
     return None  # embedder is not needed for this task
 
-def load_best_model(args, ontology, load_dir):
+def load_best_model(args, exp_logger, tokenizer):
+  load_dir = exp_logger.save_path
   print(f'Loading best finetuned model from {load_dir} ...')
+  
   if len(args.checkpoint) > 0:
     top_filename = args.checkpoint
   else:
@@ -156,6 +158,5 @@ def load_best_model(args, ontology, load_dir):
   
   # checkpoint = torch.load(ckpt_path, map_location='cpu')
   # model.load_state_dict(checkpoint)
-  model = load_model(args, ontology, {}, ckpt_path)
-  model.eval()
+  model = load_model(args, exp_logger.ontology, tokenizer, ckpt_path)
   return model

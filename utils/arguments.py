@@ -32,7 +32,7 @@ def solicit_params():
                 help="Determines the amount of data used for pre-training the model; See num-shots")
     parser.add_argument("--temperature", default=1.4, type=float,
                 help="Temperature for increasing diversity when decoding, mainly for paraphrase")
-    parser.add_argument("--style", default='domain', type=str, choices=['domain', 'dataset'],
+    parser.add_argument("--style", default='dataset', type=str, choices=['domain', 'dataset'],
                 help="Subset of data held out for testing. For example, if domain is the chosen style, \
                 then we meta learn on [taxi, hotel, restaurant, train] and test on [attraction].")
     parser.add_argument("--left-out", default='', type=str,   # see args.style
