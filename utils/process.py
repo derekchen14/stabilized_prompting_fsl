@@ -324,7 +324,7 @@ def build_sgd(args, data, mapping, split):
           if 'state' in frame:
             for slot, value in frame['state']['slot_values'].items():
               target = {'domain': service, 'slot': slot, 'value': value[0].strip(),
-                    'global_id': conversation['dialogue_id'] + '_' + str(turn_count+1) }
+                    'global_id': conversation['dialogue_id'].replace('_','-') + '_' + str(turn_count+1) }
               use_target, history = select_utterances(args, text_so_far, target)
               if use_target:
                 examples.append({'utterances': history, 'target': target})
