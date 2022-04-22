@@ -1,8 +1,9 @@
 # ________ Fine-tuned Model Training ________
 # Training with all available data
-# python main.py --dataset mwoz --task fine_tune --style dataset --do-train --do-save --n-epochs 10 \
-#       --model gpt --size small --num-shots full --maximum-len 512 --prompt-style none \
-#       --prune-keep 2 --log-interval 1200 --context-len 1 --batch-size 16 --learning-rate 1e-4
+# python main.py --dataset mwoz --task fine_tune --style dataset --do-train --do-save \
+#       --model gpt --size small --num-shots full --maximum-len 768 --prompt-style none \
+#       --prune-keep -1 --log-interval 1200 --context-len 1 --batch-size 16 --n-epochs 10 \
+#       --learning-rate 3e-5 --seed 15 --ignore-cache # --verbose
 # python main.py --dataset sgd --task fine_tune --n-epochs 7 --do-train --debug \
 #       --style dataset --model gpt --size small --num-shots full --batch-size 6 \
 #       --learning-rate 1e-4  --maximum-len 512 --prompt-style naive --ignore-cache

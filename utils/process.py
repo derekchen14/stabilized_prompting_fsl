@@ -95,14 +95,6 @@ def build_mwoz(args, data, label_set, split):
       text_so_far.append(utterance)  # add agent utterance afterwards
       speaker_id = 1 - speaker_id
     
-  if args.verbose: 
-    for i, example in enumerate(examples):
-      if i > 114 and i < 195:
-        et = example['target']
-        if et['value'] != '<none>':
-          print(example['utterances'][0])
-          print(et['domain'], et['slot'], et['value'])
-    pdb.set_trace()
   return examples
 
 def build_mwoz22(args, data):

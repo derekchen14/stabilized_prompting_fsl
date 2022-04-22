@@ -205,7 +205,7 @@ class FineTuneDataset(BaseDataset):
     """
     trick = inputs['input_ids']
     treat = self.tokenizer.batch_decode(trick)
-    for entry in treat:
+    for label, entry in zip(labels, treat):
       print(entry.replace('<pad>', '|'))
       pdb.set_trace()
     """

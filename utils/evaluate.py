@@ -33,6 +33,10 @@ def parse_output(args, generated_string):
 
   pred_string = pred_string[:eos_index]
   parsed_str = normalize_text(pred_string)
+
+  if args.verbose and random.random() < 0.01: 
+    print(generated_string[10:110])
+    print(parsed_str)
   return parsed_str 
 
 def parse_gpt(style, generated_string):
@@ -91,7 +95,8 @@ def group_by_convo(args, predictions, targets):
     convo_id, turn_string = target['global_id'].split('_')
     turn_count = int(turn_string)
     parsed = parse_output(args, pred)
-    turn_tuple = (parsed, target['domain'], target['slot'], target['value'])
+    val = normalize_text(target['value'])
+    turn_tuple = (parsed, target['domain'], target['slot'], val)
     if turn_count not in convos[convo_id]:
       convos[convo_id][turn_count] = []
     convos[convo_id][turn_count].append(turn_tuple)
@@ -122,7 +127,6 @@ def fill_carryover(conversations):
 
     carry = {}
     for turn_data in turns:
-      
       dialog_state = {}
       for domain_slot, turn_data in turn_data.items():
         pred_val, target_val = turn_data
@@ -144,7 +148,7 @@ def calculate_jga(results, final_preds):
   possible, correct = 0, 0
   joint_possible, joint_correct = 0, 0
 
-  for convo_id, filled_turns in progress_bar(final_preds.items(), total=len(final_preds)):
+  for convo_id, filled_turns in final_preds.items():
     
     turn_correct = True
     for dialog_state in filled_turns:

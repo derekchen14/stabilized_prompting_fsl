@@ -41,7 +41,7 @@ def run_train(args, model, datasets, exp_logger):
         break
 
     eval_res = run_eval(args, model, datasets, exp_logger)
-    if args.do_save and eval_res[exp_logger.metric] >= exp_logger.best_score[exp_logger.metric]:
+    if eval_res[exp_logger.metric] >= exp_logger.best_score[exp_logger.metric]:
       exp_logger.best_score = eval_res
       exp_logger.save_best_model(model, tokenizer, args.prune_keep)
     early_stop = exp_logger.end_epoch()
@@ -49,7 +49,7 @@ def run_train(args, model, datasets, exp_logger):
 
   return model
 
-def run_inference(args, model, dataloader, exp_logger, split):
+def run_inference(args, model, dataloader, exp_logger, tokenizer, split):
   ''' goes through model generation without backprop, rather than classification '''
   all_outputs, all_targets = [], []
   exp_logger.eval_step = 0
@@ -79,7 +79,7 @@ def run_eval(args, model, datasets, exp_logger, split='dev'):
     model = load_best_model(args, exp_logger, tokenizer)
   model.eval()
 
-  outputs = run_inference(args, model, dataloader, exp_logger, split)
+  outputs = run_inference(args, model, dataloader, exp_logger, tokenizer, split)
   results = eval_quantify(args, *outputs, exp_logger, tokenizer, split)
   return results
 
