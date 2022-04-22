@@ -34,10 +34,7 @@ CHECKPOINTS = {
     'bart': {
         'small': 'facebook/bart-base',
         'medium': 'facebook/bart-large',
-        'large': 'facebook/bart-xlarge'},
-    'trade': {
-        'small' : 'trade.pt'
-    }
+        'large': 'facebook/bart-xlarge'}
 }
 
 GENERAL_TYPO = {
