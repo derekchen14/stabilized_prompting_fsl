@@ -76,5 +76,6 @@
 #       --temperature 1.2
 # >> Evaluation Mode
 python main.py --dataset mwoz --task fine_tune --do-eval --context-len 1 --batch-size 16 \
-      --model gpt --size small --num-shots full --maximum-len 512 --prompt-style none
+      --model gpt --size small --num-shots full --maximum-len 512 --prompt-style none \
+      --checkpoint gpt_epoch7_lr3e-05_acc302.pt --quantify
 
