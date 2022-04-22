@@ -80,7 +80,10 @@ def run_eval(args, model, datasets, exp_logger, split='dev'):
   model.eval()
 
   outputs = run_inference(args, model, dataloader, exp_logger, tokenizer, split)
-  results = eval_quantify(args, *outputs, exp_logger, tokenizer, split)
+  if args.quantify or split == 'dev':
+    results = eval_quantify(args, *outputs, exp_logger, tokenizer)
+  elif args.qualify:
+    results = eval_qualify(args, *outputs, exp_logger)
   return results
 
 
