@@ -71,7 +71,7 @@ def naive_style(domain, slot):
     desc = naive_descriptions[domain][slot] + " is "
   except(KeyError):
     desc = f"{slot} of the {domain} is "
-  return '<label> ' + desc
+  return '<sep> ' + desc
 
 def topic_prompts(style):
   if style == 'schema':
