@@ -125,7 +125,8 @@ def fill_carryover(conversations, use_history=False):
       dialog_state = {}
       for domain_slot, turn_data in turn_data.items():
         if use_history:
-          history, pred_val, target_val = turn_data
+          package, target_val = turn_data
+          history, pred_val = package
         else:
           pred_val, target_val = turn_data
           history = ''
@@ -201,7 +202,7 @@ def eval_quantify(args, predictions, targets, exp_logger, tokenizer):
 def eval_qualify(args, predictions, targets, exp_logger):
   grouped_preds = group_by_convo(args, predictions, targets, use_history=True)
   sorted_preds = sort_by_turn(grouped_preds)
-  final_preds = fill_carryover(sorted_preds)
+  final_preds = fill_carryover(sorted_preds, use_history=True)
 
   errors = Counter()
   for convo_id, filled_turns in final_preds.items():
@@ -210,13 +211,13 @@ def eval_qualify(args, predictions, targets, exp_logger):
         history, pred_val, target_val = turn_data
         if target_val != '<none>' and pred_val != target_val:
 
-          if random.random() < 0.01:
+          if random.random() < 0.005:
             print(history)
             print(f'{domain_slot}, pred: {pred_val}, actual: {target_val}')
           val_key = f"{domain_slot}|{pred_val}|{target_val}"
           errors[val_key] += 1
 
-  for error, count in errors.most_common(10).items():
+  for error, count in errors.most_common(10):
     print(error, count)
 
   if args.do_save:
