@@ -68,6 +68,8 @@ def build_mwoz(args, data, label_set, split):
   # written for MultiWoz v2.0, 2.1 and 2.3
   examples = []
   speakers = ["<customer>", "<agent>"]
+  breakdown = Counter()
+
   for convo_id, conversation in progress_bar(data.items(), total=len(data)):
     text_so_far = []
     speaker_id = 0
@@ -88,6 +90,8 @@ def build_mwoz(args, data, label_set, split):
               'global_id': f'{convo_id}_{turn_count}' }
           use_target, history = select_utterances(args, text_so_far, target)
           if use_target or split in ['dev', 'test']:
+            bkey = f'{slot}_{value}'
+            breakdown[bkey] += 1
             examples.append({'utterances': history, 'target': target})
           pval = '<none>' if value == '<remove>' else value
           prior_values[f'{domain}_{slot}'] = pval
@@ -95,6 +99,12 @@ def build_mwoz(args, data, label_set, split):
       text_so_far.append(utterance)  # add agent utterance afterwards
       speaker_id = 1 - speaker_id
     
+  for sv, count in breakdown.most_common(10):
+    print(sv, count)
+  print('type_guesthouse', breakdown['type_guesthouse'])
+  print('area_centre', breakdown['area_centre'])
+  print('type_guest house', breakdown['type_guest house'])
+  pdb.set_trace()
   return examples
 
 def build_mwoz22(args, data):
