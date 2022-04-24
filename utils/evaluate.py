@@ -10,7 +10,7 @@ from numpy.linalg import norm
 from tqdm import tqdm as progress_bar
 from collections import Counter, defaultdict
 from sklearn.metrics import accuracy_score
-from assets.static_vars import device, debug_break
+from assets.static_vars import device, debug_break, GENERAL_TYPO
 # metric = load_metric('bleu')  'bertscore', ''  
 
 def parse_output(args, generated_string):
@@ -90,7 +90,11 @@ def group_by_convo(args, predictions, targets, use_history=False):
     convo_id, turn_string = target['global_id'].split('_')
     turn_count = int(turn_string)
     parsed = parse_history(args, pred) if use_history else parse_output(args, pred)
+
+    if parsed in GENERAL_TYPO:
+      parsed = GENERAL_TYPO[parsed]
     val = normalize_text(target['value'])
+
     turn_tuple = (parsed, target['domain'], target['slot'], val)
     if turn_count not in convos[convo_id]:
       convos[convo_id][turn_count] = []
