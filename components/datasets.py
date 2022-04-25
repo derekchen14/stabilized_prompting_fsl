@@ -224,6 +224,7 @@ class FineTuneDataset(BaseDataset):
 
     inputs = self.tokenizer(dialogues, padding=True, max_length=max_length,
                               truncation=True, return_tensors='pt').to(device)
+
     """
     trick = inputs['input_ids']
     treat = self.tokenizer.batch_decode(trick)
