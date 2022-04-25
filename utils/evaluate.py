@@ -88,15 +88,11 @@ def group_by_convo(args, predictions, targets, use_history=False):
     convo_id, turn_string = target['global_id'].split('_')
     turn_count = int(turn_string)
     parsed = parse_history(args, pred) if use_history else parse_output(args, pred)
-
-    if parsed in GENERAL_TYPO:
-      parsed = GENERAL_TYPO[parsed]
-    val = normalize_text(target['value'])
-
-    turn_tuple = (parsed, target['domain'], target['slot'], val)
+    turn_tuple = (parsed, target['domain'], target['slot'], target['value'])
     if turn_count not in convos[convo_id]:
       convos[convo_id][turn_count] = []
     convos[convo_id][turn_count].append(turn_tuple)
+
   return convos
 
 def sort_by_turn(conversations):
@@ -132,6 +128,10 @@ def fill_carryover(conversations, use_history=False):
         else:
           pred_val, target_val = turn_data
           history = ''
+
+        target_val = normalize_text(target_val)
+        if pred_val in GENERAL_TYPO:
+          pred_val = GENERAL_TYPO[pred_val]
         if pred_val == '<none>' and domain_slot in carry:
           pred_val = carry[domain_slot] # then carry over the old value
         elif pred_val == '<remove>':
@@ -213,7 +213,7 @@ def eval_qualify(args, predictions, targets, exp_logger):
         history, pred_val, target_val = turn_data
         if target_val != '<none>' and pred_val != target_val:
 
-          if random.random() < 0.005:
+          if random.random() < 0.005 and args.verbose:
             print(history)
             print(f'{domain_slot}, pred: {pred_val}, actual: {target_val}')
           val_key = f"{domain_slot}|{pred_val}|{target_val}"

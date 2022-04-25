@@ -2,8 +2,8 @@
 # Training with all available data
 # python main.py --dataset mwoz --task fine_tune --style dataset --do-train --do-save \
 #       --model gpt --size small --num-shots full --maximum-len 768 --prompt-style none \
-#       --prune-keep -1 --log-interval 1200 --context-len 1 --batch-size 16 --n-epochs 10 \
-#       --learning-rate 3e-5 --seed 15 --ignore-cache # --verbose
+#       --prune-keep 4 --log-interval 1200 --context-len 5 --batch-size 12 --n-epochs 10 \
+#       --learning-rate 3e-5 --seed 14  --ignore-cache # --verbose
 # python main.py --dataset sgd --task fine_tune --n-epochs 7 --do-train --debug \
 #       --style dataset --model gpt --size small --num-shots full --batch-size 6 \
 #       --learning-rate 1e-4  --maximum-len 512 --prompt-style naive --ignore-cache
@@ -29,9 +29,6 @@
 # python main.py --dataset mwoz22 --task fine_tune --style domain --do-train --do-save \
 #       --model t5 --size small --num-shots zero --maximum-len 512 --prompt-style slotval \
 #       --temperature 0.8 --threshold 1.4 --context-len 8
-# python main.py --dataset mwoz22 --task fine_tune --style domain --do-train --do-save \
-#       --model t5 --size small --num-shots zero --maximum-len 512 --prompt-style question \
-#       --temperature 0.8 --threshold 1.4 --context-len 8
 
 # Zero-Shot DST via Cross-Task Transfer (dataset is held out for testing)
 # python main.py --dataset mwoz --task fine_tune --style dataset --do-train --debug \
@@ -52,9 +49,9 @@
 # python main.py --dataset sgd --task in_context --style dataset --do-eval --seed 14 \
 #       --model gpt --size small --num-shots full --maximum-length 512 --prompt-style naive \
 #       --temperature 0.8 --verbose --context-length 2 --ignore-cache --batch-size 4
-# python main.py --dataset mwoz --task in_context --style domain --do-eval --seed 15 \
-#       --model gpt --size small --num-shots full --maximum-len 512 --prompt-style schema \
-#       --temperature 0.8 --threshold 1.4 --context-len 3 --left-out hotel
+python main.py --dataset mwoz --task in_context --style dataset --do-eval --seed 15 \
+      --model gpt --size small --num-shots full --maximum-len 1010 --prompt-style schema \
+      --temperature 0.8 --threshold 1.4 --context-len 3 --left-out mwoz --search oracle
 
 # ________ Meta-Stabilize Pre-training Mode ___________
 # >> Our System
@@ -75,7 +72,7 @@
 #       --model gpt --size medium --batch-size 7 --num-shots zero --threshold 1.4 \
 #       --temperature 1.2
 # >> Evaluation Mode
-python main.py --dataset mwoz --task fine_tune --do-eval --context-len 1 --batch-size 16 \
-      --model gpt --size small --num-shots full --maximum-len 512 --prompt-style none \
-      --checkpoint gpt_epoch7_lr3e-05_acc302.pt --quantify
+# python main.py --dataset mwoz --task fine_tune --do-eval --context-len 5 --batch-size 16 \
+#       --model gpt --size small --num-shots full --maximum-len 512 --prompt-style none \
+#       --checkpoint gpt_epoch5_lr3e-05_acc470.pt --quantify
 
