@@ -26,12 +26,15 @@ def search_for_similar(example, candidates):
   # this is the oracle version where we cheat by using the target domain and slot
   acceptable = False
   while not acceptable:
-    cand = random.choice(candidates)
-    cand_gid = cand['target']['global_id']
-    cand_dom = cand['target']['domain']
-    cand_slot = cand['target']['slot']
+    candidate = random.choice(candidates)
+    ct = candidate['target']
+    cand_history = ' '.join(candidate['utterances'])
 
-    if gid != cand_gid and domain == cand_dom and slot == cand_slot:
+    matching_ds = domain == ct['domain'] and slot == ct['slot']
+    new_example = gid != ct['global_id']
+    not_empty = ct['value'].lower() in cand_history.lower()
+
+    if new_example and matching_ds and not_empty:
       acceptable = True
   
-  return cand
+  return candidate

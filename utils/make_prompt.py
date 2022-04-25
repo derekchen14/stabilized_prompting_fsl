@@ -12,7 +12,7 @@ def find_prompt(style, target):
     return schema_style(domain, slot)
   elif style == 'question':
     return question_style(domain, slot)
-  elif style == 'informed':
+  elif style == 'statement':
     return statement_style(domain, slot)
   elif style == 'naive':
     return naive_style(domain, slot)
@@ -26,17 +26,20 @@ def find_prompt(style, target):
 def schema_style(domain, slot):
   domain_desc = schema_domains[domain]
   slot_desc = schema_slots[domain][slot]
-  prompt = f"<sep> [domain] {domain_desc} [slot] {slot_desc} is "
+  prompt = f"<sep> [domain] {domain_desc} [slot] {slot_desc} is"
   return prompt
 
 def question_style(domain, slot):
   desc = question_descriptions[domain][slot]
-  prompt = f"<sep> {desc} "
+  prompt = f"<sep> {desc}"
   return prompt
 
 def statement_style(domain, slot):
-  desc = statement_descriptions[domain][slot]
-  prompt = f"<sep> {desc} is "
+  try:
+    desc = statement_descriptions[domain][slot]
+  except(KeyError):
+    pdb.set_trace()
+  prompt = f"<sep> {desc} is"
   return prompt
 
 def naive_style(domain, slot):
@@ -48,7 +51,7 @@ def naive_style(domain, slot):
     slot = 'price range'
 
   desc = f"{slot} of the {domain}"
-  prompt = f"<sep> {desc} is "
+  prompt = f"<sep> {desc} is"
   return prompt
 
 schema_domains = {
@@ -105,9 +108,9 @@ statement_descriptions = {
     "day": "The day for the restaurant booking",
     "food": "The restaurant cuisine",
     "people": "The number of people for the restaurant",
-    "pricerange": "The price range of the restaurant"},
+    "pricerange": "The price range of the restaurant",
     "time": "The time of the restaurant booking",
-    "name": "The name of the restaurant",
+    "name": "The name of the restaurant"},
   "taxi": {
     "arriveby": "The arrival time of the taxi",
     "destination": "The destination location of the taxi",

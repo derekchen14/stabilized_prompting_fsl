@@ -38,7 +38,7 @@ def solicit_params():
     parser.add_argument("--left-out", default='', type=str,   # see args.style
                 help="Name of the domain or dataset left out of training and used for testing only")
     parser.add_argument("--prompt-style", default="none", type=str, help='type of prompt', 
-                choices=["schema", "question", "informed", "naive", "human", "none", "random"])
+                choices=["schema", "question", "statement", "naive", "human", "none", "random"])
     parser.add_argument("--maximum-length", default=1024, type=int,
                 help="Maximum length of sequences for model input")
     parser.add_argument("--context-length", default=2, type=int,

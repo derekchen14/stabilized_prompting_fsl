@@ -73,7 +73,7 @@ class InContextDataset(BaseDataset):
     current_size = len(dialog)
     contexts = []
 
-    while current_size < self.max_len:
+    while current_size < 3000: # self.max_len:
       # TODO: find more context based on embedding of query and closest support embedding
       if len(self.supported_datasets) > 0:
         for name, _ in DATASETS.items():
@@ -91,11 +91,22 @@ class InContextDataset(BaseDataset):
       current_size += added_size
       contexts.append(added_context)
 
-    additional_context = ' <sep> '.join(contexts)
+    additional_context = ' '.join(contexts)
     return additional_context
+
+  def remove_special(self, text):
+    text = text.replace('<agent>', 'agent:')
+    text = text.replace('<customer>', 'customer:')
+    text = text.replace('<none>', 'none')
+    text = text.replace('<label>', 'answer:')
+    text = text.replace('<sep>', '|')
+    text = text.replace('<remove>', 'none')
+    text = text.replace('<pad>', '>')
+    return text
 
   def collate_lm(self, examples):
     """ train and dev splits should not occur since you do not need gradient based training """
+    self.prompt_style = 'statement'
     assert(self.split not in ['train', 'dev'])
     contexts, dialogues, labels = [], [], []
 
@@ -103,15 +114,26 @@ class InContextDataset(BaseDataset):
       dialog = ' '.join(example['utterances'])
       target = example['target']
       prompt = find_prompt(self.prompt_style, target)
-      dialog += f' {prompt}'
+      dialog = f'* {dialog} {prompt}'
 
       additional_context = self.select_context(example)
+      
+      additional_context = self.remove_special(additional_context)
+      dialog = self.remove_special(dialog)
+
       contexts.append(additional_context)
       dialogues.append(dialog)
       labels.append(target)
 
-    inputs = self.tokenizer(contexts, dialogues, padding=True,
+    inputs = self.tokenizer(contexts, dialogues, padding=False,
                               truncation='only_first', return_tensors='pt').to(device) 
+    """ 
+    trick = inputs['input_ids']
+    treat = self.tokenizer.batch_decode(trick)
+    for label, entry in zip(labels, treat):
+      print(entry.replace('<pad>', '|'))
+      pdb.set_trace()
+    """
     return inputs, labels
 
 class MetaLearnDataset(InContextDataset):
