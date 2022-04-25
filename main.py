@@ -106,4 +106,6 @@ if __name__ == "__main__":
       datasets.add_support(supports, args.left_out)
     run_train(args, model, datasets, exp_logger)
   elif args.do_eval:
+    model = load_model(args, ontology, tokenizer, save_path) if args.task == 'in_context' else {}
+    run_eval(args, model, datasets, exp_logger, split='test')
     run_eval(args, {}, datasets, exp_logger, split='test')
