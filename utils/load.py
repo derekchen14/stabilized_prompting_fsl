@@ -73,12 +73,12 @@ def load_tokenizer(args):
   tokenizer.padding_side = 'left'
   return tokenizer
 
-def load_model(args, ontology, tokenizer, load_dir):
+def load_model(args, ontology, tokenizer, load_dir, ckpt_name=''):
   print(f"Setting up {args.size} {args.model} model for {args.num_shots} shot learning")
   # if args.num_shots == 'percent':
   #   return load_best_model(args, ontology, load_dir)  causes a circular loop
   
-  ckpt_name = CHECKPOINTS[args.model][args.size]
+  ckpt_name = CHECKPOINTS[args.model][args.size] if len(ckpt_name) == 0 else ckpt_name
   if args.model == 'gpt':
     if args.size == 'large':
       # model = GPTJForCausalLM.from_pretrained(ckpt_name,
@@ -130,6 +130,7 @@ def load_best_model(args, exp_logger, tokenizer):
   
   if len(args.checkpoint) > 0:
     top_filename = args.checkpoint
+    top_folder = os.path.join(load_dir, top_filename)
   else:
     folders = glob.glob(os.path.join(load_dir, "*pt"))
     top_acc, top_folder = 0, ''
@@ -152,11 +153,11 @@ def load_best_model(args, exp_logger, tokenizer):
 
   if len(top_folder) == 0:
     raise RuntimeError(f'No models were found in {load_dir}')
-  else: 
-    ckpt_path = os.path.join(load_dir, top_folder)
+  else:
+    ckpt_path = top_folder
     print(f'Attempting to load {ckpt_path} as best model')
   
   # checkpoint = torch.load(ckpt_path, map_location='cpu')
   # model.load_state_dict(checkpoint)
-  model = load_model(args, exp_logger.ontology, tokenizer, ckpt_path)
+  model = load_model(args, exp_logger.ontology, tokenizer, load_dir, ckpt_path)
   return model

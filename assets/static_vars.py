@@ -61,10 +61,10 @@ GENERAL_TYPO = {
     # internet
     "free internet":"yes", "y":"yes",
     # star
-    "4 star":"4", "4 stars":"4", "0 star rarting":"none",
+    "4 star":"4", "4 stars":"4", "0 star rarting":"<none>", "3 .":"3",
     # others
-    "any":"dontcare", "n":"no", "does not care":"dontcare", "not men":"none", "not":"none", "art":"none",
-    "not mentioned":"none", '':"none", "not mendtioned":"none", "3 .":"3", "does not":"no", "fun":"none",
+    "n":"no", "does not":"no", "does not care":"any", "dontcare": "any",
+    "not men":"<none>", "not":"<none>", "art":"<none>", "not mendtioned":"<none>", "fun":"<none>",
 }
 
 DOMAIN_SLOTS = {

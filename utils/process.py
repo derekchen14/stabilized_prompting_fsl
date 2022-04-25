@@ -30,7 +30,7 @@ def check_cache(args):
 
 def extract_label(targets, prior_values):
   # returns a list of (domain, slot, value) tuples when the domain is an active 
-  swaps = {'not mentioned': '<none>', 'dontcare': 'any', '': '<none>'}
+  swaps = {'not mentioned': '<none>', '': '<none>'}
   valid_domains = DOMAIN_SLOTS.keys()
   labels = []
 
@@ -49,6 +49,8 @@ def extract_label(targets, prior_values):
         if not isinstance(value, list) and slot != 'ticket':
           if value in swaps:
             value = swaps[value]
+          if value in GENERAL_TYPO:
+            value = GENERAL_TYPO[value]
           if value == '<none>' and prior_values[f'{domain}_{slot.lower()}'] != '<none>':
             value = '<remove>'
           labels.append((domain, slot.lower(), value))
@@ -64,10 +66,41 @@ def extract_label(targets, prior_values):
 
   return labels
 
+def num_in_history(value, history):
+  numbers = ['zero', 'one', 'two', 'three', 'four', 'five', 'six']
+  contains_num = False
+  for digit, num_text in enumerate(numbers):
+    if str(value) == str(digit) and num_text in history:
+      contains_num = True
+  return contains_num
+
+def select_utterances(args, utt_so_far, target):
+  use_target = False
+  if args.context_length < 0:
+    utterances = utt_so_far
+    use_target = True
+  else:
+    slot, value = target['slot'], target['value']
+    lookback = -args.context_length
+    utterances = utt_so_far[lookback:]
+    history = ' '.join(utterances)
+
+    if value in history.lower() or value in ['<remove>', 'any']:
+      use_target = True
+    elif num_in_history(value, history.lower()):
+      use_target = True
+    elif value.lower() in ['yes', 'no'] and (slot in history or 'wifi' in history):
+      use_target = True  # to handle the internet and parking use cases
+    elif value == '<none>' and random.random() < 0.2:
+      use_target = True
+
+  return use_target, utterances
+
 def build_mwoz(args, data, label_set, split):
   # written for MultiWoz v2.0, 2.1 and 2.3
   examples = []
   speakers = ["<customer>", "<agent>"]
+
   for convo_id, conversation in progress_bar(data.items(), total=len(data)):
     text_so_far = []
     speaker_id = 0
@@ -95,14 +128,6 @@ def build_mwoz(args, data, label_set, split):
       text_so_far.append(utterance)  # add agent utterance afterwards
       speaker_id = 1 - speaker_id
     
-  if args.verbose: 
-    for i, example in enumerate(examples):
-      if i > 114 and i < 195:
-        et = example['target']
-        if et['value'] != '<none>':
-          print(example['utterances'][0])
-          print(et['domain'], et['slot'], et['value'])
-    pdb.set_trace()
   return examples
 
 def build_mwoz22(args, data):
@@ -200,25 +225,6 @@ def make_dialogue_state(intent, action, values, scene, mappings):
 
   return targets
 
-def select_utterances(args, utt_so_far, target):
-  use_target = False
-  if args.context_length < 0:
-    utterances = utt_so_far
-    use_target = True
-  else:
-    slot, value = target['slot'], target['value']
-    lookback = -args.context_length
-    utterances = utt_so_far[lookback:]
-    history = ' '.join(utterances)
-
-    if value in history.lower() or value in ['<remove>', 'any']:
-      use_target = True
-    elif value.lower() in ['yes', 'no'] and (slot in history or 'wifi' in history):
-      use_target = True  # to handle the internet and parking use cases
-    elif value == '<none>' and random.random() < 0.3:
-      use_target = True
-
-  return use_target, utterances
 
 def build_abcd(args, data, ontology):
   examples = []
