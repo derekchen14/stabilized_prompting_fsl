@@ -27,7 +27,6 @@ def run_train(args, model, datasets, exp_logger):
       inputs, targets = batch
       review_inputs(args, targets, datasets['train'].tokenizer)
       outputs = model(**inputs, labels=targets)
-      # pdb.set_trace()
       exp_logger.tr_loss += outputs.loss.item()
       loss = outputs.loss / args.grad_accum_steps
       loss.backward()
@@ -56,23 +55,30 @@ def run_inference(args, model, dataloader, exp_logger, tokenizer, split):
   exp_logger.eval_step = 0
 
   for inputs, target_dict in progress_bar(dataloader, total=len(dataloader)):
+    if target_dict[0]['value'] == '<none>':
+      continue
     all_targets.extend(target_dict)   # notice this is "extend", not "append"
 
     with no_grad():
       # defaults to greedy sampling, for param details see https://huggingface.co/docs/transformers/
       #        v4.15.0/en/main_classes/model#transformers.generation_utils.GenerationMixin.generate 
       outputs = model.generate(**inputs, max_length=args.maximum_length, early_stopping=True)
-      output_strings = tokenizer.batch_decode(outputs.detach(), skip_special_tokens=False)
-      all_outputs.extend(output_strings)
-    # print(target_dict)
-    # print(output_strings)
-    # pdb.set_trace()
+    output_strings = tokenizer.batch_decode(outputs.detach(), skip_special_tokens=False)
+    all_outputs.extend(output_strings)
 
     if split == 'dev':
       exp_logger.eval_loss = 0  # no loss, since inference only
       exp_logger.eval_step += 1
       if args.debug and exp_logger.eval_step >= debug_break: break
-
+    """    
+    for ots in output_strings:
+      star_index = ots.index('*')
+      tripp = ots[star_index:]
+      bar_index = tripp.find('|')
+      after_that = tripp[bar_index+1:].find('|')
+      combined = bar_index + after_that
+      print(tripp[:combined])
+    """
   return all_outputs, all_targets
 
 def run_eval(args, model, datasets, exp_logger, split='dev'):
