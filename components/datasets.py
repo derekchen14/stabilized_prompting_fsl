@@ -202,13 +202,11 @@ class FineTuneDataset(BaseDataset):
 
     inputs = self.tokenizer(dialogues, padding=True, max_length=max_length,
                               truncation=True, return_tensors='pt').to(device)
-    """
-    trick = inputs['input_ids']
-    treat = self.tokenizer.batch_decode(trick)
-    for entry in treat:
-      print(entry.replace('<pad>', '|'))
-      pdb.set_trace()
-    """
+    # trick = inputs['input_ids']
+    # treat = self.tokenizer.batch_decode(trick)
+    # for entry in treat:
+    #   print(entry.replace('<pad>', '|'))
+    #   pdb.set_trace()
     if self.split == 'train':
       return inputs, inputs['input_ids']
     else:

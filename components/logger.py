@@ -107,22 +107,23 @@ class ExperienceLogger:
       step_report = f'[{step+1}/{self.num_steps}] '
       loss_report = 'Mean_loss: %.3f, ' % current_loss
       metric_report = f'{self.metric}: {train_metric}'
-      print(step_report + loss_report + metric_report)
+      # print(step_report + loss_report + metric_report)
+      print(step_report + loss_report)
 
   def save_best_model(self, model, tokenizer, prune_keep):
-    if self.do_save and self.best_score[self.metric] > 0.1:
-      learning_rate = str(self.args.learning_rate)
-      accuracy = str(self.best_score[self.metric] * 10000)[:3]
-      ckpt_name = f'{self.model_type}_epoch{self.epoch}_lr{learning_rate}_acc{accuracy}.pt'
-      ckpt_path = os.path.join(self.save_path, ckpt_name)
+    # if self.do_save and self.best_score[self.metric] > 0.1:
+    learning_rate = str(self.args.learning_rate)
+    accuracy = str(self.best_score[self.metric] * 10000)[:3]
+    ckpt_name = f'{self.model_type}_epoch{self.epoch}_lr{learning_rate}_acc{accuracy}.pt'
+    ckpt_path = os.path.join(self.save_path, ckpt_name)
 
-      # model_to_save = model.module if hasattr(model, 'module') else model
-      # torch.save(model_to_save.state_dict(), ckpt_path)   # Standard Pytorch method
-      model.save_pretrained(ckpt_path)
-      # tokenizer.save_pretrained(ckpt_path)  # Huggingface method, creates a new folder
-      print(f"Saved a model at {ckpt_path}")
-      if prune_keep > 0:
-        self.prune_saves(num_keep=prune_keep)
+    # model_to_save = model.module if hasattr(model, 'module') else model
+    # torch.save(model_to_save.state_dict(), ckpt_path)   # Standard Pytorch method
+    model.save_pretrained(ckpt_path)
+    # tokenizer.save_pretrained(ckpt_path)  # Huggingface method, creates a new folder
+    print(f"Saved a model at {ckpt_path}")
+    if prune_keep > 0:
+      self.prune_saves(num_keep=prune_keep)
 
   def prune_saves(self, is_directory=False, num_keep=5):
     # files = [f for f in os.listdir(self.save_path) if f.endswith('.pt')]

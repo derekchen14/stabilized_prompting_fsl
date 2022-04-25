@@ -27,6 +27,7 @@ def run_train(args, model, datasets, exp_logger):
       inputs, targets = batch
       review_inputs(args, targets, datasets['train'].tokenizer)
       outputs = model(**inputs, labels=targets)
+      # pdb.set_trace()
       exp_logger.tr_loss += outputs.loss.item()
       loss = outputs.loss / args.grad_accum_steps
       loss.backward()
@@ -49,7 +50,7 @@ def run_train(args, model, datasets, exp_logger):
 
   return model
 
-def run_inference(args, model, dataloader, exp_logger, split):
+def run_inference(args, model, dataloader, tokenizer, exp_logger, split):
   ''' goes through model generation without backprop, rather than classification '''
   all_outputs, all_targets = [], []
   exp_logger.eval_step = 0
@@ -63,6 +64,9 @@ def run_inference(args, model, dataloader, exp_logger, split):
       outputs = model.generate(**inputs, max_length=args.maximum_length, early_stopping=True)
       output_strings = tokenizer.batch_decode(outputs.detach(), skip_special_tokens=False)
       all_outputs.extend(output_strings)
+    # print(target_dict)
+    # print(output_strings)
+    # pdb.set_trace()
 
     if split == 'dev':
       exp_logger.eval_loss = 0  # no loss, since inference only
@@ -79,8 +83,11 @@ def run_eval(args, model, datasets, exp_logger, split='dev'):
     model = load_best_model(args, exp_logger, tokenizer)
   model.eval()
 
-  outputs = run_inference(args, model, dataloader, exp_logger, split)
+  outputs = run_inference(args, model, dataloader, tokenizer, exp_logger, split)
   results = eval_quantify(args, *outputs, exp_logger, tokenizer, split)
+  # pdb.set_trace()
+  with open(os.path.join(args.output_dir, 'output.json'), 'w') as tf:
+    json.dump(results, tf, indent=2)
   return results
 
 
