@@ -67,7 +67,7 @@ def load_tokenizer(args):
     tokenizer = BartTokenizer.from_pretrained(token_ckpt)
     special['sep_token'] = '<sep>'
 
-  if args.do_train or args.num_shots == 'percent' or args.task == 'in_context':
+  if args.do_train or args.num_shots == 'percent':
     print(f"Adding special tokens {special}")
     tokenizer.add_special_tokens(special)
   tokenizer.padding_side = 'left'
