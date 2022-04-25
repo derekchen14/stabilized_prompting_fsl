@@ -88,9 +88,6 @@ def run_eval(args, model, datasets, exp_logger, split='dev'):
     results = eval_quantify(args, *outputs, exp_logger, tokenizer)
   elif args.qualify:
     results = eval_qualify(args, *outputs, exp_logger)
-  # pdb.set_trace()
-  with open(os.path.join(args.output_dir, 'output.json'), 'w') as tf:
-    json.dump(results, tf, indent=2)
   return results
 
 
@@ -114,5 +111,9 @@ if __name__ == "__main__":
     run_train(args, model, datasets, exp_logger)
   elif args.do_eval:
     model = load_model(args, ontology, tokenizer, save_path) if args.task == 'in_context' else {}
-    run_eval(args, model, datasets, exp_logger, split='test')
-    run_eval(args, {}, datasets, exp_logger, split='test')
+    results = run_eval(args, model, datasets, exp_logger, split='test')
+
+    output_name = f'{args.prompt_style}_lr{args.learning_rate}_clen{args.context_length}.json'
+    with open(os.path.join(save_path, output_name), 'w') as tf:
+      json.dump(results, tf, indent=2)
+
