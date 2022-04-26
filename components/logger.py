@@ -114,8 +114,10 @@ class ExperienceLogger:
     # if self.do_save and self.best_score[self.metric] > 0.1:
     learning_rate = str(self.args.learning_rate)
     accuracy = str(self.best_score[self.metric] * 10000)[:3]
-    ckpt_name = f'{self.model_type}_epoch{self.epoch}_lr{learning_rate}_acc{accuracy}.pt'
-    ckpt_path = os.path.join(self.save_path, ckpt_name)
+    style = self.args.prompt_style
+    context_length = self.args.context_length
+    ckpt_name = f'{style}_epoch{self.epoch}_lr{learning_rate}_clen{context_length}_acc{accuracy}.pt'
+    ckpt_path = os.path.join(self.save_path,ckpt_name)
 
     # model_to_save = model.module if hasattr(model, 'module') else model
     # torch.save(model_to_save.state_dict(), ckpt_path)   # Standard Pytorch method
