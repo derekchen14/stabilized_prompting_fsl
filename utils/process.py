@@ -77,22 +77,25 @@ def num_in_history(value, history):
 def select_utterances(args, utt_so_far, target):
   use_target = False
   if args.context_length < 0:
-    utterances = utt_so_far
-    use_target = True
+    return utt_so_far, True
+  
+  if args.context_length % 2 == 0: # drop the agent utterances
+    lookback = -args.context_length - 1
+    utterances = [utt for utt in utt_so_far[lookback:] if utt.startswith('<customer>')]
   else:
-    slot, value = target['slot'], target['value']
     lookback = -args.context_length
     utterances = utt_so_far[lookback:]
-    history = ' '.join(utterances)
-
-    if value in history.lower() or value in ['<remove>', 'any']:
-      use_target = True
-    elif num_in_history(value, history.lower()):
-      use_target = True
-    elif value.lower() in ['yes', 'no'] and (slot in history or 'wifi' in history):
-      use_target = True  # to handle the internet and parking use cases
-    elif value == '<none>' and random.random() < 0.2:
-      use_target = True
+  
+  history = ' '.join(utterances)
+  slot, value = target['slot'], target['value']
+  if value in history.lower() or value in ['<remove>', 'any']:
+    use_target = True
+  elif num_in_history(value, history.lower()):
+    use_target = True
+  elif value.lower() in ['yes', 'no'] and (slot in history or 'wifi' in history):
+    use_target = True  # to handle the internet and parking use cases
+  elif value == '<none>' and random.random() < 0.2:
+    use_target = True
 
   return use_target, utterances
 
@@ -100,7 +103,7 @@ def build_mwoz(args, data, label_set, split):
   # written for MultiWoz v2.0, 2.1 and 2.3
   examples = []
   speakers = ["<customer>", "<agent>"]
-
+  
   for convo_id, conversation in progress_bar(data.items(), total=len(data)):
     text_so_far = []
     speaker_id = 0
@@ -119,15 +122,15 @@ def build_mwoz(args, data, label_set, split):
         for domain, slot, value in targets: 
           target = {'domain': domain, 'slot': slot, 'value': value,
               'global_id': f'{convo_id}_{turn_count}' }
-          use_target, history = select_utterances(args, text_so_far, target)
+          use_target, utterances = select_utterances(args, text_so_far, target)
           if use_target or split in ['dev', 'test']:
-            examples.append({'utterances': history, 'target': target})
+            examples.append({'utterances': utterances, 'target': target})
           pval = '<none>' if value == '<remove>' else value
           prior_values[f'{domain}_{slot}'] = pval
       
       text_so_far.append(utterance)  # add agent utterance afterwards
       speaker_id = 1 - speaker_id
-    
+  
   return examples
 
 def build_mwoz22(args, data):

@@ -58,6 +58,7 @@ def run_inference(args, model, dataloader, exp_logger, tokenizer, split):
     if target_dict[0]['value'] == '<none>':
       continue
     all_targets.extend(target_dict)   # notice this is "extend", not "append"
+    # maxl = inputs['input_ids'].shape[1] + 14
 
     with no_grad():
       # defaults to greedy sampling, for param details see https://huggingface.co/docs/transformers/
@@ -119,7 +120,7 @@ if __name__ == "__main__":
     model = load_model(args, ontology, tokenizer, save_path) if args.task == 'in_context' else {}
     outputs = run_eval(args, model, datasets, exp_logger, split='test')
 
-    output_name = f'{args.prompt_style}_lr{args.learning_rate}_clen{args.context_length}.json'
-    with open(os.path.join(save_path, output_name), 'w') as tf:
-      json.dump(outputs, tf, indent=2)
+    # output_name = f'{args.prompt_style}_lr{args.learning_rate}_clen{args.context_length}.json'
+    # with open(os.path.join(save_path, output_name), 'w') as tf:
+    #   json.dump(outputs, tf, indent=2)
 
