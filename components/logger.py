@@ -10,6 +10,7 @@ import pandas as pd
 import numpy as np
 import time as tm
 from collections import defaultdict
+from utils.help import model_match
 
 class ExperienceLogger:
   def __init__(self, args, ontology, save_dir):
@@ -131,7 +132,6 @@ class ExperienceLogger:
     # files = [f for f in os.listdir(self.save_path) if f.endswith('.pt')]
     folders = glob.glob(os.path.join(self.save_path, "*pt"))
     
-    # if len(files) > num_keep:
     if len(folders) > num_keep:
       # scores_and_files = []
       acc_and_folders = []
@@ -140,12 +140,13 @@ class ExperienceLogger:
         re_str = r'acc([0-9]{3})\.pt$'
         regex_found = re.findall(re_str, fname)
         if regex_found:
-          # score = int(regex_found[0])
           accuracy = int(regex_found[0])
-          # filepath = os.path.join(self.save_path, fname)
-          # scores_and_files.append((score, filepath))
-          acc_and_folders.append((accuracy, fname))
-      
+          """
+          prune only ckpt under the same arguments
+          """
+          if model_match(fname, self.args):
+            acc_and_folders.append((accuracy, fname))
+
       # scores_and_files.sort(key=lambda tup: tup[0], reverse=True)  # largest to smallest
       acc_and_folders.sort(key=lambda tup: tup[0], reverse=True)
       # for _, file in scores_and_files[num_keep:]:

@@ -98,6 +98,23 @@ def memstat(message):
   human_maxmem = str(round( (maxmem / 1000000), 2)) + "MB"
   print(f"{message} -- Current memory: {human_malloc}, Max: {human_maxmem}")
 
+def model_match(fname, args):
+  """
+  check if the ckpt with path 'fname' fits the current args
+
+  follow the format:
+  f'results/{dataset}/{task}/{model}_{size}/{prompt_style}_lr{}_clen{context_length}_epoch{}_acc{}.pt'
+  """
+  model_type, model_size = fname.split('/')[-2].split("_")
+  prompt_style, lr, clen, _, _ = fname.split('/')[-1].split("_")
+  if model_type == args.model and \
+     model_size == args.size  and \
+     prompt_style == args.prompt_style and \
+     lr == f'lr{args.learning_rate}' and \
+     clen == f'clen{args.context_length}':
+      return True
+  return False
+
 
 def reformat_data(args):
   if not os.path.exists(os.path.join(args.input_dir, args.dataset)) and args.ignore_cache:
