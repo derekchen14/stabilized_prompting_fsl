@@ -40,7 +40,7 @@ def run_train(args, model, datasets, exp_logger):
       if args.debug and step >= debug_break*args.log_interval:
         break
 
-    eval_res = run_eval(args, model, datasets, exp_logger)
+    _, eval_res = run_eval(args, model, datasets, exp_logger)
     if eval_res[exp_logger.metric] >= exp_logger.best_score[exp_logger.metric]:
       exp_logger.best_score = eval_res
       exp_logger.save_best_model(model, tokenizer, args.prune_keep)
@@ -95,7 +95,10 @@ def run_eval(args, model, datasets, exp_logger, split='dev'):
     results = eval_quantify(args, *outputs, exp_logger, tokenizer)
   elif args.qualify:
     results = eval_qualify(args, *outputs, exp_logger)
-  return outputs
+    print(results)
+  else:
+    results = None
+  return outputs, results
 
 
 if __name__ == "__main__":
@@ -118,8 +121,7 @@ if __name__ == "__main__":
     run_train(args, model, datasets, exp_logger)
   elif args.do_eval:
     model = load_model(args, ontology, tokenizer, save_path) if args.task == 'in_context' else {}
-    outputs = run_eval(args, model, datasets, exp_logger, split='test')
-
+    outputs, _ = run_eval(args, model, datasets, exp_logger, split='test')
     # output_name = f'{args.prompt_style}_lr{args.learning_rate}_clen{args.context_length}.json'
     # with open(os.path.join(save_path, output_name), 'w') as tf:
     #   json.dump(outputs, tf, indent=2)

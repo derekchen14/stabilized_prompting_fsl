@@ -24,7 +24,7 @@ class ExperienceLogger:
 
     logging.basicConfig(level=logging.INFO)
     self.logger = logging.getLogger(__name__)
-    log_path = os.path.join(save_dir, f'v{args.model}.log')
+    log_path = os.path.join(save_dir, f'{args.prompt_style}_lr{args.learning_rate}_clen{args.context_length}.log')
     self.logger.addHandler(logging.FileHandler(log_path))
     self.logger.debug(args)
     self.log_info(args)
@@ -114,9 +114,9 @@ class ExperienceLogger:
     # if self.do_save and self.best_score[self.metric] > 0.1:
     learning_rate = str(self.args.learning_rate)
     accuracy = str(self.best_score[self.metric] * 10000)[:3]
-    style = self.args.prompt_style
+    prompt_style = self.args.prompt_style
     context_length = self.args.context_length
-    ckpt_name = f'{style}_lr{learning_rate}_clen{context_length}_epoch{self.epoch}_acc{accuracy}.pt'
+    ckpt_name = f'{prompt_style}_lr{learning_rate}_clen{context_length}_epoch{self.epoch}_acc{accuracy}.pt'
     ckpt_path = os.path.join(self.save_path,ckpt_name)
 
     # model_to_save = model.module if hasattr(model, 'module') else model
