@@ -35,7 +35,7 @@ def parse_output(args, generated_string):
 def parse_gpt(style, generated_string):
   if style in ['schema', 'statement', 'naive', 'human']:
     prompt_with_pred = generated_string.split('<sep>')[1]
-    pred_string = prompt_with_pred.split(' is ')[1]
+    pred_string = prompt_with_pred.split(' is')[1]
   elif style == 'question':
     prompt_with_pred = generated_string.split('<sep>')[1]
     pred_string = prompt_with_pred.split('? ')[1]

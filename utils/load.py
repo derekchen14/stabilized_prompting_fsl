@@ -140,10 +140,20 @@ def load_best_model(args, exp_logger, tokenizer):
       current_score = re.findall(re_str, fname)
       score = int(current_score[0]) if len(current_score) > 0 else 0
       if args.do_eval:
-        fname = fname.split('/')[-1]  # convert path to single folder
-        parts = fname.split('_')
-        model_type = parts[0]
-        model_match = args.model == model_type
+        """
+        follow the format:
+        f'results/{dataset}/{task}/{model}_{size}/{prompt_style}_lr{}_clen{context_length}_epoch{}_acc{}.pt'
+        """
+        model_type, model_size = fname.split('/')[-2].split("_")
+        prompt_style, lr, clen, _, _ = fname.split('/')[-1].split("_")
+        if model_type == args.model and \
+           model_size == args.size  and \
+           prompt_style == args.prompt_style and \
+           lr == f'lr{args.learning_rate}' and \
+           clen == f'clen{args.context_length}':
+            model_match = True
+        else:
+          model_match = False
       else:
         model_match = True
 
