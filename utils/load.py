@@ -69,6 +69,7 @@ def load_tokenizer(args):
     special['sep_token'] = '<sep>'
 
   if args.do_train or args.num_shots == 'percent':
+    # in-context does not add special tokens since it cannot be trained to deal with them
     print(f"Adding special tokens {special}")
     tokenizer.add_special_tokens(special)
   tokenizer.padding_side = 'left'

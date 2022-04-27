@@ -20,6 +20,8 @@ def parse_output(args, generated_string):
     # [:7] is to truncate the "<agent>" token. Might not be needed for us
     pred_string = generated_string[7:]
   elif args.model == 'gpt':
+    if args.task == 'in_context':
+      return parse_in_context(generated_string)
     pred_string = parse_gpt(args.prompt_style, generated_string)
 
   eos_index = len(pred_string)
@@ -29,6 +31,22 @@ def parse_output(args, generated_string):
       eos_index = cand_index
 
   pred_string = pred_string[:eos_index]
+  parsed_str = normalize_text(pred_string)
+  return parsed_str
+
+def parse_in_context(generated_string):
+  """ unlike a typical parse output, the in context string has no special tokens """
+  parts = generated_string.replace('|', '').split('<|endoftext|>')
+  if len(parts[-1]) > 14:
+    current_example = parts[-1]  # failed to generate a eos_token
+  else:
+    current_example = parts[-2]
+
+  try:
+    prompt_with_pred = current_example.split(';')[1]
+    pred_string = prompt_with_pred.split(' is ')[1]
+  except(IndexError):
+    pdb.set_trace()
   parsed_str = normalize_text(pred_string)
   return parsed_str
 
