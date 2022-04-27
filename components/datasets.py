@@ -59,7 +59,7 @@ class BaseDataset(Dataset):
   def collate_seq2seq(self, args, examples):
     raise NotImplementedError
 
-  def collate(self, args, examples)
+  def collate(self, args, examples):
     if self.model_type == 'gpt':
       return self.collate_lm(args, examples)
     elif self.model_type in ['bart', 't5']:
@@ -99,8 +99,9 @@ class InContextDataset(BaseDataset):
       tokenized_context = self.tokenizer(added_context)
       current_size += len(tokenized_context['input_ids'])
 
-    additional_context = ' <|endoftext|> '.join(contexts)
-    return self.remove_special(additional_context)
+    additional_context = '<|endoftext|>'.join(contexts)
+    cleaned_context = self.remove_special(additional_context)
+    return cleaned_context + '<|endoftext|>'
 
   def remove_special(self, text):
     text = text.replace('<agent>', 'agent:')
@@ -109,7 +110,7 @@ class InContextDataset(BaseDataset):
     text = text.replace('<label>', 'answer:')
     text = text.replace('<sep>', ';')
     text = text.replace('<remove>', 'none')
-    text = text.replace('<pad>', '|')
+    text = text.replace('<pad>', '[PAD]')
     return text
 
   def collate_lm(self, args, examples):
@@ -128,14 +129,14 @@ class InContextDataset(BaseDataset):
       dialogues.append(dialog)
       labels.append(target)
 
-    inputs = self.tokenizer(contexts, dialogues, padding=False,
+    inputs = self.tokenizer(contexts, dialogues, padding=True,
                               truncation='only_first', return_tensors='pt').to(device) 
     """ 
     trick = inputs['input_ids']
     treat = self.tokenizer.batch_decode(trick)
     for label, entry in zip(labels, treat):
       print(entry)
-      pdb.set_trace()
+    pdb.set_trace()
     """
     return inputs, labels
 
@@ -220,7 +221,7 @@ class FineTuneDataset(BaseDataset):
         dialog += f" {prompt} {target['value']} {eos}"
         max_length = self.max_len
       elif self.split in ['dev', 'test']:
-        dialog += f" {prompt}"
+        dialog += f" {prompt} "
         max_length = self.max_len - 14
       dialogues.append(dialog)
       labels.append(target)

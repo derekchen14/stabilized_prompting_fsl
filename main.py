@@ -58,8 +58,6 @@ def run_inference(args, model, dataset, exp_logger, tokenizer, split):
 
   for batch in progress_bar(dataloader, total=len(dataloader)):
     inputs, target_dict = dataset.collate(args, batch)
-    if target_dict[0]['value'] == '<none>':
-      continue
     all_targets.extend(target_dict)   # notice this is "extend", not "append"
 
     if args.task == 'in_context':
@@ -78,6 +76,7 @@ def run_inference(args, model, dataset, exp_logger, tokenizer, split):
       exp_logger.eval_loss = 0  # no loss, since inference only
       exp_logger.eval_step += 1
       if args.debug and exp_logger.eval_step >= debug_break: break
+  
   return all_outputs, all_targets
 
 def run_eval(args, model, dataset, exp_logger, split='dev'):

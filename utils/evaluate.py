@@ -36,7 +36,7 @@ def parse_output(args, generated_string):
 
 def parse_in_context(generated_string):
   """ unlike a typical parse output, the in context string has no special tokens """
-  parts = generated_string.replace('|', '').split('<|endoftext|>')
+  parts = generated_string.split('<|endoftext|>')
   if len(parts[-1]) > 14:
     current_example = parts[-1]  # failed to generate a eos_token
   else:
@@ -44,9 +44,14 @@ def parse_in_context(generated_string):
 
   try:
     prompt_with_pred = current_example.split(';')[1]
+  except(IndexError):
+    prompt_with_pred = current_example
+
+  try:
     pred_string = prompt_with_pred.split(' is ')[1]
   except(IndexError):
-    pdb.set_trace()
+    pred_string = prompt_with_pred.split()[-1]
+  
   parsed_str = normalize_text(pred_string)
   return parsed_str
 

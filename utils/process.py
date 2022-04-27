@@ -74,7 +74,7 @@ def num_in_history(value, history):
       contains_num = True
   return contains_num
 
-def select_utterances(args, utt_so_far, target):
+def select_utterances(args, utt_so_far, target, split):
   use_target = False
   if args.context_length < 0:
     return utt_so_far, True
@@ -94,7 +94,9 @@ def select_utterances(args, utt_so_far, target):
     use_target = True
   elif value.lower() in ['yes', 'no'] and (slot in history or 'wifi' in history):
     use_target = True  # to handle the internet and parking use cases
-  elif value == '<none>' and random.random() < 0.2:
+  elif args.task != 'in_context' and value == '<none>' and random.random() < 0.2:
+    use_target = True
+  elif args.task != 'in_context' and split in ['dev', 'test']:
     use_target = True
 
   return use_target, utterances
@@ -122,8 +124,8 @@ def build_mwoz(args, data, label_set, split):
         for domain, slot, value in targets: 
           target = {'domain': domain, 'slot': slot, 'value': value,
               'global_id': f'{convo_id}_{turn_count}' }
-          use_target, utterances = select_utterances(args, text_so_far, target)
-          if use_target or split in ['dev', 'test']:
+          use_target, utterances = select_utterances(args, text_so_far, target, split)
+          if use_target:
             examples.append({'utterances': utterances, 'target': target})
           pval = '<none>' if value == '<remove>' else value
           prior_values[f'{domain}_{slot}'] = pval
