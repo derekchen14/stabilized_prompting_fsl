@@ -24,7 +24,6 @@ class BaseDataset(Dataset):
     self.max_len = args.maximum_length
     self.ctx_len = args.context_length
     self.model_type = args.model
-    self.prompt_style = args.prompt_style
 
   def __len__(self):
     return self.size
@@ -34,7 +33,7 @@ class BaseDataset(Dataset):
 
   def _pad_right(self, targets):
     max_vec_len = max([len(vector) for vector in targets.input_ids])
-    assert(max_vec_len < 24)
+    assert(max_vec_len < 14)
 
     padded = []
     for vector in targets.input_ids:
@@ -54,26 +53,34 @@ class BaseDataset(Dataset):
         setattr(self, f"{support_name}_ont", support_data['ont'])
         self.supported_datasets.append(support_name)
 
-  def collate_lm(self, examples):
+  def collate_lm(self, args, examples):
     raise NotImplementedError
 
-  def collate_seq2seq(self, examples):
+  def collate_seq2seq(self, args, examples):
     raise NotImplementedError
+
+  def collate(self, args, examples)
+    if self.model_type == 'gpt':
+      return self.collate_lm(args, examples)
+    elif self.model_type in ['bart', 't5']:
+      return self.collate_seq2seq(args, examples)
 
   def collate_func(self, examples):
-    if self.model_type == 'gpt':
-      return self.collate_lm(examples)
-    elif self.model_type in ['bart', 't5']:
-      return self.collate_seq2seq(examples)
+    return examples
+
 
 class InContextDataset(BaseDataset):
 
-  def select_context(self, example):
+  def select_context(self, args, example):
     dialog = ' '.join(example['utterances'])
-    current_size = len(dialog)
-    contexts = []
+    bpe_tokens = self.tokenizer(dialog)
+    current_size = len(bpe_tokens['input_ids'])
+    assert(current_size > 1)
+    model_input_length = 2048 if args.size == 'large' else 1024
+    max_allowed = model_input_length - 14
 
-    while current_size < 3000: # self.max_len:
+    contexts = []
+    while current_size < max_allowed:
       # TODO: find more context based on embedding of query and closest support embedding
       if len(self.supported_datasets) > 0:
         for name, _ in DATASETS.items():
@@ -84,44 +91,40 @@ class InContextDataset(BaseDataset):
 
       context_target = context_example['target']
       context_label = context_target['value']
-      context_prompt = find_prompt(self.prompt_style, context_target)
+      context_prompt = find_prompt(args.prompt_style, context_target)
       ctx_history = ' '.join(context_example['utterances'][-3:])
       added_context = ctx_history + f" {context_prompt} {context_label}"
-      added_size = len(added_context)
-      current_size += added_size
       contexts.append(added_context)
 
-    additional_context = ' '.join(contexts)
-    return additional_context
+      tokenized_context = self.tokenizer(added_context)
+      current_size += len(tokenized_context['input_ids'])
+
+    additional_context = ' <|endoftext|> '.join(contexts)
+    return self.remove_special(additional_context)
 
   def remove_special(self, text):
     text = text.replace('<agent>', 'agent:')
     text = text.replace('<customer>', 'customer:')
     text = text.replace('<none>', 'none')
     text = text.replace('<label>', 'answer:')
-    text = text.replace('<sep>', '|')
+    text = text.replace('<sep>', ';')
     text = text.replace('<remove>', 'none')
-    text = text.replace('<pad>', '>')
+    text = text.replace('<pad>', '|')
     return text
 
-  def collate_lm(self, examples):
+  def collate_lm(self, args, examples):
     """ train and dev splits should not occur since you do not need gradient based training """
-    self.prompt_style = 'statement'
     assert(self.split not in ['train', 'dev'])
     contexts, dialogues, labels = [], [], []
 
     for example in examples:
-      dialog = ' '.join(example['utterances'])
+      joined_utts = ' '.join(example['utterances'])
       target = example['target']
-      prompt = find_prompt(self.prompt_style, target)
-      dialog = f'* {dialog} {prompt}'
+      prompt = find_prompt(args.prompt_style, target)
+      context = self.select_context(args, example)
+      dialog = self.remove_special(f'{joined_utts} {prompt}')
 
-      additional_context = self.select_context(example)
-      
-      additional_context = self.remove_special(additional_context)
-      dialog = self.remove_special(dialog)
-
-      contexts.append(additional_context)
+      contexts.append(context)
       dialogues.append(dialog)
       labels.append(target)
 
@@ -131,14 +134,14 @@ class InContextDataset(BaseDataset):
     trick = inputs['input_ids']
     treat = self.tokenizer.batch_decode(trick)
     for label, entry in zip(labels, treat):
-      print(entry.replace('<pad>', '|'))
+      print(entry)
       pdb.set_trace()
     """
     return inputs, labels
 
 class MetaLearnDataset(InContextDataset):
 
-  def collate_lm(self, examples):
+  def collate_lm(self, args, examples):
     """
     train - use support dataset
     dev - use support dataset, do not include the label
@@ -151,7 +154,7 @@ class MetaLearnDataset(InContextDataset):
       for example in examples:
         history = ' '.join(example['utterances'])
         target = example['target']
-        prompt = find_prompt(self.prompt_style, target)
+        prompt = find_prompt(args.prompt_style, target)
         dialog = history + prompt + target['value'] + eos
         additional_context = self.select_context(example)
 
@@ -164,7 +167,7 @@ class MetaLearnDataset(InContextDataset):
     elif self.split == 'dev':
       for example in examples:
         target = example['target']
-        prompt = find_prompt(self.prompt_style, target)
+        prompt = find_prompt(args.prompt_style, target)
         dialog = ' '.join(example['utterances']) + prompt
         additional_context = self.select_context(example)
 
@@ -184,7 +187,7 @@ class MetaLearnDataset(InContextDataset):
 
 class FineTuneDataset(BaseDataset):
 
-  def collate_seq2seq(self, examples):
+  def collate_seq2seq(self, args, examples):
     """transforms a batch of examples into a features dict that can be fed into a T5 or BART model"""
     dialogues, labels = [], []
 
@@ -203,7 +206,7 @@ class FineTuneDataset(BaseDataset):
     else:
       return inputs, labels
 
-  def collate_lm(self, examples):
+  def collate_lm(self, args, examples):
     """transforms a batch of examples into a features dict that can be fed into a GPT model"""
     dialogues, labels = [], []
     eos = self.tokenizer.eos_token
@@ -211,7 +214,7 @@ class FineTuneDataset(BaseDataset):
     for example in examples:
       dialog = ' '.join(example['utterances'])
       target = example['target']
-      prompt = find_prompt(self.prompt_style, target).strip()
+      prompt = find_prompt(args.prompt_style, target).strip()
 
       if self.split == 'train':
         dialog += f" {prompt} {target['value']} {eos}"
@@ -224,14 +227,6 @@ class FineTuneDataset(BaseDataset):
 
     inputs = self.tokenizer(dialogues, padding=True, max_length=max_length,
                               truncation=True, return_tensors='pt').to(device)
-
-    """
-    trick = inputs['input_ids']
-    treat = self.tokenizer.batch_decode(trick)
-    for label, entry in zip(labels, treat):
-      print(entry.replace('<pad>', '|'))
-      pdb.set_trace()
-    """
     if self.split == 'train':
       return inputs, inputs['input_ids']
     else:

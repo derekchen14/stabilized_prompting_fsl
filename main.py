@@ -15,7 +15,8 @@ from utils.evaluate import eval_quantify, eval_qualify
 from assets.static_vars import device, debug_break, STOP_TOKENS
 
 def run_train(args, model, datasets, exp_logger):
-  train_dataloader = get_dataloader(args, datasets['train'])
+  dataset = datasets['train']
+  train_dataloader = get_dataloader(args, dataset)
   total_steps = len(train_dataloader) // args.grad_accum_steps * args.n_epochs
   optimizer, scheduler = setup_optimization(args, model, total_steps)
   exp_logger.update_optimization(optimizer, scheduler)
@@ -24,7 +25,7 @@ def run_train(args, model, datasets, exp_logger):
     exp_logger.start_epoch(train_dataloader)
     model.train()
     for step, batch in enumerate(train_dataloader):
-      inputs, targets = batch
+      inputs, targets = dataset.collate(args, batch)
       review_inputs(args, targets, datasets['train'].tokenizer)
       outputs = model(**inputs, labels=targets)
       exp_logger.tr_loss += outputs.loss.item()
@@ -40,7 +41,7 @@ def run_train(args, model, datasets, exp_logger):
       if args.debug and step >= debug_break*args.log_interval:
         break
 
-    eval_res = run_eval(args, model, datasets, exp_logger)
+    eval_res = run_eval(args, model, datasets['dev'], exp_logger)
     if eval_res[exp_logger.metric] >= exp_logger.best_score[exp_logger.metric]:
       exp_logger.best_score = eval_res
       exp_logger.save_best_model(model, tokenizer, args.prune_keep)
@@ -49,21 +50,27 @@ def run_train(args, model, datasets, exp_logger):
 
   return model
 
-def run_inference(args, model, dataloader, exp_logger, tokenizer, split):
+def run_inference(args, model, dataset, exp_logger, tokenizer, split):
   ''' goes through model generation without backprop, rather than classification '''
+  dataloader = get_dataloader(args, dataset, split)
   all_outputs, all_targets = [], []
   exp_logger.eval_step = 0
 
-  for inputs, target_dict in progress_bar(dataloader, total=len(dataloader)):
+  for batch in progress_bar(dataloader, total=len(dataloader)):
+    inputs, target_dict = dataset.collate(args, batch)
     if target_dict[0]['value'] == '<none>':
       continue
     all_targets.extend(target_dict)   # notice this is "extend", not "append"
-    # maxl = inputs['input_ids'].shape[1] + 14
+
+    if args.task == 'in_context':
+      maxl = 2048 if args.size == 'large' else 1024
+    else:
+      maxl = inputs['input_ids'].shape[1] + 14
 
     with no_grad():
       # defaults to greedy sampling, for param details see https://huggingface.co/docs/transformers/
       #        v4.15.0/en/main_classes/model#transformers.generation_utils.GenerationMixin.generate 
-      outputs = model.generate(**inputs, max_length=args.maximum_length, early_stopping=True)
+      outputs = model.generate(**inputs, max_length=maxl, early_stopping=True)
     output_strings = tokenizer.batch_decode(outputs.detach(), skip_special_tokens=False)
     all_outputs.extend(output_strings)
 
@@ -71,26 +78,15 @@ def run_inference(args, model, dataloader, exp_logger, tokenizer, split):
       exp_logger.eval_loss = 0  # no loss, since inference only
       exp_logger.eval_step += 1
       if args.debug and exp_logger.eval_step >= debug_break: break
-    """    
-    for ots in output_strings:
-      star_index = ots.index('*')
-      tripp = ots[star_index:]
-      bar_index = tripp.find('|')
-      after_that = tripp[bar_index+1:].find('|')
-      combined = bar_index + after_that
-      print(tripp[:combined])
-    """
   return all_outputs, all_targets
 
-def run_eval(args, model, datasets, exp_logger, split='dev'):
-  dataloader = get_dataloader(args, datasets[split], split)
-  tokenizer = datasets[split].tokenizer
-
+def run_eval(args, model, dataset, exp_logger, split='dev'):
+  tokenizer = dataset.tokenizer
   if split == 'test' and args.task in ['meta_learn', 'fine_tune']:
     model = load_best_model(args, exp_logger, tokenizer)
   model.eval()
 
-  outputs = run_inference(args, model, dataloader, exp_logger, tokenizer, split)
+  outputs = run_inference(args, model, dataset, exp_logger, tokenizer, split)
   if args.quantify or split == 'dev':
     results = eval_quantify(args, *outputs, exp_logger, tokenizer)
   elif args.qualify:
@@ -118,7 +114,7 @@ if __name__ == "__main__":
     run_train(args, model, datasets, exp_logger)
   elif args.do_eval:
     model = load_model(args, ontology, tokenizer, save_path) if args.task == 'in_context' else {}
-    results = run_eval(args, model, datasets, exp_logger, split='test')
+    results = run_eval(args, model, datasets['test'], exp_logger, split='test')
     """
     output_name = f'{args.prompt_style}_lr{args.learning_rate}_clen{args.context_length}.json'
     with open(os.path.join(save_path, output_name), 'w') as tf:
