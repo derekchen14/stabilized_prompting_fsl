@@ -76,7 +76,6 @@ def run_inference(args, model, dataset, exp_logger, tokenizer, split):
       exp_logger.eval_loss = 0  # no loss, since inference only
       exp_logger.eval_step += 1
       if args.debug and exp_logger.eval_step >= debug_break: break
-  
   return all_outputs, all_targets
 
 def run_eval(args, model, dataset, exp_logger, split='dev'):

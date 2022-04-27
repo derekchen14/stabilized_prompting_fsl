@@ -136,7 +136,7 @@ class InContextDataset(BaseDataset):
     treat = self.tokenizer.batch_decode(trick)
     for label, entry in zip(labels, treat):
       print(entry)
-    pdb.set_trace()
+      pdb.set_trace()
     """
     return inputs, labels
 
