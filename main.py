@@ -5,6 +5,7 @@ import random
 from torch import nn, no_grad
 from tqdm import tqdm as progress_bar
 from components.logger import ExperienceLogger
+from components.detector import ExemplarDetective
 
 from utils.help import *
 from utils.process import process_data, get_dataloader
@@ -14,7 +15,7 @@ from utils.load import load_support
 from utils.evaluate import eval_quantify, eval_qualify
 from assets.static_vars import device, debug_break, STOP_TOKENS
 
-def run_train(args, model, datasets, exp_logger):
+def run_train(args, model, datasets, exp_logger, detective):
   dataset = datasets['train']
   train_dataloader = get_dataloader(args, dataset)
   total_steps = len(train_dataloader) // args.grad_accum_steps * args.n_epochs
@@ -25,7 +26,7 @@ def run_train(args, model, datasets, exp_logger):
     exp_logger.start_epoch(train_dataloader)
     model.train()
     for step, batch in enumerate(train_dataloader):
-      inputs, targets = dataset.collate(args, batch)
+      inputs, targets = dataset.collate(args, batch, detective)
       review_inputs(args, targets, datasets['train'].tokenizer)
       outputs = model(**inputs, labels=targets)
       exp_logger.tr_loss += outputs.loss.item()
@@ -50,14 +51,14 @@ def run_train(args, model, datasets, exp_logger):
 
   return model
 
-def run_inference(args, model, dataset, exp_logger, tokenizer, split):
+def run_inference(args, model, dataset, exp_logger, detective, tokenizer, split):
   ''' goes through model generation without backprop, rather than classification '''
   dataloader = get_dataloader(args, dataset, split)
   all_outputs, all_targets = [], []
   exp_logger.eval_step = 0
 
   for batch in progress_bar(dataloader, total=len(dataloader)):
-    inputs, target_dict = dataset.collate(args, batch)
+    inputs, target_dict = dataset.collate(args, batch, detective)
     all_targets.extend(target_dict)   # notice this is "extend", not "append"
 
     if args.task == 'in_context':
@@ -78,13 +79,13 @@ def run_inference(args, model, dataset, exp_logger, tokenizer, split):
       if args.debug and exp_logger.eval_step >= debug_break: break
   return all_outputs, all_targets
 
-def run_eval(args, model, dataset, exp_logger, split='dev'):
+def run_eval(args, model, dataset, exp_logger, detective, split='dev'):
   tokenizer = dataset.tokenizer
   if split == 'test' and args.task in ['meta_learn', 'fine_tune']:
     model = load_best_model(args, exp_logger, tokenizer)
   model.eval()
 
-  outputs = run_inference(args, model, dataset, exp_logger, tokenizer, split)
+  outputs = run_inference(args, model, dataset, exp_logger, detective, tokenizer, split)
   if args.quantify or split == 'dev':
     results = eval_quantify(args, *outputs, exp_logger, tokenizer)
   elif args.qualify:
@@ -105,16 +106,17 @@ if __name__ == "__main__":
   tokenizer = load_tokenizer(args)
   datasets, ontology = process_data(args, raw_data, tokenizer)
   exp_logger = ExperienceLogger(args, ontology, save_path)
+  detective = ExemplarDetective(args, datasets['train'])
 
   if args.do_train:
     model = load_model(args, ontology, tokenizer, save_path)
     if args.task == 'meta_learn':
       supports = load_support(args, datasets)
       datasets.add_support(supports, args.left_out)
-    run_train(args, model, datasets, exp_logger)
+    run_train(args, model, datasets, exp_logger, detective)
   elif args.do_eval:
     model = load_model(args, ontology, tokenizer, save_path) if args.task == 'in_context' else {}
-    outputs, _ = run_eval(args, model, datasets['test'], exp_logger, split='test')
+    outputs, _ = run_eval(args, model, datasets['test'], exp_logger, detective, split='test')
     # output_name = f'{args.prompt_style}_lr{args.learning_rate}_clen{args.context_length}.json'
     # with open(os.path.join(save_path, output_name), 'w') as tf:
     #   json.dump(outputs, tf, indent=2)
