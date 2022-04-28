@@ -21,12 +21,13 @@ def run_train(args, model, datasets, exp_logger, detective):
   total_steps = len(train_dataloader) // args.grad_accum_steps * args.n_epochs
   optimizer, scheduler = setup_optimization(args, model, total_steps)
   exp_logger.update_optimization(optimizer, scheduler)
+  dataset.add_detective(detective)
 
   for epoch_count in range(exp_logger.num_epochs):
     exp_logger.start_epoch(train_dataloader)
     model.train()
     for step, batch in enumerate(train_dataloader):
-      inputs, targets = dataset.collate(args, batch, detective)
+      inputs, targets = dataset.collate(args, batch)
       review_inputs(args, targets, datasets['train'].tokenizer)
       outputs = model(**inputs, labels=targets)
       exp_logger.tr_loss += outputs.loss.item()
@@ -51,14 +52,14 @@ def run_train(args, model, datasets, exp_logger, detective):
 
   return model
 
-def run_inference(args, model, dataset, exp_logger, detective, tokenizer, split):
+def run_inference(args, model, dataset, exp_logger, tokenizer, split):
   ''' goes through model generation without backprop, rather than classification '''
   dataloader = get_dataloader(args, dataset, split)
   all_outputs, all_targets = [], []
   exp_logger.eval_step = 0
 
   for batch in progress_bar(dataloader, total=len(dataloader)):
-    inputs, target_dict = dataset.collate(args, batch, detective)
+    inputs, target_dict = dataset.collate(args, batch)
     all_targets.extend(target_dict)   # notice this is "extend", not "append"
 
     if args.task == 'in_context':
@@ -81,11 +82,12 @@ def run_inference(args, model, dataset, exp_logger, detective, tokenizer, split)
 
 def run_eval(args, model, dataset, exp_logger, detective, split='dev'):
   tokenizer = dataset.tokenizer
+  dataset.add_detective(detective)
   if split == 'test' and args.task in ['meta_learn', 'fine_tune']:
     model = load_best_model(args, exp_logger, tokenizer)
   model.eval()
 
-  outputs = run_inference(args, model, dataset, exp_logger, detective, tokenizer, split)
+  outputs = run_inference(args, model, dataset, exp_logger, tokenizer, split)
   if args.quantify or split == 'dev':
     results = eval_quantify(args, *outputs, exp_logger, tokenizer)
   elif args.qualify:
