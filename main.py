@@ -63,7 +63,7 @@ def run_inference(args, model, dataset, exp_logger, tokenizer, split):
     if args.task == 'in_context':
       maxl = 2048 if args.size == 'large' else 1024
     else:
-      maxl = inputs['input_ids'].shape[1] + 14
+      maxl = inputs['input_ids'].shape[1] + 12
 
     with no_grad():
       # defaults to greedy sampling, for param details see https://huggingface.co/docs/transformers/

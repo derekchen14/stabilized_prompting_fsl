@@ -33,7 +33,7 @@ class BaseDataset(Dataset):
 
   def _pad_right(self, targets):
     max_vec_len = max([len(vector) for vector in targets.input_ids])
-    assert(max_vec_len < 14)
+    assert(max_vec_len < 12)
 
     padded = []
     for vector in targets.input_ids:
@@ -176,7 +176,7 @@ class MetaLearnDataset(InContextDataset):
         dialogues.append(dialog)
         labels.append(target)
 
-      max_length = self.max_len - 14
+      max_length = self.max_len - 12
       inputs = self.tokenizer(contexts, dialogues, padding=True, max_length=max_length,
                                 truncation='only_first', return_tensors='pt').to(device)
 
@@ -197,7 +197,7 @@ class FineTuneDataset(BaseDataset):
       dialogues.append(dialog)
       labels.append(example['target']['value'] if self.split == 'train' else example['target'])
 
-    max_length = self.max_len - 14
+    max_length = self.max_len - 12
     inputs = self.tokenizer(dialogues, padding='longest', max_length=max_length,
                                 truncation=True, return_tensors='pt').to(device)
     if self.split == 'train':
@@ -222,7 +222,7 @@ class FineTuneDataset(BaseDataset):
         max_length = self.max_len
       elif self.split in ['dev', 'test']:
         dialog += f" {prompt} "
-        max_length = self.max_len - 14
+        max_length = self.max_len - 12
       dialogues.append(dialog)
       labels.append(target)
 
