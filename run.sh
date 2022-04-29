@@ -14,24 +14,18 @@
 #       --style dataset --model gpt --size small --num-shots full --batch-size 8 \
 #       --learning-rate 1e-4  --maximum-len 512 --prompt-style naive
 
+# Finetune the Sentence Transformers model from SBERT
+python contrast.py --learning-rate 3e-5 --kappa 10 --finetune icdst --num-shots five \
+      --batch-size 32 --n-epochs 7 --seed 21 --log-interval 900
+
 # Leveraging Slot Descriptions for Zero-Shot Cross-Domain DST (domain held out for testing)
-# python main.py --dataset mwoz22 --task fine_tune --style domain --do-train --do-save \
-#       --model t5 --size small --num-shots zero --maximum-len 512 --prompt-style human \
-#       --temperature 0.8 --threshold 1.4 --context-len 8
 # python main.py --dataset mwoz --task fine_tune --n-epochs 7 --do-train --debug \
 #       --style domain --left-out hotel --model trade --size small --num-shots few \
 #       --learning-rate 1e-4  --maximum-len 1024 --prompt-style naive --context-len 9 \
 #       --batch-size 64 --log-interval 1200 --prune-keep 2
-
 # Zero-Shot DST via Cross-Task Transfer (dataset is held out for testing)
 # python main.py --dataset mwoz --task fine_tune --style dataset --do-train --debug \
 #       --model t5 --size small --num-shots percent --threshold 0.01 --prompt-style naive \
-#       --maximum-len 512 --temperature 0.8 --threshold 1.4 --context-len 8
-# python main.py --dataset mwoz --task fine_tune --style dataset --do-train --debug \
-#       --model t5 --size small --num-shots percent --threshold 0.05 --prompt-style naive \
-#       --maximum-len 512 --temperature 0.8 --threshold 1.4 --context-len 8
-# python main.py --dataset mwoz --task fine_tune --style dataset --do-train --debug \
-#       --model t5 --size small --num-shots percent --threshold 0.10 --prompt-style naive \
 #       --maximum-len 512 --temperature 0.8 --threshold 1.4 --context-len 8
 
 # ________ In-context Learning, without Back-propogation ________
@@ -42,10 +36,10 @@
 # python main.py --dataset sgd --task in_context --style dataset --do-eval --seed 14 \
 #       --model gpt --size small --num-shots full --maximum-length 512 --prompt-style naive \
 #       --temperature 0.8 --verbose --context-length 2 --ignore-cache --batch-size 4
-python main.py --dataset mwoz --task in_context --style dataset --do-eval --seed 15 \
-      --model gpt --size medium --num-shots full --maximum-len 1024 --prompt-style statement \
-      --temperature 0.8 --threshold 1.4 --context-len 3 --left-out mwoz \
-      --batch-size 3 --search oracle --quantify # --parallel  # --ignore-cache
+# python main.py --dataset mwoz --task in_context --style dataset --do-eval --seed 15 \
+#       --model gpt --size medium --num-shots full --maximum-len 1024 --prompt-style statement \
+#       --temperature 0.8 --threshold 1.4 --context-len 3 --left-out mwoz \
+#       --batch-size 3 --search oracle --quantify # --parallel  # --ignore-cache
 
 # ________ Meta-Stabilize Pre-training Mode ___________
 # >> Our System

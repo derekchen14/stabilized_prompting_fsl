@@ -43,8 +43,14 @@ def solicit_params():
                 help="Maximum length of sequences for model input")
     parser.add_argument("--context-length", default=2, type=int,
                 help="Number of turns to look back into dialogue context, eats into token length")
+
+    # SBERT Retriever params
     parser.add_argument("--search", default="oracle", type=str, help="find similar examples for context",  
-                choices=["oracle", "euclidean", "mahalanobis", "tuned", "cosine"])
+                choices=["oracle", "euclidean", "mahalanobis", "cosine"])
+    parser.add_argument("--finetune", default="frozen", type=str, 
+                help="fine-tuning method on detective for training sbert model")
+    parser.add_argument("--kappa", default=10, type=int, 
+                help="Number of examples to use as negatives during constrastive training")
 
     # Key settings
     parser.add_argument("--ignore-cache", action="store_true",

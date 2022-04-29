@@ -4,9 +4,9 @@ import random
 import pickle as pkl
 from numpy.linalg import norm
 
-from sentence_transformers import SentenceTransformer
 from tqdm import tqdm as progress_bar
 from assets.static_vars import device
+from utils.load import load_sent_transformer
 
 class ExemplarDetective(object):
 
@@ -28,13 +28,11 @@ class ExemplarDetective(object):
       self.candidates = pkl.load( open( cache_path, 'rb' ) )
       print(f"Loaded {len(self.candidates)} embeddings from {cache_path}")
     else:
-      self.embed_candidates(data, cache_path, embed_method)
+      self.embed_candidates(args, data, cache_path, embed_method)
 
-  def embed_candidates(self, data, cache_path, embed_method):
+  def embed_candidates(self, args, data, cache_path, embed_method):
     samples = self._sample_shots(data)
-    ckpt_name = 'all-mpnet-base-v2' if embed_method == 'mpnet' else 'all-distilroberta-v1'
-    model = SentenceTransformer(f'sentence-transformers/{ckpt_name}')
-    self.embed_model = model.to(device)
+    self.embed_model = load_sent_transformer(args.finetune)
     print(f'Creating new embeddings with {embed_method} from scratch ...')
 
     self.candidates = []
