@@ -2,9 +2,9 @@ import os, pdb, sys
 import numpy as np
 from assets.static_vars import DOMAIN_SLOTS
 
-def find_prompt(style, target):
-  domain = target['domain'].lower()
-  slot = target['slot'].lower()
+def find_prompt(style, domain, slot):
+  domain = domain.lower()
+  slot = slot.lower()
   if domain.endswith('s'):
     domain = domain[:-1]
 

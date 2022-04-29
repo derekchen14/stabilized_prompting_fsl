@@ -23,7 +23,8 @@ class ExemplarDetective(object):
     ctx_len = args.context_length
     cache_file = f'{embed_method}_{args.style}_{left_out}_lookback{ctx_len}_embeddings.pkl'
     cache_path = os.path.join(args.input_dir, 'cache', args.dataset, cache_file)
-
+    self.embed_model = load_sent_transformer(args, embed_method)
+    
     if os.path.exists(cache_path):
       self.candidates = pkl.load( open( cache_path, 'rb' ) )
       print(f"Loaded {len(self.candidates)} embeddings from {cache_path}")
@@ -32,16 +33,18 @@ class ExemplarDetective(object):
 
   def embed_candidates(self, args, data, cache_path, embed_method):
     samples = self._sample_shots(data)
-    self.embed_model = load_sent_transformer(args.finetune)
     print(f'Creating new embeddings with {embed_method} from scratch ...')
 
     self.candidates = []
-    for exp in progress_bar(data, total=len(data)):
-      history = ' '.join(exp['utterances'])
+    histories = [' '.join(exp['utterances']) for exp in samples]
+    embeddings = self.embed_model.encode(histories)
+
+    for emb, exp, hist in zip(embeddings, samples, histories):
+      target = exp['target']
       cand = {   # embedding is a 768-dim numpy array
-        'embedding': self.embed_model.encode(history),
+        'embedding': emb,
         'gid': target['global_id'],
-        'history': history,
+        'history': hist,
         'dsv': (target['domain'], target['slot'], target['value'])
       }
       self.candidates.append(cand)
@@ -68,18 +71,17 @@ class ExemplarDetective(object):
     """ returns the closest exemplars from the candidate pool not already chosen"""
     if self.search_method == 'oracle':
       return self.oracle_search(example)
-    elif self.search_method == 'tuned':
-      pass
     else:
       return self.distance_search(example)
 
   def reset(self):
     self.selected_gids = []
+    self.distances = []
     self.sorted_exemplars = []
 
   def oracle_search(self, example):
-    self.selected_gids.append(target['global_id'])
     target = example['target']
+    self.selected_gids.append(target['global_id'])
     acceptable = False
 
     while not acceptable:
@@ -100,7 +102,7 @@ class ExemplarDetective(object):
   def distance_search(self, example):
     if len(self.sorted_exemplars) == 0:
       history = ' '.join(example['utterances'])
-      exp_embed = self.embed_model.encode(history)
+      exp_embed = self.embed_model.encode(history, show_progress_bar=False)
       cand_embeds = [cand['embedding'] for cand in self.candidates]
 
       if self.search_method == 'cosine':

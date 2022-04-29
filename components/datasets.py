@@ -93,11 +93,9 @@ class InContextDataset(BaseDataset):
     contexts = []
     while current_size < max_allowed:
       exemplar = self.detective.search(example)
-
-      ctx_history = ' '.join(exemplar['utterances'])
-      ctx_prompt = find_prompt(args.prompt_style, exemplar['target'])
-      ctx_label = exemplar['target']['value']
-      added_context = f"{ctx_history} {ctx_prompt} {ctx_label}"
+      ctx_domain, ctx_slot, ctx_label = exemplar['dsv']
+      ctx_prompt = find_prompt(args.prompt_style, ctx_domain, ctx_slot)
+      added_context = f"{exemplar['history']} {ctx_prompt} {ctx_label}"
       contexts.append(added_context)
 
       tokenized_context = self.tokenizer(added_context)
@@ -125,7 +123,7 @@ class InContextDataset(BaseDataset):
     for example in examples:
       joined_utts = ' '.join(example['utterances'])
       target = example['target']
-      prompt = find_prompt(args.prompt_style, target)
+      prompt = find_prompt(args.prompt_style, target['domain'], target['slot'])
       context = self.select_context(args, example, joined_utts)
       dialog = self.remove_special(f'{joined_utts} {prompt}')
 
@@ -159,7 +157,7 @@ class MetaLearnDataset(InContextDataset):
       for example in examples:
         history = ' '.join(example['utterances'])
         target = example['target']
-        prompt = find_prompt(args.prompt_style, target)
+        prompt = find_prompt(args.prompt_style, target['domain'], target['slot'])
         dialog = history + prompt + target['value'] + eos
         additional_context = self.select_context(example)
 
@@ -172,7 +170,7 @@ class MetaLearnDataset(InContextDataset):
     elif self.split == 'dev':
       for example in examples:
         target = example['target']
-        prompt = find_prompt(args.prompt_style, target)
+        prompt = find_prompt(args.prompt_style, target['domain'], target['slot'])
         dialog = ' '.join(example['utterances']) + prompt
         additional_context = self.select_context(example)
 
@@ -219,7 +217,7 @@ class FineTuneDataset(BaseDataset):
     for example in examples:
       dialog = ' '.join(example['utterances'])
       target = example['target']
-      prompt = find_prompt(args.prompt_style, target).strip()
+      prompt = find_prompt(args.prompt_style, target['domain'], target['slot'])
 
       if self.split == 'train':
         dialog += f" {prompt} {target['value']} {eos}"

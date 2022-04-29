@@ -79,7 +79,7 @@ def load_tokenizer(args):
   tokenizer.padding_side = 'left'
   return tokenizer
 
-def load_sent_transformer(args, for_train=False):
+def load_sent_transformer(args, embed_method='mpnet', for_train=False):
   if args.finetune == 'frozen' or for_train:  # use the default model without fine-tune
     ckpt_name = 'all-mpnet-base-v2' if embed_method == 'mpnet' else 'all-distilroberta-v1'
     ckpt_path = f'sentence-transformers/{ckpt_name}'

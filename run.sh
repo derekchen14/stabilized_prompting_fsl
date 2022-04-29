@@ -2,7 +2,7 @@
 # Training with all available data
 # python main.py --dataset mwoz --task fine_tune --style dataset --do-train --debug \
 #       --model gpt --size small --num-shots full --maximum-len 512 --prompt-style none \
-#       --prune-keep -1 --log-interval 700 --context-len 3 --batch-size 16 --n-epochs 10 \
+#       --prune-keep -1 --log-interval 400 --context-len 3 --batch-size 16 --n-epochs 10 \
 #       --learning-rate 3e-5 --seed 15 # --ignore-cache # --verbose
 # python main.py --dataset sgd --task fine_tune --n-epochs 7 --do-train --debug \
 #       --style dataset --model gpt --size small --num-shots full --batch-size 9 \
@@ -15,8 +15,8 @@
 #       --learning-rate 1e-4  --maximum-len 512 --prompt-style naive
 
 # Finetune the Sentence Transformers model from SBERT
-python contrast.py --learning-rate 3e-5 --kappa 10 --finetune icdst --num-shots five \
-      --batch-size 32 --n-epochs 7 --seed 21 --log-interval 900
+# python contrast.py --learning-rate 3e-5 --kappa 10 --finetune icdst --num-shots five \
+#       --batch-size 32 --n-epochs 7 --seed 21 --log-interval 900
 
 # Leveraging Slot Descriptions for Zero-Shot Cross-Domain DST (domain held out for testing)
 # python main.py --dataset mwoz --task fine_tune --n-epochs 7 --do-train --debug \
@@ -36,10 +36,10 @@ python contrast.py --learning-rate 3e-5 --kappa 10 --finetune icdst --num-shots 
 # python main.py --dataset sgd --task in_context --style dataset --do-eval --seed 14 \
 #       --model gpt --size small --num-shots full --maximum-length 512 --prompt-style naive \
 #       --temperature 0.8 --verbose --context-length 2 --ignore-cache --batch-size 4
-# python main.py --dataset mwoz --task in_context --style dataset --do-eval --seed 15 \
-#       --model gpt --size medium --num-shots full --maximum-len 1024 --prompt-style statement \
-#       --temperature 0.8 --threshold 1.4 --context-len 3 --left-out mwoz \
-#       --batch-size 3 --search oracle --quantify # --parallel  # --ignore-cache
+python main.py --dataset mwoz --task in_context --style dataset --do-eval --seed 15 \
+      --model gpt --size small --num-shots five --maximum-len 1024 --prompt-style statement \
+      --temperature 0.8 --threshold 1.4 --context-len 3 --left-out mwoz \
+      --batch-size 3 --search cosine --quantify --debug # --parallel  # --ignore-cache
 
 # ________ Meta-Stabilize Pre-training Mode ___________
 # >> Our System

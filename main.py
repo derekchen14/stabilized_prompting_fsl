@@ -43,7 +43,7 @@ def run_train(args, model, datasets, exp_logger, detective):
       if args.debug and step >= debug_break*args.log_interval:
         break
 
-    _, eval_res = run_eval(args, model, datasets['dev'], exp_logger)
+    _, eval_res = run_eval(args, model, datasets['dev'], exp_logger, detective)
     if eval_res[exp_logger.metric] >= exp_logger.best_score[exp_logger.metric]:
       exp_logger.best_score = eval_res
       exp_logger.save_best_model(model, tokenizer, args.prune_keep)
@@ -78,6 +78,9 @@ def run_inference(args, model, dataset, exp_logger, tokenizer, split):
       exp_logger.eval_loss = 0  # no loss, since inference only
       exp_logger.eval_step += 1
       if args.debug and exp_logger.eval_step >= debug_break: break
+    if split == 'test' and args.debug:
+      exp_logger.eval_step += 1
+      if exp_logger.eval_step >= (debug_break * 200): break
   return all_outputs, all_targets
 
 def run_eval(args, model, dataset, exp_logger, detective, split='dev'):
