@@ -101,6 +101,37 @@ def select_utterances(args, utt_so_far, target, split):
 
   return use_target, utterances
 
+def build_sgd(args, data, mapping, split):
+  examples = []
+  prompt = "The topic of conversation is about"
+
+  for conversation in progress_bar(data, total=len(data)):
+    text_so_far = []
+
+    for turn_count, turn in enumerate(conversation['turns']):
+      text = turn['utterance']
+
+      if turn['speaker'] == 'SYSTEM':
+        sys_text = f"<agent> {text}"
+        text_so_far.append(sys_text)
+
+      elif turn['speaker'] == 'USER':
+        user_utt = f"<customer> {text}"
+        text_so_far.append(user_utt)
+
+        for frame in turn['frames']:
+          service = frame['service'].split('_')[0]
+
+          if 'state' in frame:
+            for slot, value in frame['state']['slot_values'].items():
+              target = {'domain': service, 'slot': slot, 'value': value[0].strip(),
+                    'global_id': conversation['dialogue_id'].replace('_','-') + '_' + str(turn_count+1) }
+              use_target, history = select_utterances(args, text_so_far, target, split)
+              if use_target:
+                examples.append({'utterances': history, 'target': target})
+
+  return examples
+
 def build_mwoz(args, data, label_set, split):
   # written for MultiWoz v2.0, 2.1 and 2.3
   examples = []
@@ -316,37 +347,6 @@ def build_gsim(data, mapping):
         use_target, history = select_utterances(args, text_so_far, target)
         if use_target:
           examples.append({'utterances': history, 'target': target})
-
-  return examples
-
-def build_sgd(args, data, mapping, split):
-  examples = []
-  prompt = "The topic of conversation is about"
-
-  for conversation in progress_bar(data, total=len(data)):
-    text_so_far = []
-
-    for turn_count, turn in enumerate(conversation['turns']):    
-      text = turn['utterance']
-
-      if turn['speaker'] == 'SYSTEM':
-        sys_text = f"<agent> {text}"
-        text_so_far.append(sys_text)
-  
-      elif turn['speaker'] == 'USER':
-        user_utt = f"<customer> {text}"
-        text_so_far.append(user_utt)
-
-        for frame in turn['frames']:
-          service = frame['service'].split('_')[0]
-
-          if 'state' in frame:
-            for slot, value in frame['state']['slot_values'].items():
-              target = {'domain': service, 'slot': slot, 'value': value[0].strip(),
-                    'global_id': conversation['dialogue_id'].replace('_','-') + '_' + str(turn_count+1) }
-              use_target, history = select_utterances(args, text_so_far, target)
-              if use_target:
-                examples.append({'utterances': history, 'target': target})
 
   return examples
 

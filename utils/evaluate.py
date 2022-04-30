@@ -171,8 +171,11 @@ def fill_carryover(conversations, use_history=False):
 
 def parse_history(args, generated_string):
   """parses the output for evaluation , only works with GPT"""
+  """
+  TODO: cannot run, needs to be fixed
+  """
   history, pred_string = generated_string.split('<label>')
-  pred_string.strip().replace(' <pad>', '')
+  pred_string.replace('<pad>', '').strip()
   
   eos_index = len(pred_string)
   for tok in ['<pad>', '<sep>', '<|endoftext|>']:

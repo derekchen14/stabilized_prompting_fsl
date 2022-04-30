@@ -74,6 +74,8 @@ def load_tokenizer(args):
     tokenizer.add_special_tokens(special)
   elif args.task == 'in_context':
     tokenizer.add_special_tokens({'pad_token': '[PAD]'})
+  else:
+    tokenizer.add_special_tokens(special)
 
   tokenizer.padding_side = 'left'
   return tokenizer
@@ -145,11 +147,11 @@ def load_best_model(args, exp_logger, tokenizer):
       current_score = re.findall(re_str, fname)
       score = int(current_score[0]) if len(current_score) > 0 else 0
       if args.do_eval:
-        model_match = model_match(fname, args)
+        match = model_match(fname, args)
       else:
-        model_match = True
+        match = True
 
-      if score > top_acc and model_match:
+      if score > top_acc and match:
         top_acc = score
         top_folder = fname
 

@@ -221,7 +221,7 @@ class FineTuneDataset(BaseDataset):
         dialog += f" {prompt} {target['value']} {eos}"
         max_length = self.max_len
       elif self.split in ['dev', 'test']:
-        dialog += f" {prompt} "
+        dialog += f" {prompt}"
         max_length = self.max_len - 12
       dialogues.append(dialog)
       labels.append(target)
