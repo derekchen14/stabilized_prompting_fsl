@@ -25,12 +25,12 @@ def solicit_params():
     parser.add_argument("--seed", default=42, type=int)
 
     # Custom paper parameters
-    parser.add_argument("--num-shots", default="zero", type=str,
-                choices=["zero", "few", "percent", "full"], help="zero-shot and few-shot load \
-                    an untrained model, percent loads a model fine-tuned on <threshold>% of data")
-    parser.add_argument("--threshold", default=0.25, type=float,
-                help="Determines the amount of data used for pre-training the model; See num-shots")
-    parser.add_argument("--temperature", default=1.4, type=float,
+    parser.add_argument("--num-shots", default="full", type=str,
+                choices=["point", "one", "five", "ten", "full"], help="point allows only 0.1 of data, \
+                while full is used with all training data, 1/5/10 is percent of training data")
+    parser.add_argument("--threshold", default=1.2, type=float,
+                help="Used as the repetition penalty during inference of generation")
+    parser.add_argument("--temperature", default=0.8, type=float,
                 help="Temperature for increasing diversity when decoding, mainly for paraphrase")
     parser.add_argument("--style", default='dataset', type=str, choices=['domain', 'dataset'],
                 help="Subset of data held out for testing. For example, if domain is the chosen style, \
@@ -43,8 +43,14 @@ def solicit_params():
                 help="Maximum length of sequences for model input")
     parser.add_argument("--context-length", default=2, type=int,
                 help="Number of turns to look back into dialogue context, eats into token length")
+
+    # SBERT Retriever params
     parser.add_argument("--search", default="oracle", type=str, help="find similar examples for context",  
-                choices=["oracle", "tfidf", "sbert", "roberta", "mahalanobis", "prototype"])
+                choices=["oracle", "euclidean", "mahalanobis", "cosine"])
+    parser.add_argument("--finetune", default="frozen", type=str, 
+                help="fine-tuning method on detective for training sbert model")
+    parser.add_argument("--kappa", default=10, type=int, 
+                help="Number of examples to use as negatives during constrastive training")
 
     # Key settings
     parser.add_argument("--ignore-cache", action="store_true",

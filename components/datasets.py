@@ -7,8 +7,6 @@ from torch.utils.data import Dataset
 
 from assets.static_vars import device, DATASETS
 from utils.make_prompt import find_prompt
-from utils.meta_learn import search_for_similar
-
 
 class BaseDataset(Dataset):
   def __init__(self, args, examples, tokenizer, split):
@@ -24,6 +22,7 @@ class BaseDataset(Dataset):
     self.max_len = args.maximum_length
     self.ctx_len = args.context_length
     self.model_type = args.model
+    self.detective = None
 
   def __len__(self):
     return self.size
@@ -53,6 +52,10 @@ class BaseDataset(Dataset):
         setattr(self, f"{support_name}_ont", support_data['ont'])
         self.supported_datasets.append(support_name)
 
+  def add_detective(self, detective):
+    if self.detective is None:
+      self.detective = detective
+
   def collate_lm(self, args, examples):
     raise NotImplementedError
 
@@ -71,37 +74,36 @@ class BaseDataset(Dataset):
 
 class InContextDataset(BaseDataset):
 
-  def select_context(self, args, example):
-    dialog = ' '.join(example['utterances'])
-    bpe_tokens = self.tokenizer(dialog)
+  def move_elsewhere(self):
+    if len(self.supported_datasets) > 0:
+      for name, _ in DATASETS.items():
+        support = getattr(self, f"{name}_data")
+        context_example = self.detective.search(example, support)
+
+  def select_context(self, args, example, joined_utts):
+    bpe_tokens = self.tokenizer(joined_utts)
     current_size = len(bpe_tokens['input_ids'])
     assert(current_size > 1)
+    eos_token = self.tokenizer.eos_token
+    
     model_input_length = 2048 if args.size == 'large' else 1024
-    max_allowed = model_input_length - 14
+    max_allowed = model_input_length - 12
 
+    self.detective.reset()
     contexts = []
     while current_size < max_allowed:
-      # TODO: find more context based on embedding of query and closest support embedding
-      if len(self.supported_datasets) > 0:
-        for name, _ in DATASETS.items():
-          support = getattr(self, f"{name}_data")
-          context_example = search_for_similar(example, support)
-      else:
-        context_example = search_for_similar(example, self.data)
-
-      context_target = context_example['target']
-      context_label = context_target['value']
-      context_prompt = find_prompt(args.prompt_style, context_target)
-      ctx_history = ' '.join(context_example['utterances'][-3:])
-      added_context = ctx_history + f" {context_prompt} {context_label}"
+      exemplar = self.detective.search(example)
+      ctx_domain, ctx_slot, ctx_label = exemplar['dsv']
+      ctx_prompt = find_prompt(args.prompt_style, ctx_domain, ctx_slot)
+      added_context = f"{exemplar['history']} {ctx_prompt} {ctx_label}"
       contexts.append(added_context)
 
       tokenized_context = self.tokenizer(added_context)
       current_size += len(tokenized_context['input_ids'])
 
-    additional_context = '<|endoftext|>'.join(contexts)
+    additional_context = eos_token.join(contexts)
     cleaned_context = self.remove_special(additional_context)
-    return cleaned_context + '<|endoftext|>'
+    return cleaned_context + eos_token
 
   def remove_special(self, text):
     text = text.replace('<agent>', 'agent:')
@@ -121,8 +123,8 @@ class InContextDataset(BaseDataset):
     for example in examples:
       joined_utts = ' '.join(example['utterances'])
       target = example['target']
-      prompt = find_prompt(args.prompt_style, target)
-      context = self.select_context(args, example)
+      prompt = find_prompt(args.prompt_style, target['domain'], target['slot'])
+      context = self.select_context(args, example, joined_utts)
       dialog = self.remove_special(f'{joined_utts} {prompt}')
 
       contexts.append(context)
@@ -155,9 +157,9 @@ class MetaLearnDataset(InContextDataset):
       for example in examples:
         history = ' '.join(example['utterances'])
         target = example['target']
-        prompt = find_prompt(args.prompt_style, target)
+        prompt = find_prompt(args.prompt_style, target['domain'], target['slot'])
         dialog = history + prompt + target['value'] + eos
-        additional_context = self.select_context(example)
+        additional_context = self.select_context(args, example, history)
 
         contexts.append(additional_context)
         dialogues.append(dialog)
@@ -168,9 +170,9 @@ class MetaLearnDataset(InContextDataset):
     elif self.split == 'dev':
       for example in examples:
         target = example['target']
-        prompt = find_prompt(args.prompt_style, target)
+        prompt = find_prompt(args.prompt_style, target['domain'], target['slot'])
         dialog = ' '.join(example['utterances']) + prompt
-        additional_context = self.select_context(example)
+        additional_context = self.select_context(args, example, dialog)
 
         contexts.append(additional_context)
         dialogues.append(dialog)
@@ -215,7 +217,7 @@ class FineTuneDataset(BaseDataset):
     for example in examples:
       dialog = ' '.join(example['utterances'])
       target = example['target']
-      prompt = find_prompt(args.prompt_style, target).strip()
+      prompt = find_prompt(args.prompt_style, target['domain'], target['slot'])
 
       if self.split == 'train':
         dialog += f" {prompt} {target['value']} {eos}"

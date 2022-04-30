@@ -14,6 +14,7 @@ from transformers import GPT2LMHeadModel,GPT2ForSequenceClassification, GPT2Conf
                           BartForConditionalGeneration, BartConfig, BartTokenizer, \
                           T5ForConditionalGeneration, T5Config, T5Tokenizer
 from transformers import logging, GPTJForCausalLM, AutoTokenizer
+from sentence_transformers import SentenceTransformer
 from assets.static_vars import device, DATASETS, CHECKPOINTS
 from components.embed import Embedder
 from utils.help import model_match
@@ -41,6 +42,7 @@ def load_support(args):
     return support_data
 
   for dataset, full_name in DATASETS.items():
+    support_data[dataset] = {}
     if dataset != args.left_out:
       support_path = os.path.join(args.input_dir, dataset, "train.json")
       sdata = json.load(open(support_path, 'r'))  # consider loading dev data too
@@ -80,6 +82,17 @@ def load_tokenizer(args):
   tokenizer.padding_side = 'left'
   return tokenizer
 
+def load_sent_transformer(args, embed_method='mpnet', for_train=False):
+  if args.finetune == 'frozen' or for_train:  # use the default model without fine-tune
+    ckpt_name = 'all-mpnet-base-v2' if embed_method == 'mpnet' else 'all-distilroberta-v1'
+    ckpt_path = f'sentence-transformers/{ckpt_name}'
+  else:
+    ckpt_name = f'lr3e-5_k{args.kappa}_{args.finetune}.pt'   # alternatively TSDAE or GPL
+    ckpt_path = os.path.join(args.output_dir, 'sbert', ckpt_name)
+  
+  model = SentenceTransformer(ckpt_path)
+  return model.to(device)
+
 def load_model(args, ontology, tokenizer, load_dir, ckpt_name=''):
   print(f"Setting up {args.size} {args.model} model for {args.num_shots} shot learning")
   # if args.num_shots == 'percent':
@@ -107,15 +120,7 @@ def load_model(args, ontology, tokenizer, load_dir, ckpt_name=''):
     model.resize_token_embeddings(len(tokenizer))  # transformer_check
 
   if args.parallel:
-    # device_map = {
-    #     0: [0, 1, 2, 3],
-    #     1: [4, 5, 6, 7, 8, 9],
-    #     2: [10, 11, 12, 13, 14, 15,],
-    #     3: [16, 17, 18, 19, 20, 21,],
-    #     4: [22, 23, 24, 25, 26, 27,],
-    # }
-    # model.parallelize(device_map)
-    model.parallelize()
+    model.parallelize()  # other notes at bottom of file
   else:
     model.to(device)
   return model
@@ -165,3 +170,14 @@ def load_best_model(args, exp_logger, tokenizer):
   # model.load_state_dict(checkpoint)
   model = load_model(args, exp_logger.ontology, tokenizer, load_dir, ckpt_path)
   return model
+
+"""
+    device_map = {
+        0: [0, 1, 2, 3],
+        1: [4, 5, 6, 7, 8, 9],
+        2: [10, 11, 12, 13, 14, 15,],
+        3: [16, 17, 18, 19, 20, 21,],
+        4: [22, 23, 24, 25, 26, 27,],
+    }
+    model.parallelize(device_map)
+"""

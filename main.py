@@ -21,12 +21,13 @@ def run_train(args, model, datasets, exp_logger, detective):
   total_steps = len(train_dataloader) // args.grad_accum_steps * args.n_epochs
   optimizer, scheduler = setup_optimization(args, model, total_steps)
   exp_logger.update_optimization(optimizer, scheduler)
+  dataset.add_detective(detective)
 
   for epoch_count in range(exp_logger.num_epochs):
     exp_logger.start_epoch(train_dataloader)
     model.train()
     for step, batch in enumerate(train_dataloader):
-      inputs, targets = dataset.collate(args, batch, detective)
+      inputs, targets = dataset.collate(args, batch)
       review_inputs(args, targets, datasets['train'].tokenizer)
       outputs = model(**inputs, labels=targets)
       exp_logger.tr_loss += outputs.loss.item()
@@ -42,7 +43,7 @@ def run_train(args, model, datasets, exp_logger, detective):
       if args.debug and step >= debug_break*args.log_interval:
         break
 
-    _, eval_res = run_eval(args, model, datasets['dev'], exp_logger)
+    _, eval_res = run_eval(args, model, datasets['dev'], exp_logger, detective)
     if eval_res[exp_logger.metric] >= exp_logger.best_score[exp_logger.metric]:
       exp_logger.best_score = eval_res
       exp_logger.save_best_model(model, tokenizer, args.prune_keep)
@@ -51,14 +52,14 @@ def run_train(args, model, datasets, exp_logger, detective):
 
   return model
 
-def run_inference(args, model, dataset, exp_logger, detective, tokenizer, split):
+def run_inference(args, model, dataset, exp_logger, tokenizer, split):
   ''' goes through model generation without backprop, rather than classification '''
   dataloader = get_dataloader(args, dataset, split)
   all_outputs, all_targets = [], []
   exp_logger.eval_step = 0
 
   for batch in progress_bar(dataloader, total=len(dataloader)):
-    inputs, target_dict = dataset.collate(args, batch, detective)
+    inputs, target_dict = dataset.collate(args, batch)
     all_targets.extend(target_dict)   # notice this is "extend", not "append"
 
     if args.task == 'in_context':
@@ -77,15 +78,19 @@ def run_inference(args, model, dataset, exp_logger, detective, tokenizer, split)
       exp_logger.eval_loss = 0  # no loss, since inference only
       exp_logger.eval_step += 1
       if args.debug and exp_logger.eval_step >= debug_break: break
+    if split == 'test' and args.debug:
+      exp_logger.eval_step += 1
+      if exp_logger.eval_step >= (debug_break * 200): break
   return all_outputs, all_targets
 
 def run_eval(args, model, dataset, exp_logger, detective, split='dev'):
   tokenizer = dataset.tokenizer
+  dataset.add_detective(detective)
   if split == 'test' and args.task in ['meta_learn', 'fine_tune']:
     model = load_best_model(args, exp_logger, tokenizer)
   model.eval()
 
-  outputs = run_inference(args, model, dataset, exp_logger, detective, tokenizer, split)
+  outputs = run_inference(args, model, dataset, exp_logger, tokenizer, split)
   if args.quantify or split == 'dev':
     results = eval_quantify(args, *outputs, exp_logger, tokenizer)
   elif args.qualify:
@@ -111,8 +116,8 @@ if __name__ == "__main__":
   if args.do_train:
     model = load_model(args, ontology, tokenizer, save_path)
     if args.task == 'meta_learn':
-      supports = load_support(args, datasets)
-      datasets.add_support(supports, args.left_out)
+      supports = load_support(args)
+      datasets['train'].add_support(supports, args.left_out)
     run_train(args, model, datasets, exp_logger, detective)
   elif args.do_eval:
     model = load_model(args, ontology, tokenizer, save_path) if args.task == 'in_context' else {}

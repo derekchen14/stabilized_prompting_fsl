@@ -200,6 +200,7 @@ def calculate_jga(results, final_preds):
       for domain_slot, turn_data in dialog_state.items():
         _, pred_val, target_val = turn_data
         if target_val != '<none>':
+          # if pred_val.startswith(target_val):
           if pred_val == target_val:
             correct += 1
           else:
