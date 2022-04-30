@@ -36,23 +36,21 @@
 # python main.py --dataset sgd --task in_context --style dataset --do-eval --seed 14 \
 #       --model gpt --size small --num-shots full --maximum-length 512 --prompt-style naive \
 #       --temperature 0.8 --verbose --context-length 2 --ignore-cache --batch-size 4
-python main.py --dataset mwoz --task in_context --style dataset --do-eval --seed 15 \
-      --model gpt --size small --num-shots five --maximum-len 1024 --prompt-style statement \
-      --temperature 0.8 --threshold 1.4 --context-len 3 --left-out mwoz \
-      --batch-size 3 --search cosine --quantify --debug # --parallel  # --ignore-cache
+# python main.py --dataset mwoz --task in_context --style dataset --do-eval --seed 15 \
+#       --model gpt --size small --num-shots five --maximum-len 1024 --prompt-style statement \
+#       --temperature 0.8 --threshold 1.4 --context-len 3 --left-out mwoz \
+#       --batch-size 3 --search cosine --quantify --debug # --parallel  # --ignore-cache
 
 # ________ Meta-Stabilize Pre-training Mode ___________
 # >> Our System
 # python main.py --dataset mwoz --task meta_learn --style domain --do-train --seed 15 \
-#       --model gpt --size large --num-shots percent --maximum-len 1020 --prompt-style schema
-# python main.py --dataset sgd --task meta_learn --style dataset --do-train --debug \
-#       --n-epochs 3 --learning-rate 1e-5 --model roberta --prune-keep 3 --batch-size 4
+#       --model gpt --size large --num-shots one --maximum-len 1020 --prompt-style schema
 # python main.py --dataset mwoz --task meta_learn --n-epochs 3 --do-train --debug \
-#       --style domain --left-out hotel --model gpt --size small --num-shots 0 \
+#       --style domain --left-out hotel --model gpt --size small --num-shots ten \
 #       --learning-rate 1e-5  --prune-keep 3 --batch-size 4 --log-interval 800
-# python main.py --dataset mwoz --task meta_learn --n-epochs 3 --do-train --debug \
-#       --style dataset --left-out mwoz --model gpt --size small --num-shots 0 \
-#       --learning-rate 1e-5  --prune-keep 3 --batch-size 4 --log-interval 800
+python main.py --dataset mwoz --task meta_learn --n-epochs 3 --do-train --debug \
+      --style dataset --left-out mwoz --model gpt --size small --num-shots five \
+      --learning-rate 1e-5  --prune-keep 3 --batch-size 4 --context-len 3
 
 # ______________ Special Modes ________________
 # >> Interactive Mode

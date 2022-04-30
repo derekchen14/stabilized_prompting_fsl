@@ -159,7 +159,7 @@ class MetaLearnDataset(InContextDataset):
         target = example['target']
         prompt = find_prompt(args.prompt_style, target['domain'], target['slot'])
         dialog = history + prompt + target['value'] + eos
-        additional_context = self.select_context(example)
+        additional_context = self.select_context(args, example, history)
 
         contexts.append(additional_context)
         dialogues.append(dialog)
@@ -172,7 +172,7 @@ class MetaLearnDataset(InContextDataset):
         target = example['target']
         prompt = find_prompt(args.prompt_style, target['domain'], target['slot'])
         dialog = ' '.join(example['utterances']) + prompt
-        additional_context = self.select_context(example)
+        additional_context = self.select_context(args, example, dialog)
 
         contexts.append(additional_context)
         dialogues.append(dialog)

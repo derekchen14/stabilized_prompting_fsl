@@ -42,6 +42,7 @@ def load_support(args):
     return support_data
 
   for dataset, full_name in DATASETS.items():
+    support_data[dataset] = {}
     if dataset != args.left_out:
       support_path = os.path.join(args.input_dir, dataset, "train.json")
       sdata = json.load(open(support_path, 'r'))  # consider loading dev data too
