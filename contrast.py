@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader
 from utils.arguments import solicit_params
 from utils.load import load_tokenizer, load_data, load_sent_transformer
 from assets.static_vars import device, debug_break
-from sentence_transformers import LoggingHandler, losses, util, InputExample
+from sentence_transformers import LoggingHandler, losses, util, InputExample, models
 from sentence_transformers.evaluation import EmbeddingSimilarityEvaluator
 
 def fit_model(args, model, dataloader, evaluator):
@@ -36,20 +36,64 @@ def build_evaluator(args):
   # evaluator = EmbeddingSimilarityEvaluator(sentences1, sentences2, scores)
   return evaluator
 
+def add_special_tokens(model):
+  word_embedding_model = model._first_module()
+  tokens = ["<agent>", "<customer>", "<label>", "<none>", "<remove>", "<sep>", "<pad>"]
+  word_embedding_model.tokenizer.add_tokens(tokens, special_tokens=True)
+  word_embedding_model.auto_model.resize_token_embeddings(len(word_embedding_model.tokenizer))
+  return model
+
 def mine_for_negatives(args):
-  # tokenizer = load_tokenizer(args)
-  raw_data = load_data(args)
+  cache_file = f'mpnet_{args.style}_none_lookback3_embeddings.pkl'
+  cache_path = os.path.join(args.input_dir, 'cache', args.dataset, cache_file)  
+  samples = pkl.load( open( cache_path, 'rb' ) )
 
-  datasets = {}
-  for split, rows in raw_data.items():
-    examples = []
-    for row in rows:
-      score = float(row['score']) / 5.0  # Normalize score to range 0 ... 1
-      aa, bb = row['sentence1'], row['sentence2']
-      examples.append(InputExample(texts=[aa, bb], label=score))
-    datasets[split] = examples
+  all_pairs = compute_scores(samples):
+  selected_pairs = select_top_k(all_pairs)
+  return selected_pairs
 
-  return datasets
+def compute_scores(samples):
+  num_samples = len(samples)
+  all_pairs = []
+  for i in range(num_samples):
+    for j in range(num_samples - 1):
+      s_i = samples[i]
+      s_j = samples[j]
+      # sim_score = state_change_sim(s_i, s_j)
+      sim_score = domain_slot_sim(s_i, s_j)
+      pair = {'si': s_i['history'], 'sj': s_j['history'], 'score': sim_score}
+      all_pairs.append(pair)
+  return all_pairs
+
+def select_top_k(all_pairs, k=1000):
+  all_pairs.sort(key=lambda pair: pair['score'])
+  
+  selected_pairs = []
+  for high_pair in all_pairs[:k]:
+    exp = InputExample(texts=[high_pair['si'], high_pair['sj']], label=high_pair['score'])
+    selected_pairs.append(exp)
+  for low_pair in all_pairs[-1000:]:
+    exp = InputExample(texts=[low_pair['si'], low_pair['sj']], label=low_pair['score'])
+    selected_pairs.append(exp)
+
+  return selected_pairs
+
+def domain_slot_sim(a, b):
+  domain_a, slot_a, value_a = a['dsv']
+  domain_b, slot_b, value_b = b['dsv']
+
+  sim_score = 0
+  if domain_a == domain_b:
+    sim_score += 0.3
+  if slot_a == slot_b:   # not else if, this is cumulative
+    sim_score += 0.7
+  return sim_score
+
+def state_change_sim(a, b):
+  diff = a - b
+  sim_score = float(diff) / 5.0  # Normalize score to range 0 ... 1
+  aa, bb = row['sentence1'], row['sentence2']
+  return sim_score
 
 def run_test(model, datasets):
   test_samples = datasets['test']
@@ -63,9 +107,9 @@ if __name__ == "__main__":
   args = solicit_params()
   args = setup_gpus(args)
   set_seed(args)
-  
-  datasets = mine_for_negatives(args)
+
   dataloader = DataLoader(datasets['train'], shuffle=True, batch_size=args.batch_size)
   model = load_sent_transformer(args, for_train=True)
+  model = add_special_tokens(model)
   evaluator = build_evaluator(args)
   fit_model(args, model, dataloader, evaluator)
