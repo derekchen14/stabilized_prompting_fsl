@@ -74,12 +74,6 @@ class BaseDataset(Dataset):
 
 class InContextDataset(BaseDataset):
 
-  def move_elsewhere(self):
-    if len(self.supported_datasets) > 0:
-      for name, _ in DATASETS.items():
-        support = getattr(self, f"{name}_data")
-        context_example = self.detective.search(example, support)
-
   def select_context(self, args, example, joined_utts):
     bpe_tokens = self.tokenizer(joined_utts)
     current_size = len(bpe_tokens['input_ids'])
@@ -92,7 +86,7 @@ class InContextDataset(BaseDataset):
     self.detective.reset()
     contexts = []
     while current_size < max_allowed:
-      exemplar = self.detective.search(example)
+      exemplar = self.detective.search(example, args.dataset)
       ctx_domain, ctx_slot, ctx_label = exemplar['dsv']
       ctx_prompt = find_prompt(args.prompt_style, ctx_domain, ctx_slot)
       added_context = f"{exemplar['history']} {ctx_prompt} {ctx_label}"
@@ -144,6 +138,46 @@ class InContextDataset(BaseDataset):
 
 class MetaLearnDataset(InContextDataset):
 
+  def _determine_dataset(self, global_id):
+    dialog_id, turn_count = global_id.split('_')
+    if dialog_id.endswith('json'):
+      return 'mwoz'
+    elif dialog_id.endswith('_00000'):
+      return 'sgd'
+    elif dialog_id.endswith('voip'):
+      return 'dstc'
+    elif dialog_id.startswith('movies_') or dialog_id.startswith('restaurant_'):
+      return 'gsim'
+    elif dialog_id.startswith('dlg-'):
+      return 'tt'
+    else:  # regex starts with four digits \d{4}
+      return 'abcd'
+    return corpus
+
+  def select_context(self, args, example, joined_utts, use_oracle=False):
+    bpe_tokens = self.tokenizer(joined_utts)
+    current_size = len(bpe_tokens['input_ids'])
+    eos_token = self.tokenizer.eos_token
+    
+    model_input_length = 2048 if args.size == 'large' else 1024
+    max_allowed = model_input_length - 12
+
+    corpus = self._determine_dataset(example['global_id'])
+    self.detective.reset()
+    contexts = []
+    while current_size < max_allowed:
+      exemplar = self.detective.search(example, corpus, use_oracle)
+      ctx_domain, ctx_slot, ctx_label = exemplar['dsv']
+      ctx_prompt = find_prompt(args.prompt_style, ctx_domain, ctx_slot)
+      added_context = f"{exemplar['history']} {ctx_prompt} {ctx_label}"
+      contexts.append(added_context)
+
+      tokenized_context = self.tokenizer(added_context)
+      current_size += len(tokenized_context['input_ids'])
+
+    additional_context = eos_token.join(contexts)
+    return additional_context + eos_token
+
   def collate_lm(self, args, examples):
     """
     train - use support dataset
@@ -159,7 +193,7 @@ class MetaLearnDataset(InContextDataset):
         target = example['target']
         prompt = find_prompt(args.prompt_style, target['domain'], target['slot'])
         dialog = history + prompt + target['value'] + eos
-        additional_context = self.select_context(args, example, history)
+        additional_context = self.select_context(args, example, history, True)
 
         contexts.append(additional_context)
         dialogues.append(dialog)

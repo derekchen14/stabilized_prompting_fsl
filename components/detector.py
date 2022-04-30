@@ -5,8 +5,9 @@ import pickle as pkl
 from numpy.linalg import norm
 
 from tqdm import tqdm as progress_bar
-from assets.static_vars import device
+from assets.static_vars import device, DATASETS
 from utils.load import load_sent_transformer
+from collections import defaultdict
 
 class ExemplarDetective(object):
 
@@ -14,28 +15,31 @@ class ExemplarDetective(object):
     self.search_method = args.search
     self.left_out = args.left_out
     self.num_shots = args.num_shots
+    self.candidates = defaultdict(list)
     
-    if args.task != 'fine_tune':
-      self.check_embed_cache(args, data, 'mpnet')  # roberta
+    if args.task == 'in_context':
+      corpus = args.dataset
+      self.check_embed_cache(args, data, corpus, 'mpnet')  # roberta
+    elif args.task == 'meta_learn':
+      for corpus, full_name in DATASETS.items():
+        self.check_embed_cache(args, data, corpus, 'mpnet')
 
-  def check_embed_cache(self, args, data, embed_method):
-    left_out = 'none' if args.left_out == '' else args.left_out
+  def check_embed_cache(self, args, data, corpus, embed_method):
     ctx_len = args.context_length
-    cache_file = f'{embed_method}_{args.style}_{left_out}_lookback{ctx_len}_embeddings.pkl'
+    cache_file = f'{embed_method}_{args.style}_{corpus}_lookback{ctx_len}_embeddings.pkl'
     cache_path = os.path.join(args.input_dir, 'cache', args.dataset, cache_file)
     self.embed_model = load_sent_transformer(args, embed_method)
-    
+
     if os.path.exists(cache_path):
-      self.candidates = pkl.load( open( cache_path, 'rb' ) )
-      print(f"Loaded {len(self.candidates)} embeddings from {cache_path}")
+      self.candidates[corpus] = pkl.load( open( cache_path, 'rb' ) )
+      num_cands = len(self.candidates[corpus])
+      print(f"Loaded {num_cands} embeddings from {cache_path}")
     else:
-      self.embed_candidates(args, data, cache_path, embed_method)
+      samples = self._sample_shots(data)
+      print(f'Creating new embeddings with {embed_method} from scratch ...')
+      self.embed_candidates(args, samples, cache_path, corpus)
 
-  def embed_candidates(self, args, data, cache_path, embed_method):
-    samples = self._sample_shots(data)
-    print(f'Creating new embeddings with {embed_method} from scratch ...')
-
-    self.candidates = []
+  def embed_candidates(self, args, samples, cache_path, corpus):
     histories = [' '.join(exp['utterances']) for exp in samples]
     embeddings = self.embed_model.encode(histories)
 
@@ -47,8 +51,8 @@ class ExemplarDetective(object):
         'history': hist,
         'dsv': (target['domain'], target['slot'], target['value'])
       }
-      self.candidates.append(cand)
-    pkl.dump(self.candidates, open(cache_path, 'wb'))
+      self.candidates[corpus].append(cand)
+    pkl.dump(self.candidates[corpus], open(cache_path, 'wb'))
 
   def _sample_shots(self, data):
     full_size = len(data)
@@ -67,25 +71,25 @@ class ExemplarDetective(object):
     samples = np.random.choice(data, size=num_samples, replace=False)
     return samples
 
-  def search(self, example):
+  def search(self, example, corpus, use_oracle=False):
     """ returns the closest exemplars from the candidate pool not already chosen"""
-    if self.search_method == 'oracle':
-      return self.oracle_search(example)
+    if self.search_method == 'oracle' or use_oracle:
+      return self.oracle_search(example, corpus)
     else:
-      return self.distance_search(example)
+      return self.distance_search(example, corpus)
 
   def reset(self):
     self.selected_gids = []
     self.distances = []
     self.sorted_exemplars = []
 
-  def oracle_search(self, example):
+  def oracle_search(self, example, corpus):
     target = example['target']
     self.selected_gids.append(target['global_id'])
-    acceptable = False
 
+    acceptable = False
     while not acceptable:
-      exemplar = random.choice(self.candidates)
+      exemplar = random.choice(self.candidates[corpus])
       hist = exemplar['history'].lower()
       domain, slot, value = exemplar['dsv']
 
@@ -99,11 +103,11 @@ class ExemplarDetective(object):
 
     return exemplar
 
-  def distance_search(self, example):
+  def distance_search(self, example, corpus):
     if len(self.sorted_exemplars) == 0:
       history = ' '.join(example['utterances'])
       exp_embed = self.embed_model.encode(history, show_progress_bar=False)
-      cand_embeds = [cand['embedding'] for cand in self.candidates]
+      cand_embeds = [cand['embedding'] for cand in self.candidates[corpus]]
 
       if self.search_method == 'cosine':
         self.cosine(exp_embed, cand_embeds)
@@ -115,7 +119,7 @@ class ExemplarDetective(object):
       nearest_indexes = np.argpartition(self.distances, 60)[:60]
       
       for near_id in nearest_indexes:
-        exemplar = self.candidates[near_id]
+        exemplar = self.candidates[corpus][near_id]
         self.sorted_exemplars.append(exemplar)
 
     acceptable = False
