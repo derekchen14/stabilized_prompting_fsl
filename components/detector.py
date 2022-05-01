@@ -28,13 +28,13 @@ class ExemplarDetective(object):
     ctx_len = args.context_length
     cache_file = f'{embed_method}_{args.style}_{corpus}_lookback{ctx_len}_embeddings.pkl'
     cache_path = os.path.join(args.input_dir, 'cache', args.dataset, cache_file)
-    self.embed_model = load_sent_transformer(args, embed_method)
 
     if os.path.exists(cache_path):
       self.candidates[corpus] = pkl.load( open( cache_path, 'rb' ) )
       num_cands = len(self.candidates[corpus])
       print(f"Loaded {num_cands} embeddings from {cache_path}")
     else:
+      self.embed_model = load_sent_transformer(args, embed_method)
       samples = self._sample_shots(data)
       print(f'Creating new embeddings with {embed_method} from scratch ...')
       self.embed_candidates(args, samples, cache_path, corpus)
@@ -88,6 +88,7 @@ class ExemplarDetective(object):
     self.selected_gids.append(target['global_id'])
 
     acceptable = False
+    loops = 0
     while not acceptable:
       exemplar = random.choice(self.candidates[corpus])
       hist = exemplar['history'].lower()
@@ -99,6 +100,9 @@ class ExemplarDetective(object):
 
       if new_example and matching_ds and not_empty:
         self.selected_gids.append(exemplar['gid'])
+        acceptable = True
+      loops += 1
+      if loops > 10000:
         acceptable = True
 
     return exemplar

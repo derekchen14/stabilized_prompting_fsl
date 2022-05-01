@@ -297,7 +297,7 @@ def build_dstc(args, data, split):
 
     for turn in convo['conversation']:
       target = {
-        'global_id': convo['guid'] + '_' + str(turn['turn']),
+        'global_id': convo['guid'].replace('_', '-') + '_' + str(turn['turn']),
         'domain': 'restaurant' }
 
       if turn['speaker'] == 'agent':

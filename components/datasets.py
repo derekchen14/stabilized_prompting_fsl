@@ -178,7 +178,7 @@ class MetaLearnDataset(BaseDataset):
         history = ' '.join(example['utterances'])
         target = example['target']
         prompt = find_prompt(args.prompt_style, target['domain'], target['slot'])
-        dialog = history + prompt + target['value'] + eos
+        dialog = history + prompt + ' ' + target['value'] + eos
         additional_context = self.select_context(args, example, history, True)
 
         contexts.append(additional_context)
