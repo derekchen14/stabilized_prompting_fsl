@@ -17,7 +17,7 @@ DATASETS = {
     'abcd': 'Action-Based Conversations Dataset',
     'dstc': 'Dialogue State Tracking Challenge 2',
     'gsim': 'Google Simulated Dialogue',
-    'mwoz': 'MultiWoz 2.2',
+    'mwoz': 'MultiWoz 2.1',
     'sgd': 'Schema Guided Dialogue',
     'tt': 'TicketTalk'
 }

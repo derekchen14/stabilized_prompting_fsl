@@ -10,7 +10,7 @@ from numpy.linalg import norm
 from tqdm import tqdm as progress_bar
 from collections import Counter, defaultdict
 from sklearn.metrics import accuracy_score
-from assets.static_vars import device, debug_break, GENERAL_TYPO
+from assets.static_vars import device, debug_break, GENERAL_TYPO, DATASETS
 # metric = load_metric('bleu')  'bertscore', ''  
 
 def parse_output(args, generated_string):
@@ -215,7 +215,7 @@ def calculate_jga(results, final_preds):
   results['jga'] = round(float(joint_correct) / joint_possible, 3)
   return results
 
-def eval_quantify(args, predictions, targets, exp_logger, tokenizer):
+def eval_quantify(args, predictions, targets, exp_logger, tokenizer, corpus=None):
   results = {'epoch': exp_logger.epoch }  # 'loss': exp_logger.eval_loss  (no loss by default)
 
   if args.style == 'dataset':
@@ -228,6 +228,9 @@ def eval_quantify(args, predictions, targets, exp_logger, tokenizer):
   elif args.style == 'domain':
     # the left out query set is hotel, attraction, taxi, etc.
     pass
+
+  if args.task == 'meta_learn' and corpus is not None:
+    results['corpus'] == DATASETS[corpus]
   exp_logger.log_info(results)
   return results
 

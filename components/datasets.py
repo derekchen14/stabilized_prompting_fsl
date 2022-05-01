@@ -175,7 +175,6 @@ class MetaLearnDataset(BaseDataset):
     if self.split == 'train':
       eos = self.tokenizer.eos_token
       for example in examples:
-        pdb.set_trace()
         history = ' '.join(example['utterances'])
         target = example['target']
         prompt = find_prompt(args.prompt_style, target['domain'], target['slot'])
