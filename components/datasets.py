@@ -137,33 +137,9 @@ class InContextDataset(BaseDataset):
 
     inputs = self.tokenizer(contexts, dialogues, padding=True,
                               truncation='only_first', return_tensors='pt').to(device) 
-    """ 
-    trick = inputs['input_ids']
-    treat = self.tokenizer.batch_decode(trick)
-    for label, entry in zip(labels, treat):
-      print(entry)
-      pdb.set_trace()
-    """
     return inputs, labels
 
-class MetaLearnDataset(InContextDataset):
-
-  def _determine_dataset(self, global_id):
-    dialog_id, turn_count = global_id.split('_')
-    if dialog_id.endswith('json'):
-      return 'mwoz'
-    elif dialog_id.endswith('_00000'):
-      return 'sgd'
-    elif dialog_id.startswith('voip'):
-      return 'dstc'
-    elif dialog_id.startswith('movies_') or dialog_id.startswith('restaurant_'):
-      return 'gsim'
-    elif dialog_id.startswith('dlg-'):
-      return 'tt'
-    elif re.match("^\d{4}", dialog_id):  # starts with four digits
-      return 'abcd'
-    else:
-      raise KeyError(f"{global_id} could not be identified")
+class MetaLearnDataset(BaseDataset):
 
   def select_context(self, args, example, joined_utts, use_oracle=False):
     bpe_tokens = self.tokenizer(joined_utts)
@@ -173,7 +149,6 @@ class MetaLearnDataset(InContextDataset):
     model_input_length = 2048 if args.size == 'large' else 1024
     max_allowed = model_input_length - 12
 
-    print(example['corpus'])
     self.detective.reset()
     contexts = []
     while current_size < max_allowed:
@@ -229,8 +204,7 @@ class MetaLearnDataset(InContextDataset):
                                 truncation='only_first', return_tensors='pt').to(device)
 
     elif self.split == 'test':
-      inputs, labels = super().collate_lm(examples)
-
+      inputs, labels = self.collate_lm(examples)
     return inputs, labels
 
 

@@ -133,3 +133,20 @@ def reformat_data(args):
       reformatter = ReformatBase()
     # loads, reformats and saves the data in the background
     reformatter.reformat()
+
+def determine_dataset(global_id):
+  dialog_id, turn_count = global_id.split('_')
+  if dialog_id.endswith('json'):
+    return 'mwoz'
+  elif dialog_id.endswith('_00000'):
+    return 'sgd'
+  elif dialog_id.startswith('voip'):
+    return 'dstc'
+  elif dialog_id.startswith('movies_') or dialog_id.startswith('restaurant_'):
+    return 'gsim'
+  elif dialog_id.startswith('dlg-'):
+    return 'tt'
+  elif re.match("^\d{4}", dialog_id):  # starts with four digits
+    return 'abcd'
+  else:
+    raise KeyError(f"{global_id} could not be identified")

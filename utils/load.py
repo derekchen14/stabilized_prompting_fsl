@@ -11,7 +11,7 @@ import torch
 import errno
 
 from tqdm import tqdm as progress_bar
-from transformers import GPT2LMHeadModel,GPT2ForSequenceClassification, GPT2Config, GPT2Tokenizer, \
+from transformers import GPT2LMHeadModel, GPT2Config, GPT2Tokenizer, \
                           BartForConditionalGeneration, BartConfig, BartTokenizer, \
                           T5ForConditionalGeneration, T5Config, T5Tokenizer
 from transformers import logging, GPTJForCausalLM, AutoTokenizer
@@ -44,25 +44,20 @@ def load_support(args):
 
   ctx_len = args.context_length
   ps = args.prompt_style
-  for dataset, full_name in DATASETS.items():
-    support_data[dataset] = {}
-    if dataset != args.left_out:
+  for corpus, full_name in DATASETS.items():
+    support_data[corpus] = {}
+    if corpus != args.left_out:
       support_file = f'{args.model}_fine_tune_{args.prompt_style}_lookback{ctx_len}.pkl'
-      support_path = os.path.join(args.input_dir, 'cache', dataset, support_file)
+      support_path = os.path.join(args.input_dir, 'cache', corpus, support_file)
       if os.path.exists(support_path):
         sdata = pkl.load( open( support_path, 'rb' ) )        
       else:
         raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), support_path)
 
-      if args.debug:
-        support_data[dataset]['train'] = sdata['train'][:500]
-        support_data[dataset]['dev'] = sdata['dev'][:500]
-      else:
-        support_data[dataset]['train'] = sdata['train']
-        support_data[dataset]['dev'] = sdata['dev']
-
-      support_ont = os.path.join(args.input_dir, dataset, "ontology.json")
-      support_data[dataset]['ont'] = json.load(open(support_ont, 'r'))
+      support_data[corpus]['train'] = sdata['train']
+      support_data[corpus]['dev'] = sdata['dev']
+      support_ont = os.path.join(args.input_dir, corpus, "ontology.json")
+      support_data[corpus]['ont'] = json.load(open(support_ont, 'r'))
   return support_data
 
 def load_tokenizer(args):
