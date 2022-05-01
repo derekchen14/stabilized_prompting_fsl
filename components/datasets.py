@@ -2,6 +2,7 @@ import os, pdb, sys
 import numpy as np
 import random
 import mmap
+import re
 import torch
 from torch.utils.data import Dataset
 
@@ -45,12 +46,21 @@ class BaseDataset(Dataset):
     return target_tensor
 
   def add_support(self, supports, left_out):
+    """ replaces the query set data with the support set data for training """
     # self.supported_datasets = [name for name, _ in DATASETS.items() if name != left_out]
+    query_set = self.data
+    support_set = []
     for support_name, support_data in supports.items():
       if support_name != left_out:
-        setattr(self, f"{support_name}_data", support_data['data'])
-        setattr(self, f"{support_name}_ont", support_data['ont'])
         self.supported_datasets.append(support_name)
+        for example in support_data[self.split]:
+          example['corpus'] = support_name
+          support_set.append(example)
+        setattr(self, f"{support_name}_ont", support_data['ont'])
+    
+    self.leftout = query_set
+    self.data = support_set
+    self.size = len(self.data)
 
   def add_detective(self, detective):
     if self.detective is None:
@@ -144,15 +154,16 @@ class MetaLearnDataset(InContextDataset):
       return 'mwoz'
     elif dialog_id.endswith('_00000'):
       return 'sgd'
-    elif dialog_id.endswith('voip'):
+    elif dialog_id.startswith('voip'):
       return 'dstc'
     elif dialog_id.startswith('movies_') or dialog_id.startswith('restaurant_'):
       return 'gsim'
     elif dialog_id.startswith('dlg-'):
       return 'tt'
-    else:  # regex starts with four digits \d{4}
+    elif re.match("^\d{4}", dialog_id):  # starts with four digits
       return 'abcd'
-    return corpus
+    else:
+      raise KeyError(f"{global_id} could not be identified")
 
   def select_context(self, args, example, joined_utts, use_oracle=False):
     bpe_tokens = self.tokenizer(joined_utts)
@@ -162,11 +173,11 @@ class MetaLearnDataset(InContextDataset):
     model_input_length = 2048 if args.size == 'large' else 1024
     max_allowed = model_input_length - 12
 
-    corpus = self._determine_dataset(example['global_id'])
+    print(example['corpus'])
     self.detective.reset()
     contexts = []
     while current_size < max_allowed:
-      exemplar = self.detective.search(example, corpus, use_oracle)
+      exemplar = self.detective.search(example, example['corpus'], use_oracle)
       ctx_domain, ctx_slot, ctx_label = exemplar['dsv']
       ctx_prompt = find_prompt(args.prompt_style, ctx_domain, ctx_slot)
       added_context = f"{exemplar['history']} {ctx_prompt} {ctx_label}"
@@ -189,6 +200,7 @@ class MetaLearnDataset(InContextDataset):
     if self.split == 'train':
       eos = self.tokenizer.eos_token
       for example in examples:
+        pdb.set_trace()
         history = ' '.join(example['utterances'])
         target = example['target']
         prompt = find_prompt(args.prompt_style, target['domain'], target['slot'])

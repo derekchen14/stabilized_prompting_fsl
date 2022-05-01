@@ -8,6 +8,7 @@ import pickle as pkl
 import numpy as np
 import pandas as pd
 import torch
+import errno
 
 from tqdm import tqdm as progress_bar
 from transformers import GPT2LMHeadModel,GPT2ForSequenceClassification, GPT2Config, GPT2Tokenizer, \
@@ -41,18 +42,27 @@ def load_support(args):
   if args.num_shots == 'full' or args.task != 'meta_learn':
     return support_data
 
+  ctx_len = args.context_length
+  ps = args.prompt_style
   for dataset, full_name in DATASETS.items():
     support_data[dataset] = {}
     if dataset != args.left_out:
-      support_path = os.path.join(args.input_dir, dataset, "train.json")
-      sdata = json.load(open(support_path, 'r'))  # consider loading dev data too
-      if args.debug:
-        support_data[dataset]['data'] = sdata[:500]
+      support_file = f'{args.model}_fine_tune_{args.prompt_style}_lookback{ctx_len}.pkl'
+      support_path = os.path.join(args.input_dir, 'cache', dataset, support_file)
+      if os.path.exists(support_path):
+        sdata = pkl.load( open( support_path, 'rb' ) )        
       else:
-        support_data[dataset]['data'] = sdata
+        raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), support_path)
 
-      sont = json.load(open(os.path.join(args.input_dir, dataset, "ontology.json"), 'r'))
-      support_data[dataset]['ont'] = sont
+      if args.debug:
+        support_data[dataset]['train'] = sdata['train'][:500]
+        support_data[dataset]['dev'] = sdata['dev'][:500]
+      else:
+        support_data[dataset]['train'] = sdata['train']
+        support_data[dataset]['dev'] = sdata['dev']
+
+      support_ont = os.path.join(args.input_dir, dataset, "ontology.json")
+      support_data[dataset]['ont'] = json.load(open(support_ont, 'r'))
   return support_data
 
 def load_tokenizer(args):
