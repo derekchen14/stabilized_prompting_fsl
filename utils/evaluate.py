@@ -230,7 +230,7 @@ def eval_quantify(args, predictions, targets, exp_logger, tokenizer, corpus=None
     pass
 
   if args.task == 'meta_learn' and corpus is not None:
-    results['corpus'] == DATASETS[corpus]
+    results['corpus'] = DATASETS[corpus]
   exp_logger.log_info(results)
   return results
 

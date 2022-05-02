@@ -48,7 +48,11 @@ class BaseDataset(Dataset):
   def add_support(self, supports, left_out):
     """ replaces the query set data with the support set data for training """
     # self.supported_datasets = [name for name, _ in DATASETS.items() if name != left_out]
-    query_set = self.data
+    query_set = []
+    for example in self.data:
+      example['corpus'] = left_out
+      query_set.append(example)
+
     support_set = []
     for support_name, support_data in supports.items():
       if support_name != left_out:
@@ -201,7 +205,14 @@ class MetaLearnDataset(BaseDataset):
       max_length = self.max_len - 12
       inputs = self.tokenizer(contexts, dialogues, padding=True, max_length=max_length,
                                 truncation='only_first', return_tensors='pt').to(device)
-
+      """
+      if random.random() < 0.5:
+        trick = inputs['input_ids']
+        treat = self.tokenizer.batch_decode(trick)
+        for label, entry in zip(labels, treat):
+          print(entry.replace('<pad>', '|'))
+        pdb.set_trace()
+      """
     elif self.split == 'test':
       inputs, labels = self.collate_lm(examples)
     return inputs, labels

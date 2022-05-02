@@ -49,6 +49,7 @@ def naive_style(domain, slot):
     slot = 'leave at'
   elif slot == 'pricerange':
     slot = 'price range'
+  slot = slot.replace('_', ' ')
 
   desc = f"{slot} of the {domain}"
   prompt = f"<sep> {desc} is"

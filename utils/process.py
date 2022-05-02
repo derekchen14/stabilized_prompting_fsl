@@ -318,12 +318,12 @@ def build_dstc(args, data, split):
   
   return examples
 
-def build_gsim(data, mapping, split):
+def build_gsim(args, data, mapping, split):
   examples = []
 
   for conversation in progress_bar(data, total=len(data)):
-    dialog_id = conversation['dialogue_id']
-    domain = dialog_id.split('_')[0]
+    dialog_id = conversation['dialogue_id'].replace('_', '-')
+    domain = dialog_id.split('-')[0]
     text_so_far = []    
 
     for turn_count, turn in enumerate(conversation['turns']):
@@ -351,7 +351,7 @@ def build_gsim(data, mapping, split):
 def build_tt(args, data, ontology, split):
   examples = []
   for convo in progress_bar(data, total=len(data)):  
-    text_so_far = []    
+    text_so_far = []
 
     for turn in convo['utterances']:
       text = turn['text']
@@ -367,7 +367,8 @@ def build_tt(args, data, ontology, split):
         if 'segments' in turn:
           labels = extract_slotvals(turn['segments'], ontology['slotvals'])
           for slot, value in labels.items():
-            target = {'domain': 'movies', 'slot': slot, 'value': value}
+            target = {'domain': 'movies', 'slot': slot, 'value': value,
+                  'global_id': convo['conversation_id'] + '_' + str(turn['index'] + 1)}
             use_target, history = select_utterances(args, text_so_far, target, split)
             if use_target:
               examples.append({'utterances': history, 'target': target})  
@@ -403,7 +404,7 @@ def prepare_examples(args, data, ontology, split):
   elif args.dataset == 'dstc':  # State Tracking Challenge 2
     examples = build_dstc(args, data, split) 
   elif args.dataset == 'gsim':    # Google Simulated Chats
-    examples = build_gsim(data, ontology, split) 
+    examples = build_gsim(args, data, ontology, split) 
   elif args.dataset.startswith('mwoz'):  # MultiWoz 2.1 or 2.2
     examples = build_mwoz(args, data, ontology, split)
   elif args.dataset == 'sgd':   # Schema Guided Dialogue

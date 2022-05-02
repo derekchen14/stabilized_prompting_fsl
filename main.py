@@ -14,6 +14,7 @@ from utils.load import load_tokenizer, load_model, load_data, load_best_model
 from utils.load import load_support
 from utils.evaluate import eval_quantify, eval_qualify
 from assets.static_vars import device, debug_break, STOP_TOKENS
+from torch.utils.data import DataLoader, SequentialSampler
 
 def run_train(args, model, datasets, exp_logger, detective):
   dataset = datasets['train']
@@ -41,6 +42,8 @@ def run_train(args, model, datasets, exp_logger, detective):
         model.zero_grad()
         exp_logger.log_train(step)
       if args.debug and step >= debug_break*args.log_interval:
+        break
+      if step > 20000:
         break
 
     _, eval_res = run_eval(args, model, datasets, exp_logger, detective)
@@ -77,17 +80,20 @@ def run_inference(args, model, dataset, exp_logger, tokenizer, split):
     if split == 'dev':
       exp_logger.eval_loss = 0  # no loss, since inference only
       exp_logger.eval_step += 1
-      if args.debug and exp_logger.eval_step >= debug_break: break
+      if exp_logger.eval_step >= 5000:
+        break
+      # if args.debug and exp_logger.eval_step >= debug_break: break
     if split == 'test' and args.debug:
       exp_logger.eval_step += 1
       if exp_logger.eval_step >= (debug_break * 200): break
   return all_outputs, all_targets
 
 def leftout_inference(args, model, dataset, tokenizer):
-  leftout_data = DataLoader(dataset.leftout, batch_size=10, collate_fn=dataset.collate_func,
+  leftout_data = DataLoader(dataset.leftout, batch_size=8, collate_fn=lambda x:x,
                               sampler=SequentialSampler(dataset.leftout) )
   all_outputs, all_targets = [], []
 
+  temp_steps = 0
   for batch in progress_bar(leftout_data, total=len(leftout_data), desc='Leftout'):
     inputs, target_dict = dataset.collate(args, batch)
     maxl = inputs['input_ids'].shape[1] + 12
@@ -97,6 +103,9 @@ def leftout_inference(args, model, dataset, tokenizer):
 
     all_targets.extend(target_dict)
     all_outputs.extend(output_strings)
+
+    temp_steps += 1
+    if temp_steps >= 1000: break
   return all_outputs, all_targets
 
 def run_eval(args, model, datasets, exp_logger, detective, split='dev'):
