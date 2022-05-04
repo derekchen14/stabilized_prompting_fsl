@@ -99,6 +99,12 @@ def run_eval(args, model, dataset, exp_logger, detective, split='dev'):
     results = None
   return outputs, results
 
+def check_support(args, datasets):
+  if args.task == 'meta_learn':
+    supports = load_support(args)
+    datasets['train'].add_support(supports, args.left_out)
+    datasets['dev'].add_support(supports, args.left_out)
+  return datasets
 
 if __name__ == "__main__":
   args = solicit_params()
@@ -115,9 +121,7 @@ if __name__ == "__main__":
 
   if args.do_train:
     model = load_model(args, ontology, tokenizer, save_path)
-    if args.task == 'meta_learn':
-      supports = load_support(args)
-      datasets['train'].add_support(supports, args.left_out)
+    datasets = check_support(args, datasets)
     run_train(args, model, datasets, exp_logger, detective)
   elif args.do_eval:
     model = load_model(args, ontology, tokenizer, save_path) if args.task == 'in_context' else {}

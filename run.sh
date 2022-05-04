@@ -10,9 +10,9 @@
 # python main.py --dataset abcd --task fine_tune --n-epochs 7 --do-train --do-save \
 #       --style dataset --model gpt --size large --parallel --num-shots full --batch-size 16 \
 #       --learning-rate 1e-4  --maximum-len 512 --prompt-style naive
-# python main.py --dataset dstc --task fine_tune --n-epochs 7 --do-train --do-save \
+# python main.py --dataset dstc --task fine_tune --n-epochs 7 --do-train --debug \
 #       --style dataset --model gpt --size small --num-shots full --batch-size 8 \
-#       --learning-rate 1e-4  --maximum-len 512 --prompt-style naive
+#       --learning-rate 1e-4  --maximum-len 512 --prompt-style naive --context-length 3
 
 # Finetune the Sentence Transformers model from SBERT
 # python contrast.py --learning-rate 3e-5 --kappa 10 --finetune icdst --num-shots five \
@@ -50,7 +50,7 @@
 #       --learning-rate 1e-5  --prune-keep 3 --batch-size 4 --log-interval 800
 python main.py --dataset mwoz --task meta_learn --n-epochs 3 --do-train --debug \
       --style dataset --left-out mwoz --model gpt --size small --num-shots five \
-      --learning-rate 1e-5  --prune-keep 3 --batch-size 4 --context-len 3
+      --learning-rate 1e-5  --prompt-style naive --batch-size 4 --context-len 3
 
 # ______________ Special Modes ________________
 # >> Interactive Mode

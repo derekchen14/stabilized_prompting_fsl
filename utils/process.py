@@ -12,8 +12,7 @@ from tqdm import tqdm as progress_bar
 from collections import defaultdict, Counter
 
 def check_cache(args):
-  left_out = 'none' if args.left_out == '' else args.left_out
-  cache_file = f'{args.model}_{args.task}_{args.prompt_style}_leftout{left_out}_lookback{args.context_length}.pkl'
+  cache_file = f'{args.model}_{args.task}_{args.prompt_style}_lookback{args.context_length}.pkl'
   cache_path = os.path.join(args.input_dir, 'cache', args.dataset, cache_file)
   use_cache = not args.ignore_cache
 
@@ -217,7 +216,7 @@ def build_mwoz22(args, data):
 
                 target = {'domain': current_domain, 'slot': slot, 'value': value,
                         'global_id': conversation['dialogue_id'] + '_' + turn['turn_id'] }
-                use_target, history = select_utterances(args, text_so_far, target)
+                use_target, history = select_utterances(args, text_so_far, target, split)
                 if use_target:
                   examples.append({'utterances': history, 'target': target})      
   return examples
@@ -277,8 +276,7 @@ def make_dialogue_state(intent, action, values, scene, mappings):
 
   return targets
 
-
-def build_abcd(args, data, ontology):
+def build_abcd(args, data, ontology, split):
   examples = []
   mappings = create_abcd_mappings(ontology)
   mappings['valid_actions'] = ontology['actions']['has_slotval']
@@ -297,7 +295,7 @@ def build_abcd(args, data, ontology):
   
         for target in targets:
           target['global_id'] = str(convo['convo_id']) + '_' + str(turn['turn_count'])
-          use_target, history = select_utterances(args, utt_so_far, target)
+          use_target, history = select_utterances(args, utt_so_far, target, split)
           if use_target:
             examples.append({'utterances': history, 'target': target})
       else:
@@ -306,7 +304,7 @@ def build_abcd(args, data, ontology):
 
   return examples
 
-def build_dstc(args, data):
+def build_dstc(args, data, split):
   ''' extra contains the structured label as a value '''
   examples = []
 
@@ -315,7 +313,7 @@ def build_dstc(args, data):
 
     for turn in convo['conversation']:
       target = {
-        'global_id': convo['guid'] + '_' + str(turn['turn']),
+        'global_id': convo['guid'].replace('_', '-') + '_' + str(turn['turn']),
         'domain': 'restaurant' }
 
       if turn['speaker'] == 'agent':
@@ -330,13 +328,13 @@ def build_dstc(args, data):
           # TODO: add negatives to predict "none"
           target['slot'] = slot
           target['value'] = value
-          use_target, history = select_utterances(args, text_so_far, target)
+          use_target, history = select_utterances(args, text_so_far, target, split)
           if use_target:
             examples.append({'utterances': history, 'target': target})
   
   return examples
 
-def build_gsim(data, mapping):
+def build_gsim(data, mapping, split):
   examples = []
 
   for conversation in progress_bar(data, total=len(data)):
@@ -360,13 +358,13 @@ def build_gsim(data, mapping):
                     'slot': state['slot'],
                    'value': state['value'],  
                'global_id': dialog_id + '_' + str(turn_count + 1) }
-        use_target, history = select_utterances(args, text_so_far, target)
+        use_target, history = select_utterances(args, text_so_far, target, split)
         if use_target:
           examples.append({'utterances': history, 'target': target})
 
   return examples
 
-def build_tt(args, data, ontology):
+def build_tt(args, data, ontology, split):
   examples = []
   for convo in progress_bar(data, total=len(data)):  
     text_so_far = []    
@@ -386,7 +384,7 @@ def build_tt(args, data, ontology):
           labels = extract_slotvals(turn['segments'], ontology['slotvals'])
           for slot, value in labels.items():
             target = {'domain': 'movies', 'slot': slot, 'value': value}
-            use_target, history = select_utterances(args, text_so_far, target)
+            use_target, history = select_utterances(args, text_so_far, target, split)
             if use_target:
               examples.append({'utterances': history, 'target': target})  
   return examples
@@ -417,17 +415,17 @@ def prepare_examples(args, data, ontology, split):
     target: a dictionary with keys global_id, domain, slot and value
   """
   if args.dataset == 'abcd':    # Action Based Conversations
-    examples = build_abcd(args, data, ontology) 
+    examples = build_abcd(args, data, ontology, split) 
   elif args.dataset == 'dstc':  # State Tracking Challenge 2
-    examples = build_dstc(args, data) 
+    examples = build_dstc(args, data, split) 
   elif args.dataset == 'gsim':    # Google Simulated Chats
-    examples = build_gsim(data, ontology) 
+    examples = build_gsim(data, ontology, split) 
   elif args.dataset.startswith('mwoz'):  # MultiWoz 2.1 or 2.2
     examples = build_mwoz(args, data, ontology, split)
   elif args.dataset == 'sgd':   # Schema Guided Dialogue
     examples = build_sgd(args, data, ontology, split) 
   elif args.dataset == 'tt':    # TicketTalk / TaskMaster 3
-    examples = build_tt(args, data, ontology) 
+    examples = build_tt(args, data, ontology, split) 
 
   return examples
 

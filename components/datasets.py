@@ -2,6 +2,7 @@ import os, pdb, sys
 import numpy as np
 import random
 import mmap
+import re
 import torch
 from torch.utils.data import Dataset
 
@@ -45,12 +46,21 @@ class BaseDataset(Dataset):
     return target_tensor
 
   def add_support(self, supports, left_out):
+    """ replaces the query set data with the support set data for training """
     # self.supported_datasets = [name for name, _ in DATASETS.items() if name != left_out]
+    query_set = self.data
+    support_set = []
     for support_name, support_data in supports.items():
       if support_name != left_out:
-        setattr(self, f"{support_name}_data", support_data['data'])
-        setattr(self, f"{support_name}_ont", support_data['ont'])
         self.supported_datasets.append(support_name)
+        for example in support_data[self.split]:
+          example['corpus'] = support_name
+          support_set.append(example)
+        setattr(self, f"{support_name}_ont", support_data['ont'])
+    
+    self.leftout = query_set
+    self.data = support_set
+    self.size = len(self.data)
 
   def add_detective(self, detective):
     if self.detective is None:
@@ -74,12 +84,6 @@ class BaseDataset(Dataset):
 
 class InContextDataset(BaseDataset):
 
-  def move_elsewhere(self):
-    if len(self.supported_datasets) > 0:
-      for name, _ in DATASETS.items():
-        support = getattr(self, f"{name}_data")
-        context_example = self.detective.search(example, support)
-
   def select_context(self, args, example, joined_utts):
     bpe_tokens = self.tokenizer(joined_utts)
     current_size = len(bpe_tokens['input_ids'])
@@ -92,7 +96,7 @@ class InContextDataset(BaseDataset):
     self.detective.reset()
     contexts = []
     while current_size < max_allowed:
-      exemplar = self.detective.search(example)
+      exemplar = self.detective.search(example, args.dataset)
       ctx_domain, ctx_slot, ctx_label = exemplar['dsv']
       ctx_prompt = find_prompt(args.prompt_style, ctx_domain, ctx_slot)
       added_context = f"{exemplar['history']} {ctx_prompt} {ctx_label}"
@@ -133,16 +137,32 @@ class InContextDataset(BaseDataset):
 
     inputs = self.tokenizer(contexts, dialogues, padding=True,
                               truncation='only_first', return_tensors='pt').to(device) 
-    """ 
-    trick = inputs['input_ids']
-    treat = self.tokenizer.batch_decode(trick)
-    for label, entry in zip(labels, treat):
-      print(entry)
-      pdb.set_trace()
-    """
     return inputs, labels
 
-class MetaLearnDataset(InContextDataset):
+class MetaLearnDataset(BaseDataset):
+
+  def select_context(self, args, example, joined_utts, use_oracle=False):
+    bpe_tokens = self.tokenizer(joined_utts)
+    current_size = len(bpe_tokens['input_ids'])
+    eos_token = self.tokenizer.eos_token
+    
+    model_input_length = 2048 if args.size == 'large' else 1024
+    max_allowed = model_input_length - 12
+
+    self.detective.reset()
+    contexts = []
+    while current_size < max_allowed:
+      exemplar = self.detective.search(example, example['corpus'], use_oracle)
+      ctx_domain, ctx_slot, ctx_label = exemplar['dsv']
+      ctx_prompt = find_prompt(args.prompt_style, ctx_domain, ctx_slot)
+      added_context = f"{exemplar['history']} {ctx_prompt} {ctx_label}"
+      contexts.append(added_context)
+
+      tokenized_context = self.tokenizer(added_context)
+      current_size += len(tokenized_context['input_ids'])
+
+    additional_context = eos_token.join(contexts)
+    return additional_context + eos_token
 
   def collate_lm(self, args, examples):
     """
@@ -158,8 +178,8 @@ class MetaLearnDataset(InContextDataset):
         history = ' '.join(example['utterances'])
         target = example['target']
         prompt = find_prompt(args.prompt_style, target['domain'], target['slot'])
-        dialog = history + prompt + target['value'] + eos
-        additional_context = self.select_context(args, example, history)
+        dialog = history + prompt + ' ' + target['value'] + eos
+        additional_context = self.select_context(args, example, history, True)
 
         contexts.append(additional_context)
         dialogues.append(dialog)
@@ -183,8 +203,7 @@ class MetaLearnDataset(InContextDataset):
                                 truncation='only_first', return_tensors='pt').to(device)
 
     elif self.split == 'test':
-      inputs, labels = super().collate_lm(examples)
-
+      inputs, labels = self.collate_lm(examples)
     return inputs, labels
 
 
