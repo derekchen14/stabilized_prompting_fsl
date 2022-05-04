@@ -72,6 +72,7 @@ def run_inference(args, model, dataset, exp_logger, tokenizer, split):
       #        v4.15.0/en/main_classes/model#transformers.generation_utils.GenerationMixin.generate 
       outputs = model.generate(**inputs, max_length=maxl, early_stopping=True)
     output_strings = tokenizer.batch_decode(outputs.detach(), skip_special_tokens=False)
+    # output_strings = [output_strings[idx].replace("<pad>","")+" "+target_dict[idx]['value'] for idx in range(len(output_strings))]
     all_outputs.extend(output_strings)
 
     if split == 'dev':
@@ -88,7 +89,6 @@ def run_eval(args, model, dataset, exp_logger, detective, split='dev'):
   dataset.add_detective(detective)
   if split == 'test' and args.task in ['meta_learn', 'fine_tune']:
     model = load_best_model(args, exp_logger, tokenizer)
-  model.eval()
 
   outputs = run_inference(args, model, dataset, exp_logger, tokenizer, split)
   if args.quantify or split == 'dev':
@@ -121,8 +121,8 @@ if __name__ == "__main__":
     run_train(args, model, datasets, exp_logger, detective)
   elif args.do_eval:
     model = load_model(args, ontology, tokenizer, save_path) if args.task == 'in_context' else {}
-    outputs, _ = run_eval(args, model, datasets['test'], exp_logger, detective, split='test')
-    # output_name = f'{args.prompt_style}_lr{args.learning_rate}_clen{args.context_length}.json'
+    outputs, results = run_eval(args, model, datasets['test'], exp_logger, detective, split='test')
+    # output_name = f'{args.prompt_style}_lr{args.learning_rate}_clen{args.context_length}_jga{results["jga"]}.json'
     # with open(os.path.join(save_path, output_name), 'w') as tf:
     #   json.dump(outputs, tf, indent=2)
 

@@ -5,7 +5,7 @@ import math
 import pickle as pkl
 import numpy as np
 
-from assets.static_vars import device, DATASETS, GENERAL_TYPO, DOMAIN_SLOTS
+from assets.static_vars import device, DATASETS, GENERAL_TYPO, DOMAIN_SLOTS, DOMAIN_SLOTS_SGD
 from components.datasets import MetaLearnDataset, InContextDataset, FineTuneDataset
 from torch.utils.data import DataLoader, RandomSampler, SequentialSampler
 from tqdm import tqdm as progress_bar
@@ -101,6 +101,19 @@ def select_utterances(args, utt_so_far, target, split):
 
   return use_target, utterances
 
+def extract_label_sgd(frames, prior_values):
+  labels = []
+  for frame in frames:
+    service = frame["service"]
+    if 'state' in frame:
+      for slot in frame['state']['slot_values']:
+        value = frame['state']['slot_values'][slot][0]    #by default, select the first value
+        if value == prior_values[f'{service}_{slot}']:
+          continue
+        labels.append((service, slot, value))
+  return labels
+
+
 def build_sgd(args, data, mapping, split):
   examples = []
   prompt = "The topic of conversation is about"
@@ -108,27 +121,31 @@ def build_sgd(args, data, mapping, split):
   for conversation in progress_bar(data, total=len(data)):
     text_so_far = []
 
+    prior_values = {f'{service}_{slot}': '<none>' for service, slots in DOMAIN_SLOTS_SGD.items() for slot in slots}
+
     for turn_count, turn in enumerate(conversation['turns']):
       text = turn['utterance']
 
       if turn['speaker'] == 'SYSTEM':
+      # if turn['speaker'] == 'system':
         sys_text = f"<agent> {text}"
         text_so_far.append(sys_text)
 
       elif turn['speaker'] == 'USER':
+      # elif turn['speaker'] == 'user':
         user_utt = f"<customer> {text}"
         text_so_far.append(user_utt)
 
-        for frame in turn['frames']:
-          service = frame['service'].split('_')[0]
+        targets = extract_label_sgd(turn['frames'], prior_values)
+        for service, slot, value in targets:
+          target = {'domain': service, 'slot': slot, 'value': value.strip(),
+                'global_id': conversation['dialogue_id'].replace('_','-') + '_' + str(turn_count+1) }
+          use_target, history = select_utterances(args, text_so_far, target, split)
+          if use_target:
+            examples.append({'utterances': history, 'target': target})
+          pval = '<none>' if value == '<remove>' else value
+          prior_values[f'{service}_{slot}'] = pval
 
-          if 'state' in frame:
-            for slot, value in frame['state']['slot_values'].items():
-              target = {'domain': service, 'slot': slot, 'value': value[0].strip(),
-                    'global_id': conversation['dialogue_id'].replace('_','-') + '_' + str(turn_count+1) }
-              use_target, history = select_utterances(args, text_so_far, target, split)
-              if use_target:
-                examples.append({'utterances': history, 'target': target})
 
   return examples
 
@@ -136,7 +153,6 @@ def build_mwoz(args, data, label_set, split):
   # written for MultiWoz v2.0, 2.1 and 2.3
   examples = []
   speakers = ["<customer>", "<agent>"]
-  
   for convo_id, conversation in progress_bar(data.items(), total=len(data)):
     text_so_far = []
     speaker_id = 0
