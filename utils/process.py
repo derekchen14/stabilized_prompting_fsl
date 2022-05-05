@@ -50,7 +50,7 @@ def extract_label(targets, prior_values):
             value = swaps[value]
           if value in GENERAL_TYPO:
             value = GENERAL_TYPO[value]
-          if value == '<none>' and prior_values[f'{domain}_{slot.lower()}'] != '<none>':
+          if value == '<none>' and prior_values[f'{domain}-{slot.lower()}'] != '<none>':
             value = '<remove>'
           labels.append((domain, slot.lower(), value))
 
@@ -59,7 +59,7 @@ def extract_label(targets, prior_values):
           value = swaps[value]
         if value in GENERAL_TYPO:
           value = GENERAL_TYPO[value]
-        if value == '<none>' and prior_values[f'{domain}_{slot.lower()}'] != '<none>':
+        if value == '<none>' and prior_values[f'{domain}-{slot.lower()}'] != '<none>':
           value = '<remove>'
         labels.append((domain, slot.lower(), value))
 
@@ -107,7 +107,7 @@ def extract_label_sgd(frames, prior_values):
     if 'state' in frame:
       for slot in frame['state']['slot_values']:
         value = frame['state']['slot_values'][slot][0]    #by default, select the first value
-        if value == prior_values[f'{service}_{slot}']:
+        if value == prior_values[f'{service}-{slot}']:
           continue
         labels.append((service, slot, value))
   return labels
@@ -120,7 +120,7 @@ def build_sgd(args, data, mapping, split):
   for conversation in progress_bar(data, total=len(data)):
     text_so_far = []
 
-    prior_values = {f'{service}_{slot}': '<none>' for service, slots in DOMAIN_SLOTS_SGD.items() for slot in slots}
+    prior_values = {f'{service}-{slot}': '<none>' for service, slots in DOMAIN_SLOTS_SGD.items() for slot in slots}
 
     for turn_count, turn in enumerate(conversation['turns']):
       text = turn['utterance']
@@ -136,15 +136,15 @@ def build_sgd(args, data, mapping, split):
         text_so_far.append(user_utt)
 
         targets = extract_label_sgd(turn['frames'], prior_values)
+        prior_values_tmp = {k:v for k,v in prior_values.items()}
         for service, slot, value in targets:
           target = {'domain': service, 'slot': slot, 'value': value.strip(),
                 'global_id': conversation['dialogue_id'].replace('_','-') + '_' + str(turn_count+1) }
           use_target, history = select_utterances(args, text_so_far, target, split)
           if use_target:
-            examples.append({'utterances': history, 'target': target})
+            examples.append({'utterances': history, 'target': target, 'pre_slot':prior_values_tmp})
           pval = '<none>' if value == '<remove>' else value
-          prior_values[f'{service}_{slot}'] = pval
-
+          prior_values[f'{service}-{slot}'] = pval
 
   return examples
 
@@ -157,7 +157,7 @@ def build_mwoz(args, data, label_set, split):
     speaker_id = 0
     turn_count = 0
 
-    prior_values = {f'{domain}_{slot}': '<none>' for domain, slots in DOMAIN_SLOTS.items() for slot in slots}
+    prior_values = {f'{domain}-{slot}': '<none>' for domain, slots in DOMAIN_SLOTS.items() for slot in slots}
     for turn in conversation['log']:
       turn_count += 1
       text = turn['text']
@@ -174,7 +174,7 @@ def build_mwoz(args, data, label_set, split):
           if use_target:
             examples.append({'utterances': utterances, 'target': target})
           pval = '<none>' if value == '<remove>' else value
-          prior_values[f'{domain}_{slot}'] = pval
+          prior_values[f'{domain}-{slot}'] = pval
       
       text_so_far.append(utterance)  # add agent utterance afterwards
       speaker_id = 1 - speaker_id
