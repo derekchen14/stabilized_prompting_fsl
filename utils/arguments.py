@@ -77,6 +77,8 @@ def solicit_params():
                 help="Number of models to keep around after pruning, by default does not prune")
     parser.add_argument("--parallel", action="store_true",
                 help="Whether to run in parallel")
+    parser.add_argument("--use-pre-state", default=True, type=bool,
+                help="Whether to use previous dialog states")
     
     # Hyper-parameters for tuning
     parser.add_argument("--batch-size", default=12, type=int,

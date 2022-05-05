@@ -9,6 +9,19 @@ from torch.utils.data import Dataset
 from assets.static_vars import device, DATASETS
 from utils.make_prompt import find_prompt
 
+def slots_to_string(pre_slot):
+  """
+  pre_slot = {f'{service}-{slot}': '<none>' for service, slots in DOMAIN_SLOTS_SGD.items() for slot in slots}
+  """
+  pre_slot_string = ''
+  for dom_type in pre_slot:
+    domain, slot_type = dom_type.split("-")
+    if pre_slot[dom_type] == '<none>':
+      continue
+    pre_slot_string += f'{domain} {slot_type} {pre_slot[dom_type]} , '
+  return pre_slot_string.strip()
+
+
 class BaseDataset(Dataset):
   def __init__(self, args, examples, tokenizer, split):
     self.split = split
@@ -100,6 +113,9 @@ class InContextDataset(BaseDataset):
       ctx_domain, ctx_slot, ctx_label = exemplar['dsv']
       ctx_prompt = find_prompt(args.prompt_style, ctx_domain, ctx_slot)
       added_context = f"{exemplar['history']} {ctx_prompt} {ctx_label}"
+      if args.use_pre_state:
+        pre_slot_string = slots_to_string(exemplar['pre_slot'])
+        added_context = pre_slot_string + added_context
       contexts.append(added_context)
 
       tokenized_context = self.tokenizer(added_context)
@@ -130,6 +146,9 @@ class InContextDataset(BaseDataset):
       prompt = find_prompt(args.prompt_style, target['domain'], target['slot'])
       context = self.select_context(args, example, joined_utts)
       dialog = self.remove_special(f'{joined_utts} {prompt}')
+      if args.use_pre_state:
+        pre_slot_string = slots_to_string(example['pre_slot'])
+        dialog = pre_slot_string + dialog
 
       contexts.append(context)
       dialogues.append(dialog)
@@ -215,6 +234,8 @@ class FineTuneDataset(BaseDataset):
 
     for example in examples:
       dialog = ' '.join(example['utterances'])
+      if args.use_pre_state:
+        dialog = f"{pre_slot_string} {dialog}"
       dialogues.append(dialog)
       labels.append(example['target']['value'] if self.split == 'train' else example['target'])
 
@@ -236,17 +257,20 @@ class FineTuneDataset(BaseDataset):
     for example in examples:
       dialog = ' '.join(example['utterances'])
       target = example['target']
+      pre_slot_string = slots_to_string(example['pre_slot'])
       prompt = find_prompt(args.prompt_style, target['domain'], target['slot'])
 
       if self.split == 'train':
-        dialog += f" {prompt} {target['value']} {eos}"
+        dial_input = f"{dialog} {prompt} {target['value']} {eos}"
         max_length = self.max_len
       elif self.split in ['dev', 'test']:
-        dialog += f" {prompt}"
+        dial_input = f"{dialog} {prompt}"
         max_length = self.max_len - 12
-      dialogues.append(dialog)
+      if args.use_pre_state:
+        dial_input = f"{pre_slot_string} {dial_input}"
+      dialogues.append(dial_input)
       labels.append(target)
-
+      # pdb.set_trace()
     inputs = self.tokenizer(dialogues, padding=True, max_length=max_length,
                               truncation=True, return_tensors='pt').to(device)
     if self.split == 'train':

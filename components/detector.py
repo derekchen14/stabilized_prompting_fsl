@@ -29,7 +29,7 @@ class ExemplarDetective(object):
     cache_file = f'{embed_method}_{args.style}_{corpus}_lookback{ctx_len}_embeddings.pkl'
     cache_path = os.path.join(args.input_dir, 'cache', args.dataset, cache_file)
 
-    if os.path.exists(cache_path):
+    if os.path.exists(cache_path) and not args.ignore_cache:
       self.candidates[corpus] = pkl.load( open( cache_path, 'rb' ) )
       num_cands = len(self.candidates[corpus])
       print(f"Loaded {num_cands} embeddings from {cache_path}")
@@ -45,11 +45,14 @@ class ExemplarDetective(object):
 
     for emb, exp, hist in zip(embeddings, samples, histories):
       target = exp['target']
+      import pdb
+      pdb.set_trace()
       cand = {   # embedding is a 768-dim numpy array
         'embedding': emb,
         'gid': target['global_id'],
         'history': hist,
-        'dsv': (target['domain'], target['slot'], target['value'])
+        'dsv': (target['domain'], target['slot'], target['value']),
+        'pre_slot': exp['pre_slot'],
       }
       self.candidates[corpus].append(cand)
     pkl.dump(self.candidates[corpus], open(cache_path, 'wb'))
