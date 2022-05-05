@@ -126,23 +126,21 @@ def build_sgd(args, data, mapping, split):
       text = turn['utterance']
 
       if turn['speaker'] == 'SYSTEM':
-      # if turn['speaker'] == 'system':
         sys_text = f"<agent> {text}"
         text_so_far.append(sys_text)
 
       elif turn['speaker'] == 'USER':
-      # elif turn['speaker'] == 'user':
         user_utt = f"<customer> {text}"
         text_so_far.append(user_utt)
 
         targets = extract_label_sgd(turn['frames'], prior_values)
-        prior_values_tmp = {k:v for k,v in prior_values.items()}
+        prev_state = {k:v for k,v in prior_values.items()}
         for service, slot, value in targets:
           target = {'domain': service, 'slot': slot, 'value': value.strip(),
                 'global_id': conversation['dialogue_id'].replace('_','-') + '_' + str(turn_count+1) }
           use_target, history = select_utterances(args, text_so_far, target, split)
           if use_target:
-            examples.append({'utterances': history, 'target': target, 'pre_slot':prior_values_tmp})
+            examples.append({'utterances': history, 'target': target, 'prev_state':prev_state})
           pval = '<none>' if value == '<remove>' else value
           prior_values[f'{service}-{slot}'] = pval
 

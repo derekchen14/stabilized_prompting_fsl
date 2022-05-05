@@ -9,18 +9,6 @@ from torch.utils.data import Dataset
 from assets.static_vars import device, DATASETS
 from utils.make_prompt import find_prompt
 
-def slots_to_string(pre_slot):
-  """
-  pre_slot = {f'{service}-{slot}': '<none>' for service, slots in DOMAIN_SLOTS_SGD.items() for slot in slots}
-  """
-  pre_slot_string = ''
-  for dom_type in pre_slot:
-    domain, slot_type = dom_type.split("-")
-    if pre_slot[dom_type] == '<none>':
-      continue
-    pre_slot_string += f'{domain} {slot_type} {pre_slot[dom_type]} , '
-  return pre_slot_string.strip()
-
 
 class BaseDataset(Dataset):
   def __init__(self, args, examples, tokenizer, split):
@@ -79,17 +67,39 @@ class BaseDataset(Dataset):
     if self.detective is None:
       self.detective = detective
 
-  def collate_lm(self, args, examples):
+  def get_previous_state(self, example, prior_pred_states):
+    """ default prev_state is the ground truth, which is not allowed during test time
+    we replace this with the predicted dialog state when performing inference on test data """
+    if self.split == 'test':
+      prev_state = example['prev_state']
+    else:
+      convo_id, turn_count = example['global_id'].split('_')
+      prev_gid = f"{convo_id}_{int(turn_count) - 1}"
+      prev_state = prior_pred_states[prev_gid]
+    return prev_state
+
+  @staticmethod
+  def state_to_string(prev_state):
+    """ Transform the dialog state (dict) into a string to be used for context """
+    prev_state_string = ''
+    for dom_slot in prev_state:
+      domain, slot = dom_slot.split("-")
+      if prev_state[dom_slot] == '<none>':
+        continue
+      prev_state_string += f'{domain} {slot} {prev_state[dom_slot]} , '
+    return prev_state_string.strip()
+
+  def collate_lm(self, args, examples, prior_pred_states):
     raise NotImplementedError
 
-  def collate_seq2seq(self, args, examples):
+  def collate_seq2seq(self, args, examples, prior_pred_states):
     raise NotImplementedError
 
-  def collate(self, args, examples):
+  def collate(self, args, examples, prior_pred_states=None):
     if self.model_type == 'gpt':
-      return self.collate_lm(args, examples)
+      return self.collate_lm(args, examples, prior_pred_states)
     elif self.model_type in ['bart', 't5']:
-      return self.collate_seq2seq(args, examples)
+      return self.collate_seq2seq(args, examples, prior_pred_states)
 
   def collate_func(self, examples):
     return examples
@@ -114,8 +124,8 @@ class InContextDataset(BaseDataset):
       ctx_prompt = find_prompt(args.prompt_style, ctx_domain, ctx_slot)
       added_context = f"{exemplar['history']} {ctx_prompt} {ctx_label}"
       if args.use_pre_state:
-        pre_slot_string = slots_to_string(exemplar['pre_slot'])
-        added_context = pre_slot_string + added_context
+        prev_state_string = super().state_to_string(exemplar['pre_slot'])
+        added_context = prev_state_string + added_context
       contexts.append(added_context)
 
       tokenized_context = self.tokenizer(added_context)
@@ -135,7 +145,7 @@ class InContextDataset(BaseDataset):
     text = text.replace('<pad>', '[PAD]')
     return text
 
-  def collate_lm(self, args, examples):
+  def collate_lm(self, args, examples, prior_pred_states):
     """ train and dev splits should not occur since you do not need gradient based training """
     assert(self.split not in ['train', 'dev'])
     contexts, dialogues, labels = [], [], []
@@ -147,8 +157,8 @@ class InContextDataset(BaseDataset):
       context = self.select_context(args, example, joined_utts)
       dialog = self.remove_special(f'{joined_utts} {prompt}')
       if args.use_pre_state:
-        pre_slot_string = slots_to_string(example['pre_slot'])
-        dialog = pre_slot_string + dialog
+        prev_state_string = super().state_to_string(example['pre_slot'])
+        dialog = prev_state_string + dialog
 
       contexts.append(context)
       dialogues.append(dialog)
@@ -183,7 +193,7 @@ class MetaLearnDataset(BaseDataset):
     additional_context = eos_token.join(contexts)
     return additional_context + eos_token
 
-  def collate_lm(self, args, examples):
+  def collate_lm(self, args, examples, prior_pred_states):
     """
     train - use support dataset
     dev - use support dataset, do not include the label
@@ -228,14 +238,16 @@ class MetaLearnDataset(BaseDataset):
 
 class FineTuneDataset(BaseDataset):
 
-  def collate_seq2seq(self, args, examples):
+  def collate_seq2seq(self, args, examples, prior_pred_states):
     """transforms a batch of examples into a features dict that can be fed into a T5 or BART model"""
     dialogues, labels = [], []
 
     for example in examples:
       dialog = ' '.join(example['utterances'])
       if args.use_pre_state:
-        dialog = f"{pre_slot_string} {dialog}"
+        prev_state = self.get_previous_state(example, prior_pred_states)
+        state_string = super().state_to_string(prev_state)
+        dialog = f"{state_string} {dialog}"
       dialogues.append(dialog)
       labels.append(example['target']['value'] if self.split == 'train' else example['target'])
 
@@ -249,7 +261,7 @@ class FineTuneDataset(BaseDataset):
     else:
       return inputs, labels
 
-  def collate_lm(self, args, examples):
+  def collate_lm(self, args, examples, prior_pred_states):
     """transforms a batch of examples into a features dict that can be fed into a GPT model"""
     dialogues, labels = [], []
     eos = self.tokenizer.eos_token
@@ -257,7 +269,9 @@ class FineTuneDataset(BaseDataset):
     for example in examples:
       dialog = ' '.join(example['utterances'])
       target = example['target']
-      pre_slot_string = slots_to_string(example['pre_slot'])
+
+      prev_state = self.get_previous_state(example, prior_pred_states)
+      state_string = super().state_to_string(prev_state)
       prompt = find_prompt(args.prompt_style, target['domain'], target['slot'])
 
       if self.split == 'train':
@@ -267,10 +281,9 @@ class FineTuneDataset(BaseDataset):
         dial_input = f"{dialog} {prompt}"
         max_length = self.max_len - 12
       if args.use_pre_state:
-        dial_input = f"{pre_slot_string} {dial_input}"
+        dial_input = f"{state_string} {dial_input}"
       dialogues.append(dial_input)
       labels.append(target)
-      # pdb.set_trace()
     inputs = self.tokenizer(dialogues, padding=True, max_length=max_length,
                               truncation=True, return_tensors='pt').to(device)
     if self.split == 'train':
