@@ -15,6 +15,9 @@ def slots_to_string(pre_slot):
   """
   pre_slot_string = ''
   for dom_type in pre_slot:
+    # if len(dom_type.split("-"))!= 2:
+    #   print(dom_type)
+    #   pdb.set_trace()
     domain, slot_type = dom_type.split("-")
     if pre_slot[dom_type] == '<none>':
       continue
@@ -270,6 +273,7 @@ class FineTuneDataset(BaseDataset):
         dial_input = f"{pre_slot_string} {dial_input}"
       dialogues.append(dial_input)
       labels.append(target)
+      # print(dial_input)
       # pdb.set_trace()
     inputs = self.tokenizer(dialogues, padding=True, max_length=max_length,
                               truncation=True, return_tensors='pt').to(device)
