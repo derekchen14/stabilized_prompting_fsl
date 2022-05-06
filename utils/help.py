@@ -9,7 +9,7 @@ import shutil
 
 from collections import defaultdict
 from tqdm import tqdm as progress_bar
-from assets.static_vars import device
+from assets.static_vars import device, SLOT_MAPPING
 from copy import deepcopy
 from transformers import get_scheduler
 from utils.reformat import *
@@ -133,6 +133,20 @@ def reformat_data(args):
       reformatter = ReformatBase()
     # loads, reformats and saves the data in the background
     reformatter.reformat()
+
+def standardize_format(raw_domain, raw_slot):
+  domain = raw_domain.lower()       # services_2
+  domain = domain.split('_')[0]     # services
+  if domain.endswith('es'):         # service
+    domain = domain[:-2]
+  if domain.endswith('s'):          # service
+    domain = domain[:-1]
+
+  slot = raw_slot.lower()
+  slot = slot.replace('_', ' ').replace('.', ' ')
+  if slot in SLOT_MAPPING:
+    slot = SLOT_MAPPING[slot]
+  return domain, slot
 
 def determine_dataset(global_id):
   dialog_id, turn_count = global_id.split('_')

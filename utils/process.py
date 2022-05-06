@@ -6,12 +6,11 @@ import pickle as pkl
 import numpy as np
 
 from assets.static_vars import *
+from utils.help import standardize_format
 from components.datasets import MetaLearnDataset, InContextDataset, FineTuneDataset
 from torch.utils.data import DataLoader, RandomSampler, SequentialSampler
 from tqdm import tqdm as progress_bar
 from collections import defaultdict, Counter
-
-
 
 def check_cache(args):
   cache_file = f'{args.model}_{args.task}_{args.prompt_style}_lookback{args.context_length}.pkl'
@@ -68,18 +67,25 @@ def extract_label(targets, prior_values):
   return labels
 
 def select_utterances(args, utt_so_far, target, split):
-  value = target['value']
-  target = standardize_format(target)
+  domain, slot, value = target['domain'], target['slot'], target['value']
+  domain, slot = standardize_format(domain, slot)
+  target['domain'], target['slot'] = domain, slot
+
   use_target = True
-  # if args.context_length < 0:
-  #   return utt_so_far, True
-  
-  # if args.context_length % 2 == 0: # drop the agent utterances
-  #   lookback = -args.context_length - 1
-  #   utterances = [utt for utt in utt_so_far[lookback:] if utt.startswith('<customer>')]
   lookback = -args.context_length
   utterances = utt_so_far[lookback:]
 
+  if args.task == 'in_context' and value == '<none>':  # TODO: query result none value slot
+    use_target = False
+  elif split == 'train' and value == '<none>' and random.random() < 0.8:
+    use_target = False
+  return use_target, utterances, target
+
+  # if args.context_length < 0:
+  #   return utt_so_far, True
+  # if args.context_length % 2 == 0: # drop the agent utterances
+  #   lookback = -args.context_length - 1
+  #   utterances = [utt for utt in utt_so_far[lookback:] if utt.startswith('<customer>')]
   # history = ' '.join(utterances)
   # if value in history.lower() or value in ['<remove>', 'any']:
   #   use_target = True
@@ -87,11 +93,6 @@ def select_utterances(args, utt_so_far, target, split):
   #   use_target = True
   # elif value.lower() in ['yes', 'no'] and (slot in history or 'wifi' in history):
   #   use_target = True  # to handle the internet and parking use cases
-  if args.task == 'in_context' and value == '<none>':  # TODO: query result none value slot
-    use_target = False
-  elif split == 'train' and value == '<none>' and random.random() < 0.8:
-    use_target = False
-  return use_target, utterances, target
 
 def extract_label_sgd(frames, prior_values):
   labels = []
@@ -104,24 +105,6 @@ def extract_label_sgd(frames, prior_values):
           continue
         labels.append((service, slot, value))
   return labels
-
-def standardize_format(target):
-  raw_domain = target['domain']     # Services_2
-  domain = raw_domain.lower()       # services_2
-  domain = domain.split('_')[0]     # services
-  if domain.endswith('es'):         # service
-    domain = domain[:-2]
-  if domain.endswith('s'):          # service
-    domain = domain[:-1]
-  target['domain'] = domain
-
-  raw_slot = target['slot']
-  slot = raw_slot.lower()
-  slot = slot.replace('_', ' ').replace('.', ' ')
-  if slot in SLOT_MAPPING:
-    slot = SLOT_MAPPING[slot]
-  target['slot'] = slot
-  return target
 
 def build_sgd(args, data, ontology, split):
   examples = []
@@ -174,13 +157,13 @@ def build_mwoz(args, data, ontology, split):
       
       if speaker == '<agent>':
         targets = extract_label(turn['metadata'], prior_values)
-        prior_values_tmp = {k:v for k,v in prior_values.items()}
+        prev_state = {k:v for k,v in prior_values.items()}
         for domain, slot, value in targets: 
           target = {'domain': domain, 'slot': slot, 'value': value,
               'global_id': f'{convo_id}_{turn_count}' }
           use_target, utterances, target = select_utterances(args, text_so_far, target, split)
           if use_target:
-            examples.append({'utterances': utterances, 'target': target, 'pre_slot':prior_values_tmp})
+            examples.append({'utterances': utterances, 'target': target, 'prev_state': prev_state})
           pval = '<none>' if value == '<remove>' else value
           prior_values[f'{domain}-{slot}'] = pval
       
@@ -305,7 +288,7 @@ def build_abcd(args, data, ontology, split):
         # each target is a 5-part list: intent, nextstep, action, value, utt_rank
         targets, target_domains = make_dialogue_state(intent, action, values, convo['scene'], mappings)
   
-        prior_values_tmp = {k:v for k,v in prior_values.items()}
+        prev_state = {k:v for k,v in prior_values.items()}
         current_slots_tmp = {slot["domain"]+"-"+slot["slot"]:slot["value"] for slot in targets}
         for domain in target_domains:
           for slot in ontology[domain]:
@@ -314,7 +297,7 @@ def build_abcd(args, data, ontology, split):
                 'global_id': str(convo['convo_id']) + '_' + str(turn['turn_count']) }
             use_target, history, target = select_utterances(args, utt_so_far, target, split)
             if use_target:
-              examples.append({'utterances': history, 'target': target, 'pre_slot':prior_values_tmp})
+              examples.append({'utterances': history, 'target': target, 'prev_state':prev_state})
             if value != "<none>":
               prior_values[f'{domain}-{slot}'] = value
 
@@ -346,14 +329,14 @@ def build_dstc(args, data, ontology, split):
         user_text = f"<customer> {turn['text']}"
         text_so_far.append(user_text)
 
-        prior_values_tmp = {k:v for k,v in prior_values.items()}
+        prev_state = {k:v for k,v in prior_values.items()}
         for slot in ontology['restaurant']:
           value = turn['inform'].get(slot, "<none>")
           target = {'domain': 'restaurant', 'slot': slot, 'value': value,
               'global_id': convo['guid'].replace('_', '-') + '_' + str(turn['turn']) }
           use_target, history, target = select_utterances(args, text_so_far, target, split)
           if use_target:
-            examples.append({'utterances': history, 'target': target, 'pre_slot':prior_values_tmp})
+            examples.append({'utterances': history, 'target': target, 'prev_state':prev_state})
 
           if value != "<none>":
             prior_values[f'restaurant-{slot}'] = value
@@ -380,7 +363,7 @@ def build_gsim(args, data, ontology, split):
       user_utt = f"<customer> {user_text}"
       text_so_far.append(user_utt)
 
-      prior_values_tmp = {k:v for k,v in prior_values.items()}
+      prev_state = {k:v for k,v in prior_values.items()}
       current_slots_tmp = {slot["slot"]:slot["value"] for slot in turn["dialogue_state"]}
       for slot in ontology[domain]:
         value = current_slots_tmp.get(slot, "<none>")
@@ -390,7 +373,7 @@ def build_gsim(args, data, ontology, split):
                'global_id': dialog_id + '_' + str(turn_count + 1) }
         use_target, history, target = select_utterances(args, text_so_far, target, split)
         if use_target:
-          examples.append({'utterances': history, 'target': target, 'pre_slot':prior_values_tmp})
+          examples.append({'utterances': history, 'target': target, 'prev_state':prev_state})
         if value != "<none>":
           prior_values[f'{domain}-{slot}'] = value
 
@@ -414,7 +397,7 @@ def build_tt(args, data, ontology, split):
         user_utterance = f"<customer> {text}"
         text_so_far.append(user_utterance)
 
-        prior_values_tmp = {k:v for k,v in prior_values.items()}
+        prev_state = {k:v for k,v in prior_values.items()}
         if 'segments' in turn:
           labels = extract_slotvals(turn['segments'], ontology['slotvals'])
         else:
@@ -426,7 +409,7 @@ def build_tt(args, data, ontology, split):
           'global_id': convo['conversation_id'].replace('_', '-') + '_' + str(turn['index'])}
           use_target, history, target = select_utterances(args, text_so_far, target, split)
           if use_target:
-            examples.append({'utterances': history, 'target': target, 'pre_slot':prior_values_tmp})
+            examples.append({'utterances': history, 'target': target, 'prev_state':prev_state})
           prior_values[f'{domain}-{slot}'] = value
   return examples
 

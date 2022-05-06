@@ -8,7 +8,7 @@ from torch.utils.data import Dataset
 
 from assets.static_vars import device, DATASETS
 from utils.make_prompt import find_prompt
-
+from utils.help import standardize_format
 
 class BaseDataset(Dataset):
   def __init__(self, args, examples, tokenizer, split):
@@ -88,6 +88,7 @@ class BaseDataset(Dataset):
     prev_state_string = ''
     for dom_slot in prev_state:
       domain, slot = dom_slot.split("-")
+      domain, slot = standardize_format(domain, slot)
       if prev_state[dom_slot] == '<none>':
         continue
       prev_state_string += f'{domain} {slot} {prev_state[dom_slot]} , '
