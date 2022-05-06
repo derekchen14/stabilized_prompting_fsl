@@ -564,6 +564,37 @@ DOMAIN_SLOTS_TT = {
                 "num.tickets", "price.ticket", "price.total", "rating.movie", "review.audience",
                 "review.critic", "seating", "time.preference", "time.showing", "type.screening"]
 }
+
+
+DOMAIN_SLOTS_ABCD = {
+  "product defect": ["order id", "order slotval", "customer name", "payment method", 
+      "details slotval", "membership level", "amount", "username", "product", "refund target", "account id", 
+      "company team", "reason slotval", "email", "zip code", "shipping option"], 
+   "shipping issue": ["order id", "order slotval", "customer name", "change option", "payment method", 
+      "full address", "membership level", "amount", "street address", "username", "product",
+       "refund target", "account id", "reason slotval", "company team", "email", "zip code", "shipping option"], 
+  "subscription inquiry": ["order id", "payment method", "customer name", "details slotval", "membership level",
+      "product", "account slotval", "refund target", "account id", "company team",
+       "amount", "zip code", "shipping option"], 
+  "account access": ["order slotval", "details slotval", "customer name", "membership level", "amount",
+      "shipping option", "pin number", "username", "company team", "email", "zip code", "phone"], 
+  "troubleshoot site": ["order slotval", "details slotval", "customer name", "membership level", "amount",
+      "username", "product", "account slotval", "company team", "email", "shipping option"], 
+  "order issue": ["order id", "order slotval", "customer name", "change option", "payment method",
+      "membership level", "product", "account slotval", "refund target", "account id", 
+      "reason slotval", "company team", "amount", "zip code", "shipping option"], 
+  "purchase dispute": ["order slotval", "order id", "customer name", "change option", "payment method",
+      "membership level", "amount", "phone", "username", "product", "account slotval", 
+      "account id", "company team", "reason slotval", "email", "zip code", "shipping option"], 
+  "storewide query": ["payment method", "order slotval", "customer name", "change option",
+      "membership level", "product", "account slotval", "company team", "reason slotval", 
+      "zip code", "shipping option"], 
+  "manage account": ["payment method", "order id", "customer name", "order slotval", "membership level",
+      "shipping option", "street address", "username", "product", "account slotval", 
+  "reason slotval", "company team", "amount", "zip code", "phone"], 
+  "single item query": ["customer name", "membership level", "product", "company team", "amount",
+      "shipping option"]
+}
 """
 <customer> i would like some soup and crackers.
 <agent> what kind of soup do you want?

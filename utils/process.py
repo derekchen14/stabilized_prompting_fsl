@@ -252,6 +252,7 @@ def is_slotval(scenario, mappings, cand_slot, cand_val):
 
 def make_dialogue_state(intent, action, values, scene, mappings):
   targets = []
+  target_domains = set()
 
   if mappings['valid'][action]:
     for value in values:
@@ -260,6 +261,7 @@ def make_dialogue_state(intent, action, values, scene, mappings):
    
       domain = mappings['intent'][intent].replace('_', ' ')
       target = { 'domain': domain }
+      target_domains.add(domain)
       if len(candidate_slots) == 1:
         target['slot'] = candidate_slots[0].replace('_', ' ')
         target['value'] = cand_val
@@ -273,7 +275,7 @@ def make_dialogue_state(intent, action, values, scene, mappings):
             targets.append(target)
             break
 
-  return targets
+  return targets, target_domains
 
 def build_abcd(args, data, ontology, split):
   examples = []
@@ -283,6 +285,8 @@ def build_abcd(args, data, ontology, split):
   for convo in progress_bar(data, total=len(data)):
     # each convo has keys: convo_id, scene, conversation
     utt_so_far = []
+
+    prior_values = {f'{domain}-{slot}': '<none>' for domain, slots in DOMAIN_SLOTS_ABCD.items() for slot in slots}
     for turn in convo['conversation']:
       # each turn has keys: speaker, text, targets, turn_count, candidates
       speaker = turn['speaker']
@@ -290,13 +294,21 @@ def build_abcd(args, data, ontology, split):
       if speaker == 'action':  # skip action turns
         intent, nextstep, action, values, utt_rank = turn['targets']
         # each target is a 5-part list: intent, nextstep, action, value, utt_rank
-        targets = make_dialogue_state(intent, action, values, convo['scene'], mappings)
+        targets, target_domains = make_dialogue_state(intent, action, values, convo['scene'], mappings)
   
-        for target in targets:
-          target['global_id'] = str(convo['convo_id']) + '_' + str(turn['turn_count'])
-          use_target, history = select_utterances(args, utt_so_far, target, split)
-          if use_target:
-            examples.append({'utterances': history, 'target': target})
+        prior_values_tmp = {k:v for k,v in prior_values.items()}
+        current_slots_tmp = {slot["domain"]+"-"+slot["slot"]:slot["value"] for slot in targets}
+        for domain in target_domains:
+          for slot in DOMAIN_SLOTS_ABCD[domain]:
+            value = current_slots_tmp.get(f"{domain}-{slot}", "<none>")
+            target = {'domain': 'restaurant', 'slot': slot, 'value': value,
+                'global_id': str(convo['convo_id']) + '_' + str(turn['turn_count']) }
+            use_target, history = select_utterances(args, utt_so_far, target, split)
+            if use_target:
+              examples.append({'utterances': history, 'target': target, 'pre_slot':prior_values_tmp})
+            if value != "<none>":
+              prior_values[f'{domain}-{slot}'] = value
+
       else:
         text = turn['text']
         utt_so_far.append(f"<{speaker}> {text}")
@@ -326,15 +338,16 @@ def build_dstc(args, data, split):
         text_so_far.append(user_text)
 
         prior_values_tmp = {k:v for k,v in prior_values.items()}
-        for slot, value in prior_values_tmp.items():
-          if slot in turn['inform']:
-            value = turn['inform'][slot]
+        for slot in DOMAIN_SLOTS_DSTC['restaurant']:
+          value = turn['inform'].get(slot, "<none>")
           target = {'domain': 'restaurant', 'slot': slot, 'value': value,
               'global_id': convo['guid'].replace('_', '-') + '_' + str(turn['turn']) }
           use_target, history = select_utterances(args, text_so_far, target, split)
           if use_target:
             examples.append({'utterances': history, 'target': target, 'pre_slot':prior_values_tmp})
-          prior_values[f'{domain}-{slot}'] = value
+
+          if value != "<none>":
+            prior_values[f'restaurant-{slot}'] = value
   
   return examples
 
@@ -369,7 +382,8 @@ def build_gsim(args, data, split):
         use_target, history = select_utterances(args, text_so_far, target, split)
         if use_target:
           examples.append({'utterances': history, 'target': target, 'pre_slot':prior_values_tmp})
-        prior_values[f'{domain}-{slot}'] = value
+        if value != "<none>":
+          prior_values[f'{domain}-{slot}'] = value
 
   return examples
 
@@ -397,7 +411,7 @@ def build_tt(args, data, ontology, split):
         else:
           labels = {}
 
-        for slot, value in prior_values_tmp.items():
+        for slot in DOMAIN_SLOTS_TT['movie']:
           value = labels.get(slot, "<none>")
           target = {'domain': 'movies', 'slot': slot, 'value': value,
           'global_id': convo['conversation_id'].replace('_', '-') + '_' + str(turn['index'])}
