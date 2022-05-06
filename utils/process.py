@@ -65,39 +65,31 @@ def extract_label(targets, prior_values):
 
   return labels
 
-def num_in_history(value, history):
-  numbers = ['zero', 'one', 'two', 'three', 'four', 'five', 'six']
-  contains_num = False
-  for digit, num_text in enumerate(numbers):
-    if str(value) == str(digit) and num_text in history:
-      contains_num = True
-  return contains_num
-
 def select_utterances(args, utt_so_far, target, split):
-  use_target = False
-  if args.context_length < 0:
-    return utt_so_far, True
+  value = target['value']
+  target = standardize_format(target)
+  use_target = True
+  # if args.context_length < 0:
+  #   return utt_so_far, True
   
   # if args.context_length % 2 == 0: # drop the agent utterances
   #   lookback = -args.context_length - 1
   #   utterances = [utt for utt in utt_so_far[lookback:] if utt.startswith('<customer>')]
-  # else:
   lookback = -args.context_length
   utterances = utt_so_far[lookback:]
-  
-  history = ' '.join(utterances)
-  slot, value = target['slot'], target['value']
-  if value in history.lower() or value in ['<remove>', 'any']:
-    use_target = True
-  elif num_in_history(value, history.lower()):
-    use_target = True
-  elif value.lower() in ['yes', 'no'] and (slot in history or 'wifi' in history):
-    use_target = True  # to handle the internet and parking use cases
-  elif args.task != 'in_context' and value == '<none>' and random.random() < 0.2:
-    use_target = True
-  elif args.task != 'in_context' and split in ['dev', 'test']:
-    use_target = True
-  return use_target, utterances
+
+  # history = ' '.join(utterances)
+  # if value in history.lower() or value in ['<remove>', 'any']:
+  #   use_target = True
+  # elif num_in_history(value, history.lower()):
+  #   use_target = True
+  # elif value.lower() in ['yes', 'no'] and (slot in history or 'wifi' in history):
+  #   use_target = True  # to handle the internet and parking use cases
+  if args.task == 'in_context' and value == '<none>':  # TODO: query result none value slot
+    use_target = False
+  elif split == 'train' and value == '<none>' and random.random() < 0.8:
+    use_target = False
+  return use_target, utterances, target
 
 def extract_label_sgd(frames, prior_values):
   labels = []
@@ -111,6 +103,23 @@ def extract_label_sgd(frames, prior_values):
         labels.append((service, slot, value))
   return labels
 
+def standardize_format(target):
+  raw_domain = target['domain']     # Services_2
+  domain = raw_domain.lower()       # services_2
+  domain = domain.split('_')[0]     # services
+  if domain.endswith('es'):         # service
+    domain = domain[:-2]
+  if domain.endswith('s'):          # service
+    domain = domain[:-1]
+  target['domain'] = domain
+
+  raw_slot = target['slot']
+  slot = raw_slot.lower()
+  slot = slot.replace('_', ' ').replace('.', ' ')
+  if slot in SLOT_MAPPING:
+    slot = SLOT_MAPPING[slot]
+  target['slot'] = slot
+  return target
 
 def build_sgd(args, data, mapping, split):
   examples = []
@@ -137,7 +146,7 @@ def build_sgd(args, data, mapping, split):
         for service, slot, value in targets:
           target = {'domain': service, 'slot': slot, 'value': value.strip(),
                 'global_id': conversation['dialogue_id'].replace('_','-') + '_' + str(turn_count+1) }
-          use_target, history = select_utterances(args, text_so_far, target, split)
+          use_target, history, target = select_utterances(args, text_so_far, target, split)
           if use_target:
             examples.append({'utterances': history, 'target': target, 'prev_state': prev_state})
           pval = '<none>' if value == '<remove>' else value
@@ -167,7 +176,7 @@ def build_mwoz(args, data, label_set, split):
         for domain, slot, value in targets: 
           target = {'domain': domain, 'slot': slot, 'value': value,
               'global_id': f'{convo_id}_{turn_count}' }
-          use_target, utterances = select_utterances(args, text_so_far, target, split)
+          use_target, utterances, target = select_utterances(args, text_so_far, target, split)
           if use_target:
             examples.append({'utterances': utterances, 'target': target, 'prev_state': prev_state})
           pval = '<none>' if value == '<remove>' else value
@@ -213,7 +222,7 @@ def build_mwoz22(args, data):
 
                 target = {'domain': current_domain, 'slot': slot, 'value': value,
                         'global_id': conversation['dialogue_id'] + '_' + turn['turn_id'] }
-                use_target, history = select_utterances(args, text_so_far, target, split)
+                use_target, history, target = select_utterances(args, text_so_far, target, split)
                 if use_target:
                   examples.append({'utterances': history, 'target': target})      
   return examples
@@ -301,7 +310,7 @@ def build_abcd(args, data, ontology, split):
             value = current_slots_tmp.get(f"{domain}-{slot}", "<none>")
             target = {'domain': 'restaurant', 'slot': slot, 'value': value,
                 'global_id': str(convo['convo_id']) + '_' + str(turn['turn_count']) }
-            use_target, history = select_utterances(args, utt_so_far, target, split)
+            use_target, history, target = select_utterances(args, utt_so_far, target, split)
             if use_target:
               examples.append({'utterances': history, 'target': target, 'prev_state':prev_state})
             if value != "<none>":
@@ -340,7 +349,7 @@ def build_dstc(args, data, split):
           value = turn['inform'].get(slot, "<none>")
           target = {'domain': 'restaurant', 'slot': slot, 'value': value,
               'global_id': convo['guid'].replace('_', '-') + '_' + str(turn['turn']) }
-          use_target, history = select_utterances(args, text_so_far, target, split)
+          use_target, history, target = select_utterances(args, text_so_far, target, split)
           if use_target:
             examples.append({'utterances': history, 'target': target, 'prev_state':prev_state})
 
@@ -377,7 +386,7 @@ def build_gsim(args, data, split):
                     'slot': slot,
                    'value': value,  
                'global_id': dialog_id + '_' + str(turn_count + 1) }
-        use_target, history = select_utterances(args, text_so_far, target, split)
+        use_target, history, target = select_utterances(args, text_so_far, target, split)
         if use_target:
           examples.append({'utterances': history, 'target': target, 'prev_state':prev_state})
         if value != "<none>":
@@ -413,7 +422,7 @@ def build_tt(args, data, ontology, split):
           value = labels.get(slot, "<none>")
           target = {'domain': 'movies', 'slot': slot, 'value': value,
           'global_id': convo['conversation_id'].replace('_', '-') + '_' + str(turn['index'])}
-          use_target, history = select_utterances(args, text_so_far, target, split)
+          use_target, history, target = select_utterances(args, text_so_far, target, split)
           if use_target:
             examples.append({'utterances': history, 'target': target, 'prev_state':prev_state})
           prior_values[f'{domain}-{slot}'] = value
@@ -517,3 +526,5 @@ def process_data(args, raw_data, tokenizer):
 
   datasets = hold_out(args, datasets)
   return datasets, label_set
+
+

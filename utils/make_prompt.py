@@ -2,11 +2,6 @@ import os, pdb, sys
 import numpy as np
 
 def find_prompt(style, domain, slot):
-  domain = domain.lower()
-  slot = slot.lower()
-  if domain.endswith('s'):
-    domain = domain[:-1]
-
   if style == 'schema':   #  taken from https://arxiv.org/abs/2109.07506
     return schema_style(domain, slot)
   elif style == 'question':
@@ -41,16 +36,7 @@ def statement_style(domain, slot):
   prompt = f"<sep> {desc} is"
   return prompt
 
-space_mapping = {
-  'arriveby': 'arrive by',
-  'leaveat': 'leave at',
-  'pricerange': 'price range',
-}
-
 def naive_style(domain, slot):
-  if slot in space_mapping:
-    slot = space_mapping[slot]
-
   desc = f"{slot} of the {domain}"
   prompt = f"<sep> {desc} is"
   return prompt
