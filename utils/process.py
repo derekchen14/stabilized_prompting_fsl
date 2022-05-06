@@ -11,6 +11,8 @@ from torch.utils.data import DataLoader, RandomSampler, SequentialSampler
 from tqdm import tqdm as progress_bar
 from collections import defaultdict, Counter
 
+
+
 def check_cache(args):
   cache_file = f'{args.model}_{args.task}_{args.prompt_style}_lookback{args.context_length}.pkl'
   cache_path = os.path.join(args.input_dir, 'cache', args.dataset, cache_file)
@@ -121,14 +123,14 @@ def standardize_format(target):
   target['slot'] = slot
   return target
 
-def build_sgd(args, data, mapping, split):
+def build_sgd(args, data, ontology, split):
   examples = []
   prompt = "The topic of conversation is about"
 
   for conversation in progress_bar(data, total=len(data)):
     text_so_far = []
 
-    prior_values = {f'{service}-{slot}': '<none>' for service, slots in DOMAIN_SLOTS_SGD.items() for slot in slots}
+    prior_values = {f'{service}-{slot}': '<none>' for service, slots in ontology.items() for slot in slots}
 
     for turn_count, turn in enumerate(conversation['turns']):
       text = turn['utterance']
@@ -148,13 +150,13 @@ def build_sgd(args, data, mapping, split):
                 'global_id': conversation['dialogue_id'].replace('_','-') + '_' + str(turn_count+1) }
           use_target, history, target = select_utterances(args, text_so_far, target, split)
           if use_target:
-            examples.append({'utterances': history, 'target': target, 'prev_state': prev_state})
+            examples.append({'utterances': history, 'target': target, 'prev_state':prev_state})
           pval = '<none>' if value == '<remove>' else value
           prior_values[f'{service}-{slot}'] = pval
 
   return examples
 
-def build_mwoz(args, data, label_set, split):
+def build_mwoz(args, data, ontology, split):
   # written for MultiWoz v2.0, 2.1 and 2.3
   examples = []
   speakers = ["<customer>", "<agent>"]
@@ -163,7 +165,7 @@ def build_mwoz(args, data, label_set, split):
     speaker_id = 0
     turn_count = 0
 
-    prior_values = {f'{domain}-{slot}': '<none>' for domain, slots in DOMAIN_SLOTS_MWOZ.items() for slot in slots}
+    prior_values = {f'{domain}-{slot}': '<none>' for domain, slots in ontology.items() for slot in slots}
     for turn in conversation['log']:
       turn_count += 1
       text = turn['text']
@@ -172,13 +174,13 @@ def build_mwoz(args, data, label_set, split):
       
       if speaker == '<agent>':
         targets = extract_label(turn['metadata'], prior_values)
-        prev_state = {k:v for k,v in prior_values.items()}
+        prior_values_tmp = {k:v for k,v in prior_values.items()}
         for domain, slot, value in targets: 
           target = {'domain': domain, 'slot': slot, 'value': value,
               'global_id': f'{convo_id}_{turn_count}' }
           use_target, utterances, target = select_utterances(args, text_so_far, target, split)
           if use_target:
-            examples.append({'utterances': utterances, 'target': target, 'prev_state': prev_state})
+            examples.append({'utterances': utterances, 'target': target, 'pre_slot':prior_values_tmp})
           pval = '<none>' if value == '<remove>' else value
           prior_values[f'{domain}-{slot}'] = pval
       
@@ -293,7 +295,7 @@ def build_abcd(args, data, ontology, split):
     # each convo has keys: convo_id, scene, conversation
     utt_so_far = []
 
-    prior_values = {f'{domain}-{slot}': '<none>' for domain, slots in DOMAIN_SLOTS_ABCD.items() for slot in slots}
+    prior_values = {f'{domain}-{slot}': '<none>' for domain, slots in ontology.items() for slot in slots}
     for turn in convo['conversation']:
       # each turn has keys: speaker, text, targets, turn_count, candidates
       speaker = turn['speaker']
@@ -303,16 +305,16 @@ def build_abcd(args, data, ontology, split):
         # each target is a 5-part list: intent, nextstep, action, value, utt_rank
         targets, target_domains = make_dialogue_state(intent, action, values, convo['scene'], mappings)
   
-        prev_state = {k:v for k,v in prior_values.items()}
+        prior_values_tmp = {k:v for k,v in prior_values.items()}
         current_slots_tmp = {slot["domain"]+"-"+slot["slot"]:slot["value"] for slot in targets}
         for domain in target_domains:
-          for slot in DOMAIN_SLOTS_ABCD[domain]:
+          for slot in ontology[domain]:
             value = current_slots_tmp.get(f"{domain}-{slot}", "<none>")
             target = {'domain': 'restaurant', 'slot': slot, 'value': value,
                 'global_id': str(convo['convo_id']) + '_' + str(turn['turn_count']) }
             use_target, history, target = select_utterances(args, utt_so_far, target, split)
             if use_target:
-              examples.append({'utterances': history, 'target': target, 'prev_state':prev_state})
+              examples.append({'utterances': history, 'target': target, 'pre_slot':prior_values_tmp})
             if value != "<none>":
               prior_values[f'{domain}-{slot}'] = value
 
@@ -322,7 +324,7 @@ def build_abcd(args, data, ontology, split):
 
   return examples
 
-def build_dstc(args, data, split):
+def build_dstc(args, data, ontology, split):
   ''' extra contains the structured label as a value '''
   examples = []
 
@@ -330,7 +332,7 @@ def build_dstc(args, data, split):
     text_so_far = []
 
     # there is one domain in dstc
-    prior_values = {f'{domain}-{slot}': '<none>' for domain, slots in DOMAIN_SLOTS_DSTC.items() for slot in slots}
+    prior_values = {f'{domain}-{slot}': '<none>' for domain, slots in ontology.items() for slot in slots}
     for turn in convo['conversation']:
       target = {
         'global_id': convo['guid'].replace('_', '-') + '_' + str(turn['turn']),
@@ -344,21 +346,21 @@ def build_dstc(args, data, split):
         user_text = f"<customer> {turn['text']}"
         text_so_far.append(user_text)
 
-        prev_state = {k:v for k,v in prior_values.items()}
-        for slot in DOMAIN_SLOTS_DSTC['restaurant']:
+        prior_values_tmp = {k:v for k,v in prior_values.items()}
+        for slot in ontology['restaurant']:
           value = turn['inform'].get(slot, "<none>")
           target = {'domain': 'restaurant', 'slot': slot, 'value': value,
               'global_id': convo['guid'].replace('_', '-') + '_' + str(turn['turn']) }
           use_target, history, target = select_utterances(args, text_so_far, target, split)
           if use_target:
-            examples.append({'utterances': history, 'target': target, 'prev_state':prev_state})
+            examples.append({'utterances': history, 'target': target, 'pre_slot':prior_values_tmp})
 
           if value != "<none>":
             prior_values[f'restaurant-{slot}'] = value
   
   return examples
 
-def build_gsim(args, data, split):
+def build_gsim(args, data, ontology, split):
   examples = []
 
   for conversation in progress_bar(data, total=len(data)):
@@ -366,7 +368,7 @@ def build_gsim(args, data, split):
     domain = dialog_id.split('_')[0]
     text_so_far = []    
 
-    prior_values = {f'{domain}-{slot}': '<none>' for domain, slots in DOMAIN_SLOTS_GSIM.items() for slot in slots}
+    prior_values = {f'{domain}-{slot}': '<none>' for domain, slots in ontology.items() for slot in slots}
     for turn_count, turn in enumerate(conversation['turns']):
       if 'system_utterance' in turn:
         sys_text = turn['system_utterance']['text']
@@ -378,9 +380,9 @@ def build_gsim(args, data, split):
       user_utt = f"<customer> {user_text}"
       text_so_far.append(user_utt)
 
-      prev_state = {k:v for k,v in prior_values.items()}
+      prior_values_tmp = {k:v for k,v in prior_values.items()}
       current_slots_tmp = {slot["slot"]:slot["value"] for slot in turn["dialogue_state"]}
-      for slot in DOMAIN_SLOTS_GSIM[domain]:
+      for slot in ontology[domain]:
         value = current_slots_tmp.get(slot, "<none>")
         target = {'domain': domain, 
                     'slot': slot,
@@ -388,7 +390,7 @@ def build_gsim(args, data, split):
                'global_id': dialog_id + '_' + str(turn_count + 1) }
         use_target, history, target = select_utterances(args, text_so_far, target, split)
         if use_target:
-          examples.append({'utterances': history, 'target': target, 'prev_state':prev_state})
+          examples.append({'utterances': history, 'target': target, 'pre_slot':prior_values_tmp})
         if value != "<none>":
           prior_values[f'{domain}-{slot}'] = value
 
@@ -400,7 +402,7 @@ def build_tt(args, data, ontology, split):
   for convo in progress_bar(data, total=len(data)):  
     text_so_far = []    
 
-    prior_values = {f'{domain}-{slot}': '<none>' for domain, slots in DOMAIN_SLOTS_TT.items() for slot in slots}
+    prior_values = {f'{domain}-{slot}': '<none>' for domain, slots in ontology.items() for slot in slots}
     for turn in convo['utterances']:
       text = turn['text']
 
@@ -412,19 +414,19 @@ def build_tt(args, data, ontology, split):
         user_utterance = f"<customer> {text}"
         text_so_far.append(user_utterance)
 
-        prev_state = {k:v for k,v in prior_values.items()}
+        prior_values_tmp = {k:v for k,v in prior_values.items()}
         if 'segments' in turn:
           labels = extract_slotvals(turn['segments'], ontology['slotvals'])
         else:
           labels = {}
 
-        for slot in DOMAIN_SLOTS_TT['movie']:
+        for slot in ontology['movie']:
           value = labels.get(slot, "<none>")
           target = {'domain': 'movies', 'slot': slot, 'value': value,
           'global_id': convo['conversation_id'].replace('_', '-') + '_' + str(turn['index'])}
           use_target, history, target = select_utterances(args, text_so_far, target, split)
           if use_target:
-            examples.append({'utterances': history, 'target': target, 'prev_state':prev_state})
+            examples.append({'utterances': history, 'target': target, 'pre_slot':prior_values_tmp})
           prior_values[f'{domain}-{slot}'] = value
   return examples
 
@@ -456,9 +458,9 @@ def prepare_examples(args, data, ontology, split):
   if args.dataset == 'abcd':    # Action Based Conversations
     examples = build_abcd(args, data, ontology, split) 
   elif args.dataset == 'dstc':  # State Tracking Challenge 2
-    examples = build_dstc(args, data, split) 
+    examples = build_dstc(args, data, ontology, split) 
   elif args.dataset == 'gsim':    # Google Simulated Chats
-    examples = build_gsim(args, data, split) 
+    examples = build_gsim(args, data, ontology, split) 
   elif args.dataset.startswith('mwoz'):  # MultiWoz 2.1 or 2.2
     examples = build_mwoz(args, data, ontology, split)
   elif args.dataset == 'sgd':   # Schema Guided Dialogue
@@ -506,7 +508,7 @@ def hold_out(args, datasets):
   return datasets
 
 def process_data(args, raw_data, tokenizer):
-  label_set = raw_data['ontology']
+  ontology = raw_data['ontology']
 
   cache_results, already_exist = check_cache(args)
   if already_exist:
@@ -514,7 +516,7 @@ def process_data(args, raw_data, tokenizer):
   else:
     datasets = {}
     for split in ['train', 'dev', 'test']:
-      examples = prepare_examples(args, raw_data[split], label_set, split)
+      examples = prepare_examples(args, raw_data[split], ontology, split)
       if args.task == 'meta_learn':
         datasets[split] = MetaLearnDataset(args, examples, tokenizer, split)
       elif args.task == 'in_context':
@@ -525,6 +527,4 @@ def process_data(args, raw_data, tokenizer):
     pkl.dump(datasets, open(cache_results, 'wb'))
 
   datasets = hold_out(args, datasets)
-  return datasets, label_set
-
-
+  return datasets, ontology
