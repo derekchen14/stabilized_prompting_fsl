@@ -57,6 +57,7 @@ def run_inference(args, model, dataset, exp_logger, tokenizer, split):
   dataloader = get_dataloader(args, dataset, split)
   all_outputs, all_targets = [], []
   exp_logger.eval_step = 0
+  past_preds = defaultdict(list)
 
   for batch in progress_bar(dataloader, total=len(dataloader)):
     inputs, target_dict = dataset.collate(args, batch)
@@ -74,14 +75,19 @@ def run_inference(args, model, dataset, exp_logger, tokenizer, split):
     output_strings = tokenizer.batch_decode(outputs.detach(), skip_special_tokens=False)
     # output_strings = [output_strings[idx].replace("<pad>","")+" "+target_dict[idx]['value'] for idx in range(len(output_strings))]
     all_outputs.extend(output_strings)
+    exp_logger.eval_step += 1
 
     if split == 'dev':
       exp_logger.eval_loss = 0  # no loss, since inference only
-      exp_logger.eval_step += 1
       if args.debug and exp_logger.eval_step >= debug_break: break
-    if split == 'test' and args.debug:
-      exp_logger.eval_step += 1
-      if exp_logger.eval_step >= (debug_break * 200): break
+
+    if split == 'test':
+      for target, output_str in zip(target_dict, output_strings):
+        example_gid = target['global_id']
+        exp_domain, exp_slot = target['domain'], target['slot']
+        exp_value = parse_output(args, output_str)
+        past_preds[example_gid] = (exp_domain, exp_slot, exp_value)
+      if args.debug and exp_logger.eval_step >= (debug_break * 200): break
   return all_outputs, all_targets
 
 def run_eval(args, model, dataset, exp_logger, detective, split='dev'):

@@ -76,12 +76,7 @@ DOMAIN_SLOTS_MWOZ = {
 }
 
 DOMAIN_SLOTS_SGD = {
-  "Alarm_1": [
-    "alarm_time",
-    "alarm_name",
-    "new_alarm_time",
-    "new_alarm_name"
-  ],
+  "Alarm_1": [ "alarm_time", "alarm_name", "new_alarm_time", "new_alarm_name"],
   "Buses_3": [
     "from_city",
     "to_city",
@@ -92,8 +87,7 @@ DOMAIN_SLOTS_SGD = {
     "price",
     "additional_luggage",
     "num_passengers",
-    "category"
-  ],
+    "category"],
   "Events_3": [
     "event_type",
     "event_name",
@@ -306,8 +300,7 @@ DOMAIN_SLOTS_SGD = {
     "number_of_seats",
     "city_of_event",
     "event_location",
-    "address_of_location"
-  ],
+    "address_of_location"],
   "Flights_3": [
     "passengers",
     "flight_class",
@@ -325,8 +318,7 @@ DOMAIN_SLOTS_SGD = {
     "price",
     "number_checked_bags",
     "airlines",
-    "arrives_next_day"
-  ],
+    "arrives_next_day"],
   "Homes_1": [
     "area",
     "address",
@@ -337,8 +329,7 @@ DOMAIN_SLOTS_SGD = {
     "rent",
     "visit_date",
     "number_of_beds",
-    "number_of_baths"
-  ],
+    "number_of_baths"],
   "Hotels_1": [
     "destination",
     "number_of_rooms",
@@ -349,31 +340,27 @@ DOMAIN_SLOTS_SGD = {
     "street_address",
     "phone_number",
     "price_per_night",
-    "has_wifi"
-  ],
+    "has_wifi"],
   "Media_2": [
     "movie_name",
     "genre",
     "subtitle_language",
     "director",
     "actors",
-    "price"
-  ],
+    "price"],
   "Movies_2": [
     "title",
     "genre",
     "aggregate_rating",
     "starring",
-    "director"
-  ],
+    "director"],
   "Music_1": [
     "song_name",
     "artist",
     "album",
     "genre",
     "year",
-    "playback_device"
-  ],
+    "playback_device"],
   "RentalCars_1": [
     "type",
     "car_name",
@@ -382,22 +369,9 @@ DOMAIN_SLOTS_SGD = {
     "pickup_time",
     "pickup_city",
     "dropoff_date",
-    "total_price"
-  ],
-  "RideSharing_1": [
-    "destination",
-    "shared_ride",
-    "ride_fare",
-    "approximate_ride_duration",
-    "number_of_riders"
-  ],
-  "Banks_1": [
-    "account_type",
-    "recipient_account_type",
-    "balance",
-    "amount",
-    "recipient_account_name"
-  ],
+    "total_price"],
+  "RideSharing_1": ["destination", "shared_ride", "ride_fare", "approximate_ride_duration", "number_of_riders"],
+  "Banks_1": ["account_type", "recipient_account_type", "balance", "amount", "recipient_account_name"],
   "Buses_2": [
     "origin",
     "destination",
@@ -407,16 +381,14 @@ DOMAIN_SLOTS_SGD = {
     "price",
     "departure_time",
     "group_size",
-    "fare_type"
-  ],
+    "fare_type"],
   "Calendar_1": [
     "event_date",
     "event_time",
     "event_location",
     "event_name",
     "available_start_time",
-    "available_end_time"
-  ],
+    "available_end_time"],
   "Events_2": [
     "event_type",
     "category",
@@ -426,8 +398,7 @@ DOMAIN_SLOTS_SGD = {
     "number_of_tickets",
     "city",
     "venue",
-    "venue_address"
-  ],
+    "venue_address"],
   "Flights_1": [
     "passengers",
     "seating_class",
@@ -444,8 +415,7 @@ DOMAIN_SLOTS_SGD = {
     "inbound_departure_time",
     "price",
     "refundable",
-    "airlines"
-  ],
+    "airlines"],
   "Flights_2": [
     "passengers",
     "seating_class",
@@ -462,8 +432,7 @@ DOMAIN_SLOTS_SGD = {
     "inbound_departure_time",
     "fare",
     "is_redeye",
-    "airlines"
-  ],
+    "airlines"],
   "Hotels_3": [
     "location",
     "number_of_rooms",
@@ -474,21 +443,18 @@ DOMAIN_SLOTS_SGD = {
     "street_address",
     "phone_number",
     "price",
-    "pets_welcome"
-  ],
+    "pets_welcome"],
   "Media_1": [
     "title",
     "genre",
     "subtitles",
-    "directed_by"
-  ],
+    "directed_by"],
   "Music_2": [
     "song_name",
     "artist",
     "album",
     "genre",
-    "playback_device"
-  ],
+    "playback_device"],
   "RentalCars_2": [
     "car_type",
     "car_name",
@@ -497,8 +463,7 @@ DOMAIN_SLOTS_SGD = {
     "pickup_time",
     "pickup_city",
     "dropoff_date",
-    "total_price"
-  ],
+    "total_price"],
   "Restaurants_1": [
     "restaurant_name",
     "date",
@@ -510,8 +475,7 @@ DOMAIN_SLOTS_SGD = {
     "party_size",
     "price_range",
     "city",
-    "cuisine"
-  ],
+    "cuisine"],
   "Services_2": [
     "dentist_name",
     "phone_number",
@@ -519,8 +483,7 @@ DOMAIN_SLOTS_SGD = {
     "city",
     "appointment_date",
     "appointment_time",
-    "offers_cosmetic_services"
-  ],
+    "offers_cosmetic_services"],
   "Services_3": [
     "doctor_name",
     "phone_number",
@@ -595,6 +558,7 @@ DOMAIN_SLOTS_ABCD = {
   "single item query": ["customer name", "membership level", "product", "company team", "amount",
       "shipping option"]
 }
+
 """
 <customer> i would like some soup and crackers.
 <agent> what kind of soup do you want?
