@@ -295,6 +295,8 @@ class FineTuneDataset(BaseDataset):
         dial_input = f"{state_string} {dial_input}"
       dialogues.append(dial_input)
       labels.append(target)
+      print(dial_input)
+      pdb.set_trace()
     inputs = self.tokenizer(dialogues, padding=True, max_length=max_length,
                               truncation=True, return_tensors='pt').to(device)
     if self.split == 'train':
