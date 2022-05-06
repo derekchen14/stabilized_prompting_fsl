@@ -78,10 +78,6 @@ def review_inputs(args, targets, tokenizer):
       print(batch_item.replace('<pad>', ''))
       pdb.set_trace()
 
-def package_predictions(output_strings):
-  package = output_strings  # extract the predicted dialogue state
-  return "convo_id", package
-
 def get_all_checkpoints(args, load_dir):
   print('Loading all finetuned models ...')
   filenames = [f for f in os.listdir(load_dir) if f.endswith('.pt')]

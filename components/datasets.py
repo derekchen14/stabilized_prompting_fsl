@@ -74,8 +74,11 @@ class BaseDataset(Dataset):
       prev_state = example['prev_state']
     else:
       convo_id, turn_count = example['global_id'].split('_')
-      prev_gid = f"{convo_id}_{int(turn_count) - 1}"
-      prev_state = prior_pred_states[prev_gid]
+      if turn_count == 0:
+        prev_state = {}
+      else:
+        prev_gid = f"{convo_id}_{int(turn_count) - 1}"
+        prev_state = prior_pred_states[prev_gid]
     return prev_state
 
   @staticmethod

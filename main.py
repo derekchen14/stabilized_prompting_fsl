@@ -84,7 +84,9 @@ def run_inference(args, model, dataset, exp_logger, tokenizer, split):
     if split == 'test':
       for target, output_str in zip(target_dict, output_strings):
         example_gid = target['global_id']
-        past_preds[example_gid] = package_predictions(output_str)
+        exp_domain, exp_slot = target['domain'], target['slot']
+        exp_value = parse_output(args, output_str)
+        past_preds[example_gid] = (exp_domain, exp_slot, exp_value)
       if args.debug and exp_logger.eval_step >= (debug_break * 200): break
   return all_outputs, all_targets
 

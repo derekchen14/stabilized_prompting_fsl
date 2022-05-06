@@ -42,13 +42,15 @@ def statement_style(domain, slot):
   prompt = f"<sep> {desc} is"
   return prompt
 
+space_mapping = {
+  'arriveby': 'arrive by',
+  'leaveat': 'leave at',
+  'pricerange': 'price range',
+}
+
 def naive_style(domain, slot):
-  if slot == 'arriveby':
-    slot = 'arrive by'
-  elif slot == 'leaveat':
-    slot = 'leave at'
-  elif slot == 'pricerange':
-    slot = 'price range'
+  if slot in space_mapping:
+    slot = space_mapping[slot]
 
   desc = f"{slot} of the {domain}"
   prompt = f"<sep> {desc} is"
