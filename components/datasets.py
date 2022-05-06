@@ -127,8 +127,9 @@ class InContextDataset(BaseDataset):
       ctx_prompt = find_prompt(args.prompt_style, ctx_domain, ctx_slot)
       added_context = f"{exemplar['history']} {ctx_prompt} {ctx_label}"
       if args.use_pre_state:
-        prev_state_string = super().state_to_string(exemplar['pre_slot'])
-        added_context = prev_state_string + added_context
+        prev_state = self.get_previous_state(exemplar, prior_pred_states)
+        state_string = super().state_to_string(prev_state)
+        added_context = state_string + ' ' + added_context
       contexts.append(added_context)
 
       tokenized_context = self.tokenizer(added_context)
@@ -160,8 +161,9 @@ class InContextDataset(BaseDataset):
       context = self.select_context(args, example, joined_utts)
       dialog = self.remove_special(f'{joined_utts} {prompt}')
       if args.use_pre_state:
-        prev_state_string = super().state_to_string(example['pre_slot'])
-        dialog = prev_state_string + dialog
+        prev_state = self.get_previous_state(example, prior_pred_states)
+        state_string = super().state_to_string(prev_state)
+        dialog = state_string + ' ' + dialog
 
       contexts.append(context)
       dialogues.append(dialog)
@@ -207,10 +209,13 @@ class MetaLearnDataset(BaseDataset):
     if self.split == 'train':
       eos = self.tokenizer.eos_token
       for example in examples:
+        prev_state = self.get_previous_state(example, prior_pred_states)
+        state_str = super().state_to_string(prev_state)
         history = ' '.join(example['utterances'])
         target = example['target']
         prompt = find_prompt(args.prompt_style, target['domain'], target['slot'])
-        dialog = history + prompt + ' ' + target['value'] + eos
+
+        dialog = state_str + ' ' + history + prompt + ' ' + target['value'] + eos
         additional_context = self.select_context(args, example, history, True)
 
         contexts.append(additional_context)
@@ -221,9 +226,12 @@ class MetaLearnDataset(BaseDataset):
 
     elif self.split == 'dev':
       for example in examples:
+        prev_state = self.get_previous_state(example, prior_pred_states)
+        state_str = super().state_to_string(prev_state)
         target = example['target']
         prompt = find_prompt(args.prompt_style, target['domain'], target['slot'])
-        dialog = ' '.join(example['utterances']) + prompt
+
+        dialog = state_str + ' ' + ' '.join(example['utterances']) + prompt
         additional_context = self.select_context(args, example, dialog)
 
         contexts.append(additional_context)

@@ -52,7 +52,7 @@ class ExemplarDetective(object):
         'gid': target['global_id'],
         'history': hist,
         'dsv': (target['domain'], target['slot'], target['value']),
-        'pre_slot': exp['pre_slot'],
+        'prev_state': exp['prev_state'],
       }
       self.candidates[corpus].append(cand)
     pkl.dump(self.candidates[corpus], open(cache_path, 'wb'))

@@ -139,7 +139,7 @@ def build_sgd(args, data, mapping, split):
                 'global_id': conversation['dialogue_id'].replace('_','-') + '_' + str(turn_count+1) }
           use_target, history = select_utterances(args, text_so_far, target, split)
           if use_target:
-            examples.append({'utterances': history, 'target': target, 'prev_state':prev_state})
+            examples.append({'utterances': history, 'target': target, 'prev_state': prev_state})
           pval = '<none>' if value == '<remove>' else value
           prior_values[f'{service}-{slot}'] = pval
 
@@ -163,13 +163,13 @@ def build_mwoz(args, data, label_set, split):
       
       if speaker == '<agent>':
         targets = extract_label(turn['metadata'], prior_values)
-        prior_values_tmp = {k:v for k,v in prior_values.items()}
+        prev_state = {k:v for k,v in prior_values.items()}
         for domain, slot, value in targets: 
           target = {'domain': domain, 'slot': slot, 'value': value,
               'global_id': f'{convo_id}_{turn_count}' }
           use_target, utterances = select_utterances(args, text_so_far, target, split)
           if use_target:
-            examples.append({'utterances': utterances, 'target': target, 'pre_slot':prior_values_tmp})
+            examples.append({'utterances': utterances, 'target': target, 'prev_state': prev_state})
           pval = '<none>' if value == '<remove>' else value
           prior_values[f'{domain}-{slot}'] = pval
       
@@ -294,7 +294,7 @@ def build_abcd(args, data, ontology, split):
         # each target is a 5-part list: intent, nextstep, action, value, utt_rank
         targets, target_domains = make_dialogue_state(intent, action, values, convo['scene'], mappings)
   
-        prior_values_tmp = {k:v for k,v in prior_values.items()}
+        prev_state = {k:v for k,v in prior_values.items()}
         current_slots_tmp = {slot["domain"]+"-"+slot["slot"]:slot["value"] for slot in targets}
         for domain in target_domains:
           for slot in DOMAIN_SLOTS_ABCD[domain]:
@@ -303,7 +303,7 @@ def build_abcd(args, data, ontology, split):
                 'global_id': str(convo['convo_id']) + '_' + str(turn['turn_count']) }
             use_target, history = select_utterances(args, utt_so_far, target, split)
             if use_target:
-              examples.append({'utterances': history, 'target': target, 'pre_slot':prior_values_tmp})
+              examples.append({'utterances': history, 'target': target, 'prev_state':prev_state})
             if value != "<none>":
               prior_values[f'{domain}-{slot}'] = value
 
@@ -335,14 +335,14 @@ def build_dstc(args, data, split):
         user_text = f"<customer> {turn['text']}"
         text_so_far.append(user_text)
 
-        prior_values_tmp = {k:v for k,v in prior_values.items()}
+        prev_state = {k:v for k,v in prior_values.items()}
         for slot in DOMAIN_SLOTS_DSTC['restaurant']:
           value = turn['inform'].get(slot, "<none>")
           target = {'domain': 'restaurant', 'slot': slot, 'value': value,
               'global_id': convo['guid'].replace('_', '-') + '_' + str(turn['turn']) }
           use_target, history = select_utterances(args, text_so_far, target, split)
           if use_target:
-            examples.append({'utterances': history, 'target': target, 'pre_slot':prior_values_tmp})
+            examples.append({'utterances': history, 'target': target, 'prev_state':prev_state})
 
           if value != "<none>":
             prior_values[f'restaurant-{slot}'] = value
@@ -369,7 +369,7 @@ def build_gsim(args, data, split):
       user_utt = f"<customer> {user_text}"
       text_so_far.append(user_utt)
 
-      prior_values_tmp = {k:v for k,v in prior_values.items()}
+      prev_state = {k:v for k,v in prior_values.items()}
       current_slots_tmp = {slot["slot"]:slot["value"] for slot in turn["dialogue_state"]}
       for slot in DOMAIN_SLOTS_GSIM[domain]:
         value = current_slots_tmp.get(slot, "<none>")
@@ -379,7 +379,7 @@ def build_gsim(args, data, split):
                'global_id': dialog_id + '_' + str(turn_count + 1) }
         use_target, history = select_utterances(args, text_so_far, target, split)
         if use_target:
-          examples.append({'utterances': history, 'target': target, 'pre_slot':prior_values_tmp})
+          examples.append({'utterances': history, 'target': target, 'prev_state':prev_state})
         if value != "<none>":
           prior_values[f'{domain}-{slot}'] = value
 
@@ -403,7 +403,7 @@ def build_tt(args, data, ontology, split):
         user_utterance = f"<customer> {text}"
         text_so_far.append(user_utterance)
 
-        prior_values_tmp = {k:v for k,v in prior_values.items()}
+        prev_state = {k:v for k,v in prior_values.items()}
         if 'segments' in turn:
           labels = extract_slotvals(turn['segments'], ontology['slotvals'])
         else:
@@ -415,7 +415,7 @@ def build_tt(args, data, ontology, split):
           'global_id': convo['conversation_id'].replace('_', '-') + '_' + str(turn['index'])}
           use_target, history = select_utterances(args, text_so_far, target, split)
           if use_target:
-            examples.append({'utterances': history, 'target': target, 'pre_slot':prior_values_tmp})
+            examples.append({'utterances': history, 'target': target, 'prev_state':prev_state})
           prior_values[f'{domain}-{slot}'] = value
   return examples
 
