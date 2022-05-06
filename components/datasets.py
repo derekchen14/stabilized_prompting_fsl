@@ -70,15 +70,16 @@ class BaseDataset(Dataset):
   def get_previous_state(self, example, prior_pred_states):
     """ default prev_state is the ground truth, which is not allowed during test time
     we replace this with the predicted dialog state when performing inference on test data """
+    
     if self.split == 'test':
-      prev_state = example['prev_state']
-    else:
-      convo_id, turn_count = example['global_id'].split('_')
+      convo_id, turn_count = example['target']['global_id'].split('_')
       if turn_count == 0:
         prev_state = {}
       else:
         prev_gid = f"{convo_id}_{int(turn_count) - 1}"
         prev_state = prior_pred_states[prev_gid]
+    else:
+      prev_state = example['pre_slot']
     return prev_state
 
   @staticmethod
@@ -90,7 +91,7 @@ class BaseDataset(Dataset):
       if prev_state[dom_slot] == '<none>':
         continue
       prev_state_string += f'{domain} {slot} {prev_state[dom_slot]} , '
-    return prev_state_string.strip()
+    return prev_state_string[:-2].strip()
 
   def collate_lm(self, args, examples, prior_pred_states):
     raise NotImplementedError
@@ -215,7 +216,7 @@ class MetaLearnDataset(BaseDataset):
         target = example['target']
         prompt = find_prompt(args.prompt_style, target['domain'], target['slot'])
 
-        dialog = state_str + ' ' + history + prompt + ' ' + target['value'] + eos
+        dialog = state_str + history + prompt + ' ' + target['value'] + eos
         additional_context = self.select_context(args, example, history, True)
 
         contexts.append(additional_context)
@@ -231,7 +232,7 @@ class MetaLearnDataset(BaseDataset):
         target = example['target']
         prompt = find_prompt(args.prompt_style, target['domain'], target['slot'])
 
-        dialog = state_str + ' ' + ' '.join(example['utterances']) + prompt
+        dialog = state_str + ' '.join(example['utterances']) + prompt
         additional_context = self.select_context(args, example, dialog)
 
         contexts.append(additional_context)

@@ -41,7 +41,7 @@ def solicit_params():
                 choices=["schema", "question", "statement", "naive", "human", "none", "random"])
     parser.add_argument("--maximum-length", default=1024, type=int,
                 help="Maximum length of sequences for model input")
-    parser.add_argument("--context-length", default=3, type=int,
+    parser.add_argument("--context-length", default=2, type=int,
                 help="Number of turns to look back into dialogue context, eats into token length")
 
     # SBERT Retriever params
