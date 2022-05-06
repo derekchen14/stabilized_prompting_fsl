@@ -67,7 +67,7 @@ GENERAL_TYPO = {
     "not men":"<none>", "not":"<none>", "art":"<none>", "not mendtioned":"<none>", "fun":"<none>",
 }
 
-DOMAIN_SLOTS = {
+DOMAIN_SLOTS_MWOZ = {
   "restaurant": ["area", "people", "day", "time", "food", "name", "pricerange"],
   "taxi": ["arriveby", "destination", "departure", "leaveat"],
   "train": ["arriveby", "people", "day", "destination", "departure", "leaveat"],
@@ -495,6 +495,39 @@ DOMAIN_SLOTS_SGD = {
     "type"
   ]
 }
+
+DOMAIN_SLOTS_DSTC = {
+    "restaurant": ["food", "area", "name", "pricerange"]
+}
+
+DOMAIN_SLOTS_GSIM = {
+  "movies": [
+    "time",
+    "num_tickets",
+    "movie",
+    "date",
+    "theatre_name"
+  ],
+  "restaurant": [
+    "num_people",
+    "restaurant_name",
+    "date",
+    "time",
+    "meal",
+    "location",
+    "price_range",
+    "category",
+    "rating"
+  ]
+}
+
+DOMAIN_SLOTS_TT = {
+    'movie': ["name.movie", "name.theater", "date.showing", "date.release", "description.plot", "description.other",
+                "duration.movie", "location", "name.character", "name.genre", "name.person",
+                "num.tickets", "price.ticket", "price.total", "rating.movie", "review.audience",
+                "review.critic", "seating", "time.preference", "time.showing", "type.screening"]
+}
+
 
 DOMAIN_SLOTS_ABCD = {
   "product defect": ["order id", "order slotval", "customer name", "payment method", 

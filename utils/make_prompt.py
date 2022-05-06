@@ -1,6 +1,5 @@
 import os, pdb, sys
 import numpy as np
-from assets.static_vars import DOMAIN_SLOTS
 
 def find_prompt(style, domain, slot):
   domain = domain.lower()
