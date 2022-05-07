@@ -67,7 +67,7 @@ class BaseDataset(Dataset):
     if self.detective is None:
       self.detective = detective
 
-  def get_previous_state(self, example, prior_pred_states):
+  def get_previous_state(self, example, prior_pred_state):
     """ default prev_state is the ground truth, which is not allowed during test time
     we replace this with the predicted dialog state when performing inference on test data """
     
@@ -77,7 +77,7 @@ class BaseDataset(Dataset):
         prev_state = {}
       else:
         prev_gid = f"{convo_id}_{int(turn_count) - 1}"
-        prev_state = prior_pred_states[prev_gid]
+        prev_state = prior_pred_state[prev_gid]
     else:
       prev_state = example['prev_state']
     return prev_state
@@ -94,17 +94,17 @@ class BaseDataset(Dataset):
       prev_state_string += f'{domain} {slot} {prev_state[dom_slot]} , '
     return prev_state_string[:-2].strip()
 
-  def collate_lm(self, args, examples, prior_pred_states):
+  def collate_lm(self, args, examples, prior_pred_state):
     raise NotImplementedError
 
-  def collate_seq2seq(self, args, examples, prior_pred_states):
+  def collate_seq2seq(self, args, examples, prior_pred_state):
     raise NotImplementedError
 
-  def collate(self, args, examples, prior_pred_states=None):
+  def collate(self, args, examples, prior_pred_state=None):
     if self.model_type == 'gpt':
-      return self.collate_lm(args, examples, prior_pred_states)
+      return self.collate_lm(args, examples, prior_pred_state)
     elif self.model_type in ['bart', 't5']:
-      return self.collate_seq2seq(args, examples, prior_pred_states)
+      return self.collate_seq2seq(args, examples, prior_pred_state)
 
   def collate_func(self, examples):
     return examples
@@ -129,7 +129,7 @@ class InContextDataset(BaseDataset):
       ctx_prompt = find_prompt(args.prompt_style, ctx_domain, ctx_slot)
       added_context = f"{exemplar['history']} {ctx_prompt} {ctx_label}"
       if args.use_pre_state:
-        prev_state = self.get_previous_state(exemplar, prior_pred_states)
+        prev_state = self.get_previous_state(exemplar, prior_pred_state)
         state_string = super().state_to_string(prev_state)
         added_context = state_string + ' ' + added_context
       contexts.append(added_context)
@@ -151,7 +151,7 @@ class InContextDataset(BaseDataset):
     text = text.replace('<pad>', '[PAD]')
     return text
 
-  def collate_lm(self, args, examples, prior_pred_states):
+  def collate_lm(self, args, examples, prior_pred_state):
     """ train and dev splits should not occur since you do not need gradient based training """
     assert(self.split not in ['train', 'dev'])
     contexts, dialogues, labels = [], [], []
@@ -163,7 +163,7 @@ class InContextDataset(BaseDataset):
       context = self.select_context(args, example, joined_utts)
       dialog = self.remove_special(f'{joined_utts} {prompt}')
       if args.use_pre_state:
-        prev_state = self.get_previous_state(example, prior_pred_states)
+        prev_state = self.get_previous_state(example, prior_pred_state)
         state_string = super().state_to_string(prev_state)
         dialog = state_string + ' ' + dialog
 
@@ -200,7 +200,7 @@ class MetaLearnDataset(BaseDataset):
     additional_context = eos_token.join(contexts)
     return additional_context + eos_token
 
-  def collate_lm(self, args, examples, prior_pred_states):
+  def collate_lm(self, args, examples, prior_pred_state):
     """
     train - use support dataset
     dev - use support dataset, do not include the label
@@ -211,7 +211,7 @@ class MetaLearnDataset(BaseDataset):
     if self.split == 'train':
       eos = self.tokenizer.eos_token
       for example in examples:
-        prev_state = self.get_previous_state(example, prior_pred_states)
+        prev_state = self.get_previous_state(example, prior_pred_state)
         state_str = super().state_to_string(prev_state)
         history = ' '.join(example['utterances'])
         target = example['target']
@@ -228,7 +228,7 @@ class MetaLearnDataset(BaseDataset):
 
     elif self.split == 'dev':
       for example in examples:
-        prev_state = self.get_previous_state(example, prior_pred_states)
+        prev_state = self.get_previous_state(example, prior_pred_state)
         state_str = super().state_to_string(prev_state)
         target = example['target']
         prompt = find_prompt(args.prompt_style, target['domain'], target['slot'])
@@ -251,14 +251,14 @@ class MetaLearnDataset(BaseDataset):
 
 class FineTuneDataset(BaseDataset):
 
-  def collate_seq2seq(self, args, examples, prior_pred_states):
+  def collate_seq2seq(self, args, examples, prior_pred_state):
     """transforms a batch of examples into a features dict that can be fed into a T5 or BART model"""
     dialogues, labels = [], []
 
     for example in examples:
       dialog = ' '.join(example['utterances'])
       if args.use_pre_state:
-        prev_state = self.get_previous_state(example, prior_pred_states)
+        prev_state = self.get_previous_state(example, prior_pred_state)
         state_string = super().state_to_string(prev_state)
         dialog = f"{state_string} {dialog}"
       dialogues.append(dialog)
@@ -274,7 +274,7 @@ class FineTuneDataset(BaseDataset):
     else:
       return inputs, labels
 
-  def collate_lm(self, args, examples, prior_pred_states):
+  def collate_lm(self, args, examples, prior_pred_state):
     """transforms a batch of examples into a features dict that can be fed into a GPT model"""
     dialogues, labels = [], []
     eos = self.tokenizer.eos_token
@@ -283,7 +283,7 @@ class FineTuneDataset(BaseDataset):
       dialog = ' '.join(example['utterances'])
       target = example['target']
 
-      prev_state = self.get_previous_state(example, prior_pred_states)
+      prev_state = self.get_previous_state(example, prior_pred_state)
       state_string = super().state_to_string(prev_state)
       prompt = find_prompt(args.prompt_style, target['domain'], target['slot'])
 

@@ -57,10 +57,10 @@ def run_inference(args, model, dataset, exp_logger, tokenizer, split):
   dataloader = get_dataloader(args, dataset, split)
   all_outputs, all_targets = [], []
   exp_logger.eval_step = 0
-  past_preds = defaultdict(list)
+  prior_pred_state = defaultdict(list)
 
   for batch in progress_bar(dataloader, total=len(dataloader)):
-    inputs, target_dict = dataset.collate(args, batch)
+    inputs, target_dict = dataset.collate(args, batch, prior_pred_state)
     all_targets.extend(target_dict)   # notice this is "extend", not "append"
 
     if args.task == 'in_context':
@@ -86,7 +86,7 @@ def run_inference(args, model, dataset, exp_logger, tokenizer, split):
         example_gid = target['global_id']
         exp_domain, exp_slot = target['domain'], target['slot']
         exp_value = parse_output(args, output_str)
-        past_preds[example_gid] = (exp_domain, exp_slot, exp_value)
+        prior_pred_state[example_gid] = (exp_domain, exp_slot, exp_value)
       if args.debug and exp_logger.eval_step >= (debug_break * 200): break
   return all_outputs, all_targets
 
