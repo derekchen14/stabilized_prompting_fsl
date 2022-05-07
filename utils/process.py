@@ -308,18 +308,17 @@ def build_abcd(args, data, ontology, split):
   return examples
 
 def build_dstc(args, data, ontology, split):
-  ''' extra contains the structured label as a value '''
-  examples = []
+  examples = {}
 
   for convo in progress_bar(data, total=len(data)):
+    convo_id = convo['guid'].replace('_', '-')
+    examples[convo_id] = defaultdict(list)
     text_so_far = []
 
     # there is one domain in dstc
     prior_values = {f'{domain}-{slot}': '<none>' for domain, slots in ontology.items() for slot in slots}
     for turn in convo['conversation']:
-      target = {
-        'global_id': convo['guid'].replace('_', '-') + '_' + str(turn['turn']),
-        'domain': 'restaurant' }
+      global_id = convo_id + '_' + str(turn['turn'])
 
       if turn['speaker'] == 'agent':
         sys_text = f"<agent> {turn['text']}"
@@ -332,11 +331,11 @@ def build_dstc(args, data, ontology, split):
         prev_state = {k:v for k,v in prior_values.items()}
         for slot in ontology['restaurant']:
           value = turn['inform'].get(slot, "<none>")
-          target = {'domain': 'restaurant', 'slot': slot, 'value': value,
-              'global_id': convo['guid'].replace('_', '-') + '_' + str(turn['turn']) }
+          target = {'domain': 'restaurant', 'slot': slot, 'value': value}
           use_target, history, target = select_utterances(args, text_so_far, target, split)
           if use_target:
-            examples.append({'utterances': history, 'target': target, 'prev_state':prev_state})
+            example = {'utterances': history, 'target': target, 'prev_state':prev_state}
+            examples[convo_id][global_id].append(example)
 
           if value != "<none>":
             prior_values[f'restaurant-{slot}'] = value

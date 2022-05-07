@@ -14,8 +14,7 @@ class BaseDataset(Dataset):
   def __init__(self, args, examples, tokenizer, split):
     self.split = split
     self.shuffle = (split == 'train')
-    self.data = examples
-    self.size = len(self.data)
+    self.data = self._unravel(examples, split)
 
     self.tokenizer = tokenizer
     self.supported_datasets = []
@@ -31,6 +30,17 @@ class BaseDataset(Dataset):
 
   def __getitem__(self, idx):
     return self.data[idx]
+
+  def _unravel(self, examples, split):
+    # examples are grouped by conversation and turn by default
+    all_turns = []
+    for convo_id, conversation in examples.items():
+      for global_id, turn in conversation.items():
+        turn['global_id'] = global_id
+        all_turns.append(turn)
+
+    self.size = len(all_turns)
+    return examples if split == 'test' else all_turns
 
   def _pad_right(self, targets):
     max_vec_len = max([len(vector) for vector in targets.input_ids])
