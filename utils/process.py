@@ -31,7 +31,7 @@ def check_cache(args):
 def extract_label(targets, prior_values):
   # returns a list of (domain, slot, value) tuples when the domain is an active 
   swaps = {'not mentioned': '<none>', '': '<none>'}
-  valid_domains = DOMAIN_SLOTS_MWOZ.keys()
+  valid_domains = ['train', 'taxi', 'restaurant', 'hotel', 'attraction']
   labels = []
 
   for domain, domain_data in targets.items():

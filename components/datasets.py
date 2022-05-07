@@ -79,7 +79,7 @@ class BaseDataset(Dataset):
         prev_gid = f"{convo_id}_{int(turn_count) - 1}"
         prev_state = prior_pred_states[prev_gid]
     else:
-      prev_state = example['pre_slot']
+      prev_state = example['prev_state']
     return prev_state
 
   @staticmethod
@@ -297,8 +297,6 @@ class FineTuneDataset(BaseDataset):
         dial_input = f"{state_string} {dial_input}"
       dialogues.append(dial_input)
       labels.append(target)
-      print(dial_input)
-      pdb.set_trace()
     inputs = self.tokenizer(dialogues, padding=True, max_length=max_length,
                               truncation=True, return_tensors='pt').to(device)
     if self.split == 'train':
