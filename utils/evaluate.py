@@ -229,12 +229,13 @@ def test_quantify(args, predictions, targets, exp_logger, tokenizer):
   final_preds = defaultdict(list)
 
   for global_id, preds in predictions.items():
-    turn_labels = targets[global_id]
+    turn_targets = targets[global_id]
     convo_id, turn_count = global_id.split('_')
+    labels = {f"{tt['domain']}-{tt['slot']}": tt['value'] for tt in turn_targets}
 
     dialog_state = {}
     for domain_slot, pred_val in preds.items():
-      target_val = ???
+      target_val = labels[domain_slot]
       dialog_state[domain_slot] = ('', pred_val, target_val)
     final_preds[convo_id].append(dialog_state)
 
