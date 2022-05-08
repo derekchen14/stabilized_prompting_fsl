@@ -55,7 +55,6 @@ def run_train(args, model, datasets, exp_logger, detective):
 def run_test(args, dataset, exp_logger, detective):
   ontology, tokenizer = exp_logger.ontology, dataset.tokenizer
   dataset.add_detective(detective)
-  all_outputs, all_targets = [], []
   exp_logger.eval_step = 0
 
   if args.task in ['meta_learn', 'fine_tune']:
@@ -63,6 +62,7 @@ def run_test(args, dataset, exp_logger, detective):
   else:
     model = load_model(args, ontology, tokenizer, exp_logger.save_path)
 
+  all_targets = defaultdict(list)
   prior_pred_state = defaultdict(dict)
   for conversation in progress_bar(dataset.data, total=len(dataset)):
     for global_id, turn in conversation.items():
@@ -71,7 +71,7 @@ def run_test(args, dataset, exp_logger, detective):
       batches = batchify(args, turn, global_id, prior_pred_state)
       for batch in batches:
         inputs, target_dict = dataset.collate(args, batch)
-        all_targets.extend(target_dict)   # notice this is "extend", not "append"
+        all_targets[global_id].extend(target_dict) #  all the target labels for this turn 
 
         if args.task == 'in_context':
           maxl = 2048 if args.size == 'large' else 1024
@@ -81,7 +81,6 @@ def run_test(args, dataset, exp_logger, detective):
         with no_grad():
           outputs = model.generate(**inputs, max_length=maxl, early_stopping=True)
         output_strings = tokenizer.batch_decode(outputs.detach(), skip_special_tokens=False)
-        all_outputs.extend(output_strings)
         exp_logger.eval_step += 1
 
         for target, output_str in zip(target_dict, output_strings):
@@ -90,18 +89,13 @@ def run_test(args, dataset, exp_logger, detective):
           prior_pred_state[global_id][state_key] = pred_value
         if args.debug and exp_logger.eval_step >= (debug_break * 200): break
 
-  outputs = all_outputs, all_targets
   if args.quantify:
-    results = eval_quantify(args, *outputs, exp_logger, tokenizer)
-  elif args.qualify:
-    results = eval_qualify(args, *outputs, exp_logger)
+    results = test_quantify(args, prior_pred_state, all_targets, exp_logger, tokenizer)
+  # elif args.qualify:
+  # results = eval_qualify(args, prior_pred_state, all_targets, exp_logger)
   if args.do_save:
     output_name = f'{args.prompt_style}_lr{args.learning_rate}_clen{args.context_length}.json'
     json.dump(outputs, open(os.path.join(save_path, output_name), 'w'), indent=2)
-
-
-def run_inference(args, model, dataset, exp_logger, tokenizer, split):
-
 
 def run_eval(args, model, dataset, exp_logger, detective):
   tokenizer = dataset.tokenizer

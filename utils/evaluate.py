@@ -187,9 +187,7 @@ def parse_history(args, generated_string):
   return history[10:], parsed_str
 
 def calculate_jga(results, final_preds):
-  """ Does not currently calculate JGA, just gives a sketch 
-  should return a results dictionary that contains the JGA and anything else you want to log
-  """
+  """ Return a results dictionary that contains the JGA and accuracy """
   possible, correct = 0, 0
   joint_possible, joint_correct = 0, 0
 
@@ -213,6 +211,35 @@ def calculate_jga(results, final_preds):
 
   results['accuracy'] = round(float(correct) / possible, 3)
   results['jga'] = round(float(joint_correct) / joint_possible, 3)
+  return results
+
+def test_quantify(args, predictions, targets, exp_logger, tokenizer):
+  """predictions is a dict with keys of global_ids
+    the keys is another dict with keys in 'domain-slot' format
+    the value is the parsed, predicted value associated with that 'domain-slot'
+  targets is also a dict with keys of global ids
+    the values are list of the target labels for that turn
+    the labels are dict with keys of domain, slot, value
+  the final preds dict should have keys of convo_id (but not critical)
+    the values is a list of turns, where each item is a dialog state
+    each dialog state is dict with keys of domain_slot and a set of values
+    the set is composed of None, predicted label and target label
+  """
+  results = {'split': 'test'}
+  final_preds = defaultdict(list)
+
+  for global_id, preds in predictions.items():
+    turn_labels = targets[global_id]
+    convo_id, turn_count = global_id.split('_')
+
+    dialog_state = {}
+    for domain_slot, pred_val in preds.items():
+      target_val = ???
+      dialog_state[domain_slot] = ('', pred_val, target_val)
+    final_preds[convo_id].append(dialog_state)
+
+  results = calculate_jga(results, final_preds)
+  exp_logger.log_info(results)
   return results
 
 def eval_quantify(args, predictions, targets, exp_logger, tokenizer):
