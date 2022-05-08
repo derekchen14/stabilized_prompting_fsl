@@ -141,9 +141,11 @@ def build_sgd(args, data, ontology, split):
 
 def build_mwoz(args, data, ontology, split):
   # written for MultiWoz v2.0, 2.1 and 2.3
-  examples = []
+  examples = {}
   speakers = ["<customer>", "<agent>"]
+  
   for convo_id, conversation in progress_bar(data.items(), total=len(data)):
+    examples[convo_id] = defaultdict(list)
     text_so_far = []
     speaker_id = 0
     turn_count = 0
@@ -154,16 +156,17 @@ def build_mwoz(args, data, ontology, split):
       text = turn['text']
       speaker = speakers[speaker_id]
       utterance = f"{speaker} {text}"
-      
+      global_id = f'{convo_id}_{turn_count}'
+
       if speaker == '<agent>':
         targets = extract_label(turn['metadata'], prior_values)
         prev_state = {k:v for k,v in prior_values.items()}
         for domain, slot, value in targets: 
-          target = {'domain': domain, 'slot': slot, 'value': value,
-              'global_id': f'{convo_id}_{turn_count}' }
+          target = {'domain': domain, 'slot': slot, 'value': value}
           use_target, utterances, target = select_utterances(args, text_so_far, target, split)
           if use_target:
-            examples.append({'utterances': utterances, 'target': target, 'prev_state': prev_state})
+            example = {'utterances': utterances, 'target': target, 'prev_state': prev_state}
+            examples[convo_id][global_id].append(example)
           pval = '<none>' if value == '<remove>' else value
           prior_values[f'{domain}-{slot}'] = pval
       

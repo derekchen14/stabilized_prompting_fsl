@@ -15,6 +15,7 @@ class BaseDataset(Dataset):
     self.split = split
     self.shuffle = (split == 'train')
     self.data = self._unravel(examples, split)
+    self.size = len(self.data)
 
     self.tokenizer = tokenizer
     self.supported_datasets = []
@@ -33,14 +34,15 @@ class BaseDataset(Dataset):
 
   def _unravel(self, examples, split):
     # examples are grouped by conversation and turn by default
-    all_turns = []
+    data = []
     for convo_id, conversation in examples.items():
-      for global_id, turn in conversation.items():
-        turn['global_id'] = global_id
-        all_turns.append(turn)
-
-    self.size = len(all_turns)
-    return examples if split == 'test' else all_turns
+      if split == 'test':
+        data.append(conversation)
+      else:
+        for global_id, turn in conversation.items():
+          turn['global_id'] = global_id
+          data.append(turn)
+    return data
 
   def _pad_right(self, targets):
     max_vec_len = max([len(vector) for vector in targets.input_ids])
@@ -76,21 +78,6 @@ class BaseDataset(Dataset):
   def add_detective(self, detective):
     if self.detective is None:
       self.detective = detective
-
-  def get_previous_state(self, example, prior_pred_state):
-    """ default prev_state is the ground truth, which is not allowed during test time
-    we replace this with the predicted dialog state when performing inference on test data """
-    
-    if self.split == 'test':
-      convo_id, turn_count = example['target']['global_id'].split('_')
-      if turn_count == 0:
-        prev_state = {}
-      else:
-        prev_gid = f"{convo_id}_{int(turn_count) - 1}"
-        prev_state = prior_pred_state[prev_gid]
-    else:
-      prev_state = example['prev_state']
-    return prev_state
 
   @staticmethod
   def state_to_string(prev_state):
@@ -137,11 +124,8 @@ class InContextDataset(BaseDataset):
       exemplar = self.detective.search(example, args.dataset)
       ctx_domain, ctx_slot, ctx_label = exemplar['dsv']
       ctx_prompt = find_prompt(args.prompt_style, ctx_domain, ctx_slot)
-      added_context = f"{exemplar['history']} {ctx_prompt} {ctx_label}"
-      if args.use_pre_state:
-        prev_state = self.get_previous_state(exemplar, prior_pred_state)
-        state_string = super().state_to_string(prev_state)
-        added_context = state_string + ' ' + added_context
+      state_string = super().state_to_string(exemplar['prev_state'])
+      added_context = f"{state_string} {exemplar['history']} {ctx_prompt} {ctx_label}"
       contexts.append(added_context)
 
       tokenized_context = self.tokenizer(added_context)
@@ -173,8 +157,7 @@ class InContextDataset(BaseDataset):
       context = self.select_context(args, example, joined_utts)
       dialog = self.remove_special(f'{joined_utts} {prompt}')
       if args.use_pre_state:
-        prev_state = self.get_previous_state(example, prior_pred_state)
-        state_string = super().state_to_string(prev_state)
+        state_string = super().state_to_string(example['prev_state'])
         dialog = state_string + ' ' + dialog
 
       contexts.append(context)
@@ -221,8 +204,7 @@ class MetaLearnDataset(BaseDataset):
     if self.split == 'train':
       eos = self.tokenizer.eos_token
       for example in examples:
-        prev_state = self.get_previous_state(example, prior_pred_state)
-        state_str = super().state_to_string(prev_state)
+        state_str = super().state_to_string(example['prev_state'])
         history = ' '.join(example['utterances'])
         target = example['target']
         prompt = find_prompt(args.prompt_style, target['domain'], target['slot'])
@@ -238,8 +220,7 @@ class MetaLearnDataset(BaseDataset):
 
     elif self.split == 'dev':
       for example in examples:
-        prev_state = self.get_previous_state(example, prior_pred_state)
-        state_str = super().state_to_string(prev_state)
+        state_str = super().state_to_string(example['prev_state'])
         target = example['target']
         prompt = find_prompt(args.prompt_style, target['domain'], target['slot'])
 
@@ -267,10 +248,8 @@ class FineTuneDataset(BaseDataset):
 
     for example in examples:
       dialog = ' '.join(example['utterances'])
-      if args.use_pre_state:
-        prev_state = self.get_previous_state(example, prior_pred_state)
-        state_string = super().state_to_string(prev_state)
-        dialog = f"{state_string} {dialog}"
+      state_string = super().state_to_string(example['prev_state'])
+      dialog = f"{state_string} {dialog}"
       dialogues.append(dialog)
       labels.append(example['target']['value'] if self.split == 'train' else example['target'])
 
@@ -292,9 +271,7 @@ class FineTuneDataset(BaseDataset):
     for example in examples:
       dialog = ' '.join(example['utterances'])
       target = example['target']
-
-      prev_state = self.get_previous_state(example, prior_pred_state)
-      state_string = super().state_to_string(prev_state)
+      state_string = super().state_to_string(example['prev_state'])
       prompt = find_prompt(args.prompt_style, target['domain'], target['slot'])
 
       if self.split == 'train':

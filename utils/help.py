@@ -78,6 +78,29 @@ def review_inputs(args, targets, tokenizer):
       print(batch_item.replace('<pad>', ''))
       pdb.set_trace()
 
+def batchify(args, turn, global_id, prior_pred_state):
+  """ returns a list of batches where the ground_truth prev_state has been 
+  replaced with the predicted prior_state from the previous turn """
+  batches = []
+
+  convo_id, turn_count = global_id.split('_')
+  if turn_count == 1:
+    prev_state = {}
+  else:
+    prev_gid = f"{convo_id}_{int(turn_count) - 1}"
+    prev_state = prior_pred_state[prev_gid]
+
+  batch = []
+  for example in turn:
+    example['prev_state'] = prev_state
+    batch.append(example)
+
+    if len(batch) == arg.batch_size:
+      batches.append(batch)
+      batch = []
+  batches.append(batch)
+  return batches
+
 def get_all_checkpoints(args, load_dir):
   print('Loading all finetuned models ...')
   filenames = [f for f in os.listdir(load_dir) if f.endswith('.pt')]
