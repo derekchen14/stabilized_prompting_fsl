@@ -69,6 +69,9 @@ def solicit_params():
                 help="When turned on, you dynamically feed in a prompt for inference")
     parser.add_argument("--log-interval", type=int, default=500,
                 help="Log every X updates steps.")
+    parser.add_argument("--eval-interval", default='whole', type=str, 
+                choices=['tenth', 'quarter', 'half', 'whole'],
+                help="Ratio of dev data to process before printing out a score")
     parser.add_argument("--qualify", action='store_true',
                 help="Whether to include joint accuracy scores during evaluation")
     parser.add_argument("--quantify", action='store_true',
@@ -101,8 +104,8 @@ def solicit_params():
                 help="Total number of training epochs to perform.")
     parser.add_argument("--warmup-steps", default=0, type=int, 
                 help="Linear warmup over warmup-steps.")
-    parser.add_argument("--teacher-force", default=0.5, type=float, 
-                help="teacher force ratio")
+    parser.add_argument("--percent", default=1.0, type=float, 
+                help="Amount of train and dev data to use during training.")
 
     args = parser.parse_args()
     return args

@@ -100,9 +100,9 @@ def run_test(args, dataset, exp_logger, detective):
 def run_eval(args, model, dataset, exp_logger, detective):
   tokenizer = dataset.tokenizer
   dataset.add_detective(detective)
+  exp_logger.start_eval(len(dataloader), args.eval_interval)
   all_outputs, all_targets = [], []
-  exp_logger.eval_step = 0
-
+  
   dataloader = get_dataloader(args, dataset, 'dev')
   ''' goes through model generation without backprop, rather than classification '''
   for batch in progress_bar(dataloader, total=len(dataloader)):
@@ -115,14 +115,12 @@ def run_eval(args, model, dataset, exp_logger, detective):
       #        v4.15.0/en/main_classes/model#transformers.generation_utils.GenerationMixin.generate 
       outputs = model.generate(**inputs, max_length=maxl, early_stopping=True)
     output_strings = tokenizer.batch_decode(outputs.detach(), skip_special_tokens=False)
-    # output_strings = [output_strings[idx].replace("<pad>","")+" "+target_dict[idx]['value'] for idx in range(len(output_strings))]
     all_outputs.extend(output_strings)
 
-    exp_logger.eval_step += 1
-    exp_logger.eval_loss = 0  # no loss, since inference only
+    if exp_logger.log_eval(args.qualify, output_strings, target_dict):
+      results = eval_quantify(args, all_outputs, all_targets, exp_logger, tokenizer)
     if args.debug and exp_logger.eval_step >= debug_break: break
 
-  results = eval_quantify(args, all_outputs, all_targets, exp_logger, tokenizer)
   return results
 
 def check_support(args, datasets):

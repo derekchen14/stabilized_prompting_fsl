@@ -170,8 +170,7 @@ def fill_carryover(conversations, use_history=False):
   return filled
 
 def parse_history(args, generated_string):
-  """parses the output for evaluation , only works with GPT"""
-  """
+  """parses the output for evaluation , only works with GPT
   TODO: cannot run, needs to be fixed
   """
   history, pred_string = generated_string.split('<label>')

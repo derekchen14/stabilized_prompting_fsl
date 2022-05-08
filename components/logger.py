@@ -93,6 +93,32 @@ class ExperienceLogger:
       self.logger.info(f"Ran out of patience, early stopped at epoch {self.epoch}")
     return below_threshold
 
+  def start_eval(self, num_batches, eval_interval):
+    self.eval_step = 0
+    if eval_interval == 'whole':
+      self.interval_checkpoint = math.ceil(num_batches / 1)  # redundant
+    elif eval_interval == 'half':
+      self.interval_checkpoint = math.ceil(num_batches / 2)
+    elif eval_interval == 'quarter':
+      self.interval_checkpoint = math.ceil(num_batches / 4)
+    elif eval_interval == 'tenth':
+      self.interval_checkpoint = math.ceil(num_batches / 10)
+    self.final_step = num_batches
+
+  def log_eval(self, qualify, output_strings, target_dicts):
+    self.eval_loss = 0  # no loss, since inference only
+    self.eval_step += 1
+
+    is_done = self.eval_step == self.final_step
+    is_checkpoint = self.eval_step % self.interval_checkpoint == 0 
+
+    if qualify and is_checkpoint:
+      for out_str, target in zip(output_strings, target_dicts):
+        print(out_str.replace("<pad>",""))
+        print(target['value'])
+
+    return is_done or is_checkpoint
+
   def log_train(self, step, train_metric=''):
     self.global_step += 1
 
