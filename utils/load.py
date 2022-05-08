@@ -14,7 +14,7 @@ from tqdm import tqdm as progress_bar
 from transformers import GPT2LMHeadModel, GPT2Config, GPT2Tokenizer, \
                           BartForConditionalGeneration, BartConfig, BartTokenizer, \
                           T5ForConditionalGeneration, T5Config, T5Tokenizer
-from transformers import logging, GPTJForCausalLM, AutoTokenizer
+from transformers import logging, AutoTokenizer, GPTJForCausalLM
 from sentence_transformers import SentenceTransformer
 from assets.static_vars import device, DATASETS, CHECKPOINTS
 from components.embed import Embedder
