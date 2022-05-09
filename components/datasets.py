@@ -277,6 +277,8 @@ class FineTuneDataset(BaseDataset):
     for example in examples:
       dialog = ' '.join(example['utterances'])
       target = example['target']
+      target['global_id'] = example['global_id']
+
       state_string = super().state_to_string(example['prev_state'])
       prompt = find_prompt(args.prompt_style, target['domain'], target['slot'])
 

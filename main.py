@@ -98,13 +98,15 @@ def run_test(args, dataset, exp_logger, detective):
 def run_eval(args, model, dataset, exp_logger, detective):
   tokenizer = dataset.tokenizer
   dataset.add_detective(detective)
-  exp_logger.start_eval(len(dataloader), args.eval_interval)
+
+  dataloader = get_dataloader(args, dataset, 'dev')
+  num_batches = debug_break if args.debug else len(dataloader)
+  exp_logger.start_eval(num_batches, args.eval_interval)
   all_outputs, all_targets = [], []
   
-  dataloader = get_dataloader(args, dataset, 'dev')
   ''' goes through model generation without backprop, rather than classification '''
   for batch in progress_bar(dataloader, total=len(dataloader)):
-    inputs, target_dict = dataset.collate(args, batch, prior_pred_state)
+    inputs, target_dict = dataset.collate(args, batch)
     all_targets.extend(target_dict)   # notice this is "extend", not "append"
 
     maxl = inputs['input_ids'].shape[1] + 12
