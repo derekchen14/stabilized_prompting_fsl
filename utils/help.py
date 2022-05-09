@@ -163,9 +163,9 @@ def reformat_data(args):
 def standardize_format(raw_domain, raw_slot):
   domain = raw_domain.lower()       # services_2
   domain = domain.split('_')[0]     # services
-  if domain.endswith('es'):         # service
+  if domain.endswith('ses'):        # service (movies)
     domain = domain[:-2]
-  if domain.endswith('s'):          # service
+  if domain.endswith('s') and domain != 'bus':          # service
     domain = domain[:-1]
 
   slot = raw_slot.lower()

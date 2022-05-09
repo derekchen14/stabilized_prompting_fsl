@@ -34,7 +34,7 @@ class BaseDataset(Dataset):
 
   def _unravel(self, examples, percent, split):
     # examples are grouped by conversation and turn by default
-    keep_count = int(len(examples) * args.percent)
+    keep_count = int(len(examples) * percent)
 
     data = []
     num_convos = 0

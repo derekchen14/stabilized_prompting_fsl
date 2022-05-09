@@ -1,6 +1,26 @@
 {
-    "movie": ["name.movie", "name.theater", "date.showing", "date.release", "description.plot", "description.other",
+	"entities": {
+		"movie": ["name.movie", "name.theater", "date.showing", "date.release", "description.plot", "description.other",
                 "duration.movie", "location", "name.character", "name.genre", "name.person",
                 "num.tickets", "price.ticket", "price.total", "rating.movie", "review.audience",
                 "review.critic", "seating", "time.preference", "time.showing", "type.screening"]
+	},
+	"slotvals": {
+		"date.release": "release",
+		"date.showing": "show date",
+		"description.other": "description",
+		"location": "location",
+		"name.character": "character",
+		"name.genre": "genre",
+		"name.movie": "movie",
+		"name.person": "name",
+		"name.theater": "theater",
+		"num.tickets": "num tickets",
+		"review.audience": "audience review",
+		"review.critic": "critic review",
+		"seating": "seating",
+		"time.preference": "preferred time",
+		"time.showing": "show time",
+		"type.screening": "screening"
+	}
 }
