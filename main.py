@@ -55,7 +55,7 @@ def run_train(args, model, datasets, exp_logger, detective):
 def run_test(args, dataset, exp_logger, detective):
   ontology, tokenizer = exp_logger.ontology, dataset.tokenizer
   dataset.add_detective(detective)
-  exp_logger.eval_step = 0
+  exp_logger.start_eval(len(dataset), args.eval_interval)
 
   if args.task in ['meta_learn', 'fine_tune']:
     model = load_best_model(args, exp_logger, tokenizer)
@@ -81,8 +81,8 @@ def run_test(args, dataset, exp_logger, detective):
         with no_grad():
           outputs = model.generate(**inputs, max_length=maxl, early_stopping=True)
         output_strings = tokenizer.batch_decode(outputs.detach(), skip_special_tokens=False)
-        exp_logger.eval_step += 1
-
+        
+        exp_logger.log_eval(args.qualify, output_strings, target_dict)
         for target, output_str in zip(target_dict, output_strings):
           state_key = f"{target['domain']}-{target['slot']}"
           pred_value = parse_output(args, output_str)
@@ -91,8 +91,6 @@ def run_test(args, dataset, exp_logger, detective):
 
   if args.quantify:
     results = test_quantify(args, prior_pred_state, all_targets, exp_logger, tokenizer)
-  # elif args.qualify:
-  # results = eval_qualify(args, prior_pred_state, all_targets, exp_logger)
   if args.do_save:
     output_name = f'{args.prompt_style}_lr{args.learning_rate}_clen{args.context_length}.json'
     json.dump(outputs, open(os.path.join(save_path, output_name), 'w'), indent=2)
