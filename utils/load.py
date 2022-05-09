@@ -156,10 +156,10 @@ def load_best_model(args, exp_logger, tokenizer):
       re_str = r'acc([0-9]{3})\.pt$'
       current_score = re.findall(re_str, fname)
       score = int(current_score[0]) if len(current_score) > 0 else 0
-      if args.do_eval:
-        match = model_match(fname, args)
-      else:
-        match = True
+      # if args.do_eval:
+      #   match = model_match(fname, args)
+      # else:
+      match = True
 
       if score > top_acc and match:
         top_acc = score

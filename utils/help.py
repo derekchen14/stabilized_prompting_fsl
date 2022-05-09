@@ -98,7 +98,7 @@ def batchify(args, turn, global_id, prior_pred_state):
     example['prev_state'] = prev_state
     batch.append(example)
 
-    if len(batch) == arg.batch_size:
+    if len(batch) == args.batch_size:
       batches.append(batch)
       batch = []
   batches.append(batch)
@@ -136,8 +136,8 @@ def model_match(fname, args):
   if model_type == args.model and \
      model_size == args.size  and \
      prompt_style == args.prompt_style and \
-     lr == f'lr{args.learning_rate}' and \
-     clen == f'clen{args.context_length}':
+     lr == f'lr{args.learning_rate}':
+       # and clen == f'clen{args.context_length}':
       return True
   return False
 

@@ -160,16 +160,17 @@ def fill_carryover(conversations, use_history=False):
         target_val = normalize_text(target_val)
         if pred_val in GENERAL_TYPO:
           pred_val = GENERAL_TYPO[pred_val]
+        """
         if pred_val == '<none>' and domain_slot in carry:
           pred_val = carry[domain_slot] # then carry over the old value
           carry_count['actual'] += 1
-          if prev_val == target_val:
+          if pred_val == target_val:
             carry_count['correct'] += 1
-        elif pred_val == '<remove>':
-          pred_val = '<none>'
-
         if domain_slot in carry and carry[domain_slot] != '<none>':
           carry_count['possible'] += 1
+        """
+        if pred_val == '<remove>':
+          pred_val = '<none>'
 
         dialog_state[domain_slot] = (history, pred_val, target_val)
         carry[domain_slot] = pred_val  # store it for the next round
@@ -180,8 +181,8 @@ def fill_carryover(conversations, use_history=False):
   possible carry - the previous dialogue state was not empty
   actual carry - previous state has a value and the predicted value is <none>
   correct carry - carried value matches the ground truth value; the important ratio is (correct / actual)
-  """
   print(carry_count)
+  """
   return filled
 
 def parse_history(args, generated_string):
