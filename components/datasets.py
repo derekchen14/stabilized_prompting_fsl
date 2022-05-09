@@ -97,17 +97,17 @@ class BaseDataset(Dataset):
       prev_state_string += f'{domain} {slot} {prev_state[dom_slot]} , '
     return prev_state_string[:-2].strip()
 
-  def collate_lm(self, args, examples, prior_pred_state):
+  def collate_lm(self, args, examples):
     raise NotImplementedError
 
-  def collate_seq2seq(self, args, examples, prior_pred_state):
+  def collate_seq2seq(self, args, examples):
     raise NotImplementedError
 
-  def collate(self, args, examples, prior_pred_state=None):
+  def collate(self, args, examples):
     if self.model_type == 'gpt':
-      return self.collate_lm(args, examples, prior_pred_state)
+      return self.collate_lm(args, examples)
     elif self.model_type in ['bart', 't5']:
-      return self.collate_seq2seq(args, examples, prior_pred_state)
+      return self.collate_seq2seq(args, examples)
 
   def collate_func(self, examples):
     return examples
@@ -151,7 +151,7 @@ class InContextDataset(BaseDataset):
     text = text.replace('<pad>', '[PAD]')
     return text
 
-  def collate_lm(self, args, examples, prior_pred_state):
+  def collate_lm(self, args, examples):
     """ train and dev splits should not occur since you do not need gradient based training """
     assert(self.split not in ['train', 'dev'])
     contexts, dialogues, labels = [], [], []
@@ -199,7 +199,7 @@ class MetaLearnDataset(BaseDataset):
     additional_context = eos_token.join(contexts)
     return additional_context + eos_token
 
-  def collate_lm(self, args, examples, prior_pred_state):
+  def collate_lm(self, args, examples):
     """
     train - use support dataset
     dev - use support dataset, do not include the label
@@ -248,7 +248,7 @@ class MetaLearnDataset(BaseDataset):
 
 class FineTuneDataset(BaseDataset):
 
-  def collate_seq2seq(self, args, examples, prior_pred_state):
+  def collate_seq2seq(self, args, examples):
     """transforms a batch of examples into a features dict that can be fed into a T5 or BART model"""
     dialogues, labels = [], []
 
@@ -269,7 +269,7 @@ class FineTuneDataset(BaseDataset):
     else:
       return inputs, labels
 
-  def collate_lm(self, args, examples, prior_pred_state):
+  def collate_lm(self, args, examples):
     """transforms a batch of examples into a features dict that can be fed into a GPT model"""
     dialogues, labels = [], []
     eos = self.tokenizer.eos_token
