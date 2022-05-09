@@ -216,6 +216,7 @@ def build_mwoz22(args, data):
   return examples
 
 def create_abcd_mappings(ontology):
+  # given the child subflow, return the parent flow
   intent_map = {}
   for flow, subflows in ontology['intents'].items():
     for intent in subflows:
@@ -223,18 +224,26 @@ def create_abcd_mappings(ontology):
 
   enumerable_values = ontology['values']['enumerable']
 
+  # given the action (aka. slot), return whether it requires a value
   validity_map = {}
   for action, slots in ontology['actions']['has_slotval'].items():
     validity_map[action] = True
   for action in ontology['actions']['empty_slotval']:
     validity_map[action] = False
 
-  mappings = {'intent': intent_map, 'enum': enumerable_values, 'valid': validity_map}
+  has_slotvals = {}
+  for category, actions in ontology['actions'].items():
+    for action, slotvals in actions.items():
+      if len(slotvals) > 0:  # the action contains slot values
+        has_slotvals[action] = slotvals
+
+  mappings = {'intent': intent_map, 'enum': enumerable_values, 
+              'valid': validity_map, 'valid_actions': has_slotvals }
   return mappings
 
 def is_slotval(scenario, mappings, cand_slot, cand_val):
-  if cand_slot in mappings['enum']:
-    cand_values = mappings['enum'][cand_slot]
+  if cand_slot in mappings['enumerable_values']:
+    cand_values = mappings['enumerable_values'][cand_slot]
     if cand_val in cand_values:
       return True
   else:
@@ -245,7 +254,7 @@ def is_slotval(scenario, mappings, cand_slot, cand_val):
   # if we find no matches, then this candidate value is not valid
   return False
 
-def make_dialogue_state(intent, action, values, scene, mappings):
+def make_dialogue_state_from_scratch(intent, action, values, scene, mappings):
   targets = []
   target_domains = set()
 
@@ -272,13 +281,41 @@ def make_dialogue_state(intent, action, values, scene, mappings):
 
   return targets, target_domains
 
-def build_abcd(args, data, ontology, split):
-  examples = []
-  mappings = create_abcd_mappings(ontology)
-  mappings['valid_actions'] = ontology['actions']['has_slotval']
+def make_dialogue_state(action, values, scene, mappings):
+  # flow --> domain; subflow --> intent; action --> slot; slotval --> value
+  slot_state = {}
+  if action in mappings['valid_actions']:    #  if this is a valid action that requires a slot-val
+    for value in values:
+      cand_val = value.lower().strip() 
+      candidate_slots = mappings['valid_actions'][action]
+   
+      if len(candidate_slots) == 1:
+        slot = candidate_slots[0].replace('_', ' ')
+        slot_state[slot] = cand_val
+      else:
+        for cand_slot in candidate_slots:
+          scenario = {k: v for k, v in scene.items() if not k.endswith('flow')}
+          if is_slotval(scenario, mappings, cand_slot, cand_val):
+            slot = cand_slot.replace('_', ' ')
+            slot_state[slot] = cand_val
+            break
+
+  return slot_state
+
+def build_abcd(args, data, mappings, split):
+  examples = {}
+  ontology = mappings['domain_slots']
+
+  subflow_to_flow = {}
+  for flow, subflows in mappings['intents'].items():
+    for subflow in subflows:
+      domain = flow.replace('_', ' ')
+      subflow_to_flow[subflow] = domain
 
   for convo in progress_bar(data, total=len(data)):
     # each convo has keys: convo_id, scene, conversation
+    convo_id = str(convo['convo_id'])
+    examples[convo_id] = defaultdict(list)
     utt_so_far = []
 
     prior_values = {f'{domain}-{slot}': '<none>' for domain, slots in ontology.items() for slot in slots}
@@ -287,22 +324,24 @@ def build_abcd(args, data, ontology, split):
       speaker = turn['speaker']
 
       if speaker == 'action':  # skip action turns
-        intent, nextstep, action, values, utt_rank = turn['targets']
+        global_id = f"{convo_id}_{turn['turn_count']}"
         # each target is a 5-part list: intent, nextstep, action, value, utt_rank
-        targets, target_domains = make_dialogue_state(intent, action, values, convo['scene'], mappings)
-  
+        intent, nextstep, action, values, utt_rank = turn['targets']
+        domain = subflow_to_flow[intent]  # intent is the subflow
+
         prev_state = {k:v for k,v in prior_values.items()}
-        current_slots_tmp = {slot["domain"]+"-"+slot["slot"]:slot["value"] for slot in targets}
-        for domain in target_domains:
-          for slot in ontology[domain]:
-            value = current_slots_tmp.get(f"{domain}-{slot}", "<none>")
-            target = {'domain': 'restaurant', 'slot': slot, 'value': value,
-                'global_id': str(convo['convo_id']) + '_' + str(turn['turn_count']) }
-            use_target, history, target = select_utterances(args, utt_so_far, target, split)
-            if use_target:
-              examples.append({'utterances': history, 'target': target, 'prev_state':prev_state})
-            if value != "<none>":
-              prior_values[f'{domain}-{slot}'] = value
+        slot_state = make_dialogue_state(domain, action, values, convo['scene'], mappings)
+
+        for slot in ontology[domain]:
+          value = slot_state.get(slot, '<none>')
+          target = {'domain': domain, 'slot': slot, 'value': value}
+
+          use_target, history, target = select_utterances(args, utt_so_far, target, split)
+          if use_target:
+            example = {'utterances': history, 'target': target, 'prev_state':prev_state}
+            examples[convo_id][global_id].append(example)
+          if value != "<none>":
+            prior_values[f'{domain}-{slot}'] = value
 
       else:
         text = turn['text']
