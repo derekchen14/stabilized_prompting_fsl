@@ -118,12 +118,17 @@ class ExperienceLogger:
     if qualify and is_checkpoint:
       for out_str, target in zip(output_strings, target_dicts):
         replaced = out_str.replace("<pad>","").replace("<|endoftext|>", "").replace("</s>", "")
-        history, prompt_and_pred = replaced.split('<sep>')
+        try:
+          history, prompt_and_pred = replaced.split('<sep>')
+        except(ValueError):
+          history = replaced
+          prompt_and_pred = replaced[-20:]
+
         global_id = target['global_id']
         if global_id not in self.past_history:
           print(history)
           self.past_history.append(global_id)
-        print('predicted:', prompt_and_pred, 'actual:' target['value'])
+        print('predicted:', prompt_and_pred.strip(), 'actual:', target['value'])
 
     return is_done or is_checkpoint
 
@@ -131,6 +136,7 @@ class ExperienceLogger:
     if args.debug and step >= debug_break*args.log_interval:
       return True
     if step > self.breakpoint:
+      print(f"Training stopped early at step {step} to save time")
       return True
     return False
 
@@ -184,8 +190,8 @@ class ExperienceLogger:
         if regex_found:
           accuracy = int(regex_found[0])
           # prune only ckpt under the same arguments
-          if model_match(fname, self.args):
-            acc_and_folders.append((accuracy, fname))
+          # if model_match(fname, self.args):
+          acc_and_folders.append((accuracy, fname))
 
       # scores_and_files.sort(key=lambda tup: tup[0], reverse=True)  # largest to smallest
       acc_and_folders.sort(key=lambda tup: tup[0], reverse=True)
