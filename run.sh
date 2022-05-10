@@ -1,18 +1,23 @@
 # ________ Fine-tuned Model Training ________
 # Training with all available data
-# python main.py --dataset mwoz --task fine_tune --style dataset --do-train --debug \
-#       --model gpt --size small --num-shots full --maximum-len 512 --prompt-style none \
-#       --prune-keep -1 --log-interval 400 --context-len 3 --batch-size 16 --n-epochs 10 \
-#       --learning-rate 3e-5 --seed 15 # --ignore-cache # --verbose
+# python main.py --dataset mwoz --task fine_tune --style dataset --do-train --do-save \
+#       --model gpt --size small --num-shots full --maximum-len 512 --prompt-style naive \
+#       --prune-keep 3 --log-interval 900 --context-len 2 --batch-size 12 --n-epochs 7 \
+#       --learning-rate 3e-5 --seed 15 # --ignore-cache # --percent 0.4 --eval-interval quarter --qualify 
+      # --ignore-cache # --verbose
 # python main.py --dataset sgd --task fine_tune --n-epochs 7 --do-train --debug \
 #       --style dataset --model gpt --size small --num-shots full --batch-size 9 \
 #       --learning-rate 1e-4  --maximum-len 512 --prompt-style naive # --ignore-cache
+python main.py --dataset dstc --task fine_tune --n-epochs 7 --do-train --do-save \
+      --style dataset --model gpt --size small --num-shots full --batch-size 18 \
+      --learning-rate 2e-5  --maximum-len 512 --prompt-style naive --verbose \
+      --log-interval 700 --prune-keep 3 --seed 11 --ignore-cache # --eval-interval half
 # python main.py --dataset abcd --task fine_tune --n-epochs 7 --do-train --do-save \
-#       --style dataset --model gpt --size large --parallel --num-shots full --batch-size 16 \
-#       --learning-rate 1e-4  --maximum-len 512 --prompt-style naive
-# python main.py --dataset dstc --task fine_tune --n-epochs 7 --do-train --debug \
-#       --style dataset --model gpt --size small --num-shots full --batch-size 8 \
-#       --learning-rate 1e-4  --maximum-len 512 --prompt-style naive --context-length 3
+#       --style dataset --model gpt --size small --parallel --num-shots full --batch-size 12 \
+#       --learning-rate 3e-5  --maximum-len 512 --prompt-style naive --log-interval 900
+# python main.py --dataset tt --task fine_tune --n-epochs 7 --do-train --debug \
+#       --style dataset --model gpt --size small --num-shots full --batch-size 12 \
+#       --learning-rate 1e-4  --maximum-len 512 --prompt-style naive --ignore-cache
 
 # Finetune the Sentence Transformers model from SBERT
 # python contrast.py --learning-rate 3e-5 --kappa 10 --finetune icdst --num-shots five \
@@ -48,9 +53,9 @@
 # python main.py --dataset mwoz --task meta_learn --n-epochs 3 --do-train --debug \
 #       --style domain --left-out hotel --model gpt --size small --num-shots ten \
 #       --learning-rate 1e-5  --prune-keep 3 --batch-size 4 --log-interval 800
-python main.py --dataset mwoz --task meta_learn --n-epochs 3 --do-train --debug \
-      --style dataset --left-out mwoz --model gpt --size small --num-shots five \
-      --learning-rate 1e-5  --prompt-style naive --batch-size 4 --context-len 3
+# python main.py --dataset mwoz --task meta_learn --n-epochs 3 --do-train --debug \
+#       --style dataset --left-out mwoz --model gpt --size small --num-shots five \
+#       --learning-rate 1e-5  --prompt-style naive --batch-size 4 --context-len 3
 
 # ______________ Special Modes ________________
 # >> Interactive Mode
@@ -58,7 +63,7 @@ python main.py --dataset mwoz --task meta_learn --n-epochs 3 --do-train --debug 
 #       --model gpt --size medium --batch-size 7 --num-shots zero --threshold 1.4 \
 #       --temperature 1.2
 # >> Evaluation Mode
-# python main.py --dataset mwoz --task fine_tune --do-eval --context-len 1 --batch-size 16 \
-#       --model gpt --size small --num-shots full --maximum-len 512 --prompt-style none \
-#       --checkpoint ctx3_epoch4_lr3e-05_acc440.pt --quantify
+# python main.py --dataset dstc --task fine_tune --do-eval --context-len 2 --batch-size 16 \
+#       --model gpt --size small --num-shots full --maximum-len 512 --prompt-style naive \
+#       --checkpoint naive_epoch10_lr1e-05_clen2_acc522.pt --quantify
 

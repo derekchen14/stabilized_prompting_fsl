@@ -160,15 +160,13 @@ def fill_carryover(conversations, use_history=False):
         target_val = normalize_text(target_val)
         if pred_val in GENERAL_TYPO:
           pred_val = GENERAL_TYPO[pred_val]
-        """
         if pred_val == '<none>' and domain_slot in carry:
-          pred_val = carry[domain_slot] # then carry over the old value
+          # pred_val = carry[domain_slot] # then carry over the old value
           carry_count['actual'] += 1
           if pred_val == target_val:
             carry_count['correct'] += 1
         if domain_slot in carry and carry[domain_slot] != '<none>':
           carry_count['possible'] += 1
-        """
         if pred_val == '<remove>':
           pred_val = '<none>'
 
@@ -181,8 +179,8 @@ def fill_carryover(conversations, use_history=False):
   possible carry - the previous dialogue state was not empty
   actual carry - previous state has a value and the predicted value is <none>
   correct carry - carried value matches the ground truth value; the important ratio is (correct / actual)
-  print(carry_count)
   """
+  print(carry_count)
   return filled
 
 def parse_history(args, generated_string):
@@ -201,10 +199,11 @@ def parse_history(args, generated_string):
   parsed_str = normalize_text(pred_string)
   return history[10:], parsed_str
 
-def calculate_jga(results, final_preds):
+def calculate_jga(results, final_preds, verbose):
   """ Return a results dictionary that contains the JGA and accuracy """
   possible, correct = 0, 0
   joint_possible, joint_correct = 0, 0
+  errors = Counter()
 
   for convo_id, filled_turns in final_preds.items():
     
@@ -213,17 +212,21 @@ def calculate_jga(results, final_preds):
       for domain_slot, turn_data in dialog_state.items():
         _, pred_val, target_val = turn_data
         if target_val != '<none>':
-          # if pred_val.startswith(target_val):
-          if pred_val == target_val:
+          # if pred_val == target_val:
+          if pred_val.startswith(target_val):
             correct += 1
           else:
             turn_correct = False
+            errors[f"{pred_val}-{target_val}"] += 1
           possible += 1
 
       if turn_correct:
         joint_correct += 1
       joint_possible += 1
 
+  if verbose:
+    for error in errors.most_common(10):
+      print(error)
   results['accuracy'] = round(float(correct) / possible, 3)
   results['jga'] = round(float(joint_correct) / joint_possible, 3)
   return results
@@ -254,7 +257,7 @@ def test_quantify(args, predictions, targets, exp_logger, tokenizer):
       dialog_state[domain_slot] = ('', pred_val, target_val)
     final_preds[convo_id].append(dialog_state)
 
-  results = calculate_jga(results, final_preds)
+  results = calculate_jga(results, final_preds, args.verbose)
   exp_logger.log_info(results)
   return results
 
@@ -266,7 +269,7 @@ def eval_quantify(args, predictions, targets, exp_logger, tokenizer):
     grouped_preds = group_by_convo(args, predictions, targets)
     sorted_preds = sort_by_turn(grouped_preds)
     final_preds = fill_carryover(sorted_preds)
-    results = calculate_jga(results, final_preds)
+    results = calculate_jga(results, final_preds, args.verbose)
 
   elif args.style == 'domain':
     # the left out query set is hotel, attraction, taxi, etc.
