@@ -401,7 +401,7 @@ def build_gsim(args, data, ontology, split):
 
     prior_values = {f'{domain}-{slot}': '<none>' for domain, slots in ontology.items() for slot in slots}
     for turn_count, turn in enumerate(conversation['turns']):
-      global_id = convo_id + '_' + str(turn_count + 1)
+      global_id = convo_id.replace("_","-") + '_' + str(turn_count + 1)
       if 'system_utterance' in turn:
         sys_text = turn['system_utterance']['text']
         sys_utt = f"<agent> {sys_text}"
