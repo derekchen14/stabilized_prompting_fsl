@@ -14,7 +14,7 @@ class BaseDataset(Dataset):
   def __init__(self, args, examples, tokenizer, split):
     self.split = split
     self.shuffle = (split == 'train')
-    self.data = self._unravel(examples, args.percent, split)
+    self.data = self._unravel(examples, split)
     self.size = len(self.data)
 
     self.tokenizer = tokenizer
@@ -32,12 +32,9 @@ class BaseDataset(Dataset):
   def __getitem__(self, idx):
     return self.data[idx]
 
-  def _unravel(self, examples, percent, split):
+  def _unravel(self, examples, split):
     # examples are grouped by conversation and turn by default
-    keep_count = int(len(examples) * percent)
-
     data = []
-    num_convos = 0
     for convo_id, conversation in examples.items():
       if split == 'test':
         data.append(conversation)
@@ -46,8 +43,6 @@ class BaseDataset(Dataset):
           for example in turn:
             example['global_id'] = global_id
             data.append(example)
-        if num_convos > keep_count: break
-      num_convos += 1
     return data
 
   def _pad_right(self, targets):

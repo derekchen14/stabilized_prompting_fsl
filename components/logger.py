@@ -59,10 +59,11 @@ class ExperienceLogger:
     self.logger.info("  Total optimization steps = %d" % total_step)
     self.logger.info("  Running experiment for {}".format(self.style))
 
-  def start_epoch(self, dataloader):
+  def start_epoch(self, dataloader, percent):
     self.logger.info(f"Starting epoch {self.epoch} of {self.num_epochs}")
     self.start_time = tm.time()
     self.num_steps = len(dataloader)
+    self.breakpoint = int(self.num_steps * percent)
 
   def end_epoch(self):
     self.epoch += 1
@@ -109,16 +110,29 @@ class ExperienceLogger:
   def log_eval(self, qualify, output_strings, target_dicts):
     self.eval_loss = 0  # no loss, since inference only
     self.eval_step += 1
+    self.past_history = []
 
     is_done = self.eval_step == self.final_step
     is_checkpoint = self.eval_step % self.interval_checkpoint == 0 
 
     if qualify and is_checkpoint:
       for out_str, target in zip(output_strings, target_dicts):
-        print(out_str.replace("<pad>",""))
-        print(target['value'])
+        replaced = out_str.replace("<pad>","").replace("<|endoftext|>", "").replace("</s>", "")
+        history, prompt_and_pred = replaced.split('<sep>')
+        global_id = target['global_id']
+        if global_id not in self.past_history:
+          print(history)
+          self.past_history.append(global_id)
+        print('predicted:', prompt_and_pred, 'actual:' target['value'])
 
     return is_done or is_checkpoint
+
+  def train_stop(self, args, step, debug_break):
+    if args.debug and step >= debug_break*args.log_interval:
+      return True
+    if step > self.breakpoint:
+      return True
+    return False
 
   def log_train(self, step, train_metric=''):
     self.global_step += 1

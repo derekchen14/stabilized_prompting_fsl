@@ -24,8 +24,9 @@ def run_train(args, model, datasets, exp_logger, detective):
   dataset.add_detective(detective)
 
   for epoch_count in range(exp_logger.num_epochs):
-    exp_logger.start_epoch(train_dataloader)
+    exp_logger.start_epoch(train_dataloader, args.percent)
     model.train()
+
     for step, batch in enumerate(train_dataloader):
       inputs, targets = dataset.collate(args, batch)
       review_inputs(args, targets, datasets['train'].tokenizer)
@@ -40,8 +41,7 @@ def run_train(args, model, datasets, exp_logger, detective):
         exp_logger.scheduler.step()  # Update learning rate schedule
         model.zero_grad()
         exp_logger.log_train(step)
-      if args.debug and step >= debug_break*args.log_interval:
-        break
+      if exp_logger.train_stop(args, step, debug_break): break
 
     eval_res = run_eval(args, model, datasets['dev'], exp_logger, detective)
     if eval_res[exp_logger.metric] >= exp_logger.best_score[exp_logger.metric]:

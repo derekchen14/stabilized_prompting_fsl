@@ -376,6 +376,9 @@ def build_dstc(args, data, ontology, split):
         prev_state = {k:v for k,v in prior_values.items()}
         for slot in ontology['restaurant']:
           value = turn['inform'].get(slot, "<none>")
+          if value in GENERAL_TYPO:
+            value = GENERAL_TYPO[value]
+
           target = {'domain': 'restaurant', 'slot': slot, 'value': value}
           use_target, history, target = select_utterances(args, text_so_far, target, split)
           if use_target:
