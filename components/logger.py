@@ -123,7 +123,7 @@ class ExperienceLogger:
         if global_id not in self.past_history:
           print(history)
           self.past_history.append(global_id)
-        print('predicted:', prompt_and_pred, 'actual:' target['value'])
+        print('predicted:', prompt_and_pred, 'actual:', target['value'])
 
     return is_done or is_checkpoint
 
@@ -159,7 +159,7 @@ class ExperienceLogger:
       accuracy = str(self.best_score[self.metric] * 10000)[:3]
       style = self.args.prompt_style
       context_length = self.args.context_length
-      ckpt_name = f'{style}_epoch{self.epoch}_lr{learning_rate}_clen{context_length}_acc{accuracy}.pt'
+      ckpt_name = f'{style}_lr{learning_rate}_clen{context_length}_epoch{self.epoch}_acc{accuracy}.pt'
       ckpt_path = os.path.join(self.save_path,ckpt_name)
 
       # model_to_save = model.module if hasattr(model, 'module') else model
