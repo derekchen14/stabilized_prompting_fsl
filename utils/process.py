@@ -116,9 +116,9 @@ def build_sgd(args, data, ontology, split):
     text_so_far = []
 
     prior_values = {f'{service}-{slot}': '<none>' for service, slots in ontology.items() for slot in slots}
-
-    for turn_count, turn in enumerate(conversation['turns']):
-      global_id = convo_id + '_' + str(turn_count+1)
+    turn_count = 1
+    for turn in conversation['turns']:
+      global_id = convo_id + '_' + str(turn_count)
       text = turn['utterance']
 
       if turn['speaker'] == 'SYSTEM':
@@ -128,6 +128,8 @@ def build_sgd(args, data, ontology, split):
       elif turn['speaker'] == 'USER':
         user_utt = f"<customer> {text}"
         text_so_far.append(user_utt)
+        turn_count += 1
+        # pdb.set_trace()
 
         targets = extract_label_sgd(turn['frames'], prior_values)
         prev_state = {k:v for k,v in prior_values.items()}
@@ -437,8 +439,9 @@ def build_tt(args, data, ontology, split):
     text_so_far = []    
 
     prior_values = {f'{domain}-{slot}': '<none>' for domain, slots in ontology["entities"].items() for slot in slots}
+    turn_count = 1
     for turn in convo['utterances']:
-      global_id = convo_id + '_' + str(turn['index'])
+      global_id = convo_id + '_' + str(turn_count)
 
       text = turn['text']
 
@@ -449,6 +452,7 @@ def build_tt(args, data, ontology, split):
       elif turn['speaker'] == 'user':
         user_utterance = f"<customer> {text}"
         text_so_far.append(user_utterance)
+        turn_count += 1
 
         prev_state = {k:v for k,v in prior_values.items()}
         if 'segments' in turn:
