@@ -45,8 +45,6 @@ class ExemplarDetective(object):
 
     for emb, exp, hist in zip(embeddings, samples, histories):
       target = exp['target']
-      import pdb
-      pdb.set_trace()
       cand = {   # embedding is a 768-dim numpy array
         'embedding': emb,
         'gid': target['global_id'],
@@ -74,8 +72,9 @@ class ExemplarDetective(object):
     samples = np.random.choice(data, size=num_samples, replace=False)
     return samples
 
-  def search(self, example, corpus, use_oracle=False):
+  def search(self, example, use_oracle):
     """ returns the closest exemplars from the candidate pool not already chosen"""
+    corpus = example['corpus']
     if self.search_method == 'oracle' or use_oracle:
       return self.oracle_search(example, corpus)
     else:

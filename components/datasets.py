@@ -59,22 +59,29 @@ class BaseDataset(Dataset):
     target_tensor = torch.tensor(padded).to(device)
     return target_tensor
 
-  def add_support(self, supports, left_out):
-    """ replaces the query set data with the support set data for training """
-    # self.supported_datasets = [name for name, _ in DATASETS.items() if name != left_out]
-    query_set = self.data
-    support_set = []
-    for support_name, support_data in supports.items():
-      if support_name != left_out:
-        self.supported_datasets.append(support_name)
-        for example in support_data[self.split]:
-          example['corpus'] = support_name
-          support_set.append(example)
-        setattr(self, f"{support_name}_ont", support_data['ont'])
+  def select_context(self, args, example, history, use_oracle=False):
+    bpe_tokens = self.tokenizer(history)
+    current_size = len(bpe_tokens['input_ids'])
+    eos = self.tokenizer.eos_token
     
-    self.leftout = query_set
-    self.data = support_set
-    self.size = len(self.data)
+    model_input_length = 2048 if args.size == 'large' else 1024
+    max_allowed = model_input_length - 12
+
+    self.detective.reset()
+    contexts = []
+    while current_size < max_allowed:
+      exemplar = self.detective.search(example, use_oracle)
+      ctx_domain, ctx_slot, ctx_label = exemplar['dsv']
+      ctx_prompt = find_prompt(args.prompt_style, ctx_domain, ctx_slot)
+      state_str = super().state_to_string(exemplar['prev_state'])
+      context = f"{state_str}{exemplar['history']} {ctx_prompt} {ctx_label}{eos}"
+      contexts.append(context)
+
+      tokenized_context = self.tokenizer(context)
+      current_size += len(tokenized_context['input_ids'])
+
+    additional_context = ' '.join(contexts)
+    return additional_context
 
   def add_detective(self, detective):
     if self.detective is None:
@@ -110,32 +117,6 @@ class BaseDataset(Dataset):
 
 class InContextDataset(BaseDataset):
 
-  def select_context(self, args, example, joined_utts):
-    bpe_tokens = self.tokenizer(joined_utts)
-    current_size = len(bpe_tokens['input_ids'])
-    assert(current_size > 1)
-    eos_token = self.tokenizer.eos_token
-    
-    model_input_length = 2048 if args.size == 'large' else 1024
-    max_allowed = model_input_length - 12
-
-    self.detective.reset()
-    contexts = []
-    while current_size < max_allowed:
-      exemplar = self.detective.search(example, args.dataset)
-      ctx_domain, ctx_slot, ctx_label = exemplar['dsv']
-      ctx_prompt = find_prompt(args.prompt_style, ctx_domain, ctx_slot)
-      state_string = super().state_to_string(exemplar['prev_state'])
-      added_context = f"{state_string} {exemplar['history']} {ctx_prompt} {ctx_label}"
-      contexts.append(added_context)
-
-      tokenized_context = self.tokenizer(added_context)
-      current_size += len(tokenized_context['input_ids'])
-
-    additional_context = eos_token.join(contexts)
-    cleaned_context = self.remove_special(additional_context)
-    return cleaned_context + eos_token
-
   def remove_special(self, text):
     text = text.replace('<agent>', 'agent:')
     text = text.replace('<customer>', 'customer:')
@@ -152,47 +133,39 @@ class InContextDataset(BaseDataset):
     contexts, dialogues, labels = [], [], []
 
     for example in examples:
-      joined_utts = ' '.join(example['utterances'])
+      state_str = super().state_to_string(example['prev_state'])
+      history = ' '.join(example['utterances'])
       target = example['target']
       prompt = find_prompt(args.prompt_style, target['domain'], target['slot'])
-      context = self.select_context(args, example, joined_utts)
-      dialog = self.remove_special(f'{joined_utts} {prompt}')
-      if args.use_pre_state:
-        state_string = super().state_to_string(example['prev_state'])
-        dialog = state_string + ' ' + dialog
 
-      contexts.append(context)
+      additional_context = self.remove_special(self.select_context(args, example, history))
+      dialog = self.remove_special(f"{state_str}{history} {prompt}")
+
+      contexts.append(additional_context)
       dialogues.append(dialog)
       labels.append(target)
 
-    inputs = self.tokenizer(contexts, dialogues, padding=True,
+    inputs = self.tokenizer(contexts, dialogues, padding=True, max_length=self.max_len - 12,
                               truncation='only_first', return_tensors='pt').to(device) 
     return inputs, labels
 
 class MetaLearnDataset(BaseDataset):
 
-  def select_context(self, args, example, joined_utts, use_oracle=False):
-    bpe_tokens = self.tokenizer(joined_utts)
-    current_size = len(bpe_tokens['input_ids'])
-    eos_token = self.tokenizer.eos_token
+  def add_support(self, supports, left_out):
+    """ replaces the query set data with the support set data for training """
+    # self.supported_datasets = [name for name, _ in DATASETS.items() if name != left_out]
+    query_set = self.data
+    support_set = []
+    for support_name, support_data in supports.items():
+      if support_name != left_out:
+        self.supported_datasets.append(support_name)
+        for example in support_data[self.split]:
+          support_set.append(example)
+        setattr(self, f"{support_name}_ont", support_data['ont'])
     
-    model_input_length = 2048 if args.size == 'large' else 1024
-    max_allowed = model_input_length - 12
-
-    self.detective.reset()
-    contexts = []
-    while current_size < max_allowed:
-      exemplar = self.detective.search(example, example['corpus'], use_oracle)
-      ctx_domain, ctx_slot, ctx_label = exemplar['dsv']
-      ctx_prompt = find_prompt(args.prompt_style, ctx_domain, ctx_slot)
-      added_context = f"{exemplar['history']} {ctx_prompt} {ctx_label}"
-      contexts.append(added_context)
-
-      tokenized_context = self.tokenizer(added_context)
-      current_size += len(tokenized_context['input_ids'])
-
-    additional_context = eos_token.join(contexts)
-    return additional_context + eos_token
+    self.leftout = query_set
+    self.data = support_set
+    self.size = len(self.data)
 
   def collate_lm(self, args, examples):
     """
@@ -201,45 +174,34 @@ class MetaLearnDataset(BaseDataset):
     test - use the query dataset, do not include the label
     """
     contexts, dialogues, labels = [], [], []
+    eos = self.tokenizer.eos_token
 
-    if self.split == 'train':
-      eos = self.tokenizer.eos_token
-      for example in examples:
-        state_str = super().state_to_string(example['prev_state'])
-        history = ' '.join(example['utterances'])
-        target = example['target']
-        prompt = find_prompt(args.prompt_style, target['domain'], target['slot'])
+    for example in examples:
+      state_str = super().state_to_string(example['prev_state'])
+      history = ' '.join(example['utterances'])
+      target = example['target']
+      prompt = find_prompt(args.prompt_style, target['domain'], target['slot'])
 
-        dialog = state_str + history + prompt + ' ' + target['value'] + eos
+      if self.split == 'train':
         additional_context = self.select_context(args, example, history, True)
+        dialog = f"{state_str}{history} {prompt} {target['value']}{eos}"
+        max_len = self.max_len
+      elif self.split in ['dev', 'test']:
+        additional_context = self.select_context(args, example, history)
+        dialog = f"{state_str}{history} {prompt}"
+        max_len = self.max_len - 12
 
-        contexts.append(additional_context)
-        dialogues.append(dialog)
-      inputs = self.tokenizer(contexts, dialogues, padding=True,
+      contexts.append(additional_context)
+      dialogues.append(dialog)
+      
+      inputs = self.tokenizer(contexts, dialogues, padding=True, max_length=max_len,
                                 truncation='only_first', return_tensors='pt').to(device)
-      labels = inputs['input_ids']
-
-    elif self.split == 'dev':
-      for example in examples:
-        state_str = super().state_to_string(example['prev_state'])
-        target = example['target']
-        prompt = find_prompt(args.prompt_style, target['domain'], target['slot'])
-
-        dialog = state_str + ' '.join(example['utterances']) + prompt
-        additional_context = self.select_context(args, example, dialog)
-
-        contexts.append(additional_context)
-        dialogues.append(dialog)
+      if self.split == 'train':
+        labels = inputs['input_ids']
+      else:
         labels.append(target)
-
-      max_length = self.max_len - 12
-      inputs = self.tokenizer(contexts, dialogues, padding=True, max_length=max_length,
-                                truncation='only_first', return_tensors='pt').to(device)
-
-    elif self.split == 'test':
-      inputs, labels = self.collate_lm(examples)
+    
     return inputs, labels
-
 
 class FineTuneDataset(BaseDataset):
 
@@ -270,23 +232,22 @@ class FineTuneDataset(BaseDataset):
     eos = self.tokenizer.eos_token
 
     for example in examples:
-      dialog = ' '.join(example['utterances'])
+      history = ' '.join(example['utterances'])
       target = example['target']
       if self.split != 'test':
         target['global_id'] = example['global_id']
 
-      state_string = super().state_to_string(example['prev_state'])
+      state_str = super().state_to_string(example['prev_state'])
       prompt = find_prompt(args.prompt_style, target['domain'], target['slot'])
 
       if self.split == 'train':
-        dial_input = f"{dialog} {prompt} {target['value']} {eos}"
+        dialog = f"{state_str}{history} {prompt} {target['value']}{eos}"
         max_length = self.max_len
       elif self.split in ['dev', 'test']:
-        dial_input = f"{dialog} {prompt}"
+        dialog = f"{state_str}{history} {prompt}"
         max_length = self.max_len - 12
-      if args.use_pre_state:
-        dial_input = f"{state_string}{dial_input}"
-      dialogues.append(dial_input)
+      
+      dialogues.append(dialog)
       labels.append(target)
     inputs = self.tokenizer(dialogues, padding=True, max_length=max_length,
                               truncation=True, return_tensors='pt').to(device)
