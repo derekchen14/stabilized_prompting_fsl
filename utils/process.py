@@ -137,7 +137,7 @@ def build_sgd(args, data, ontology, split):
           target = {'domain': service, 'slot': slot, 'value': value.strip(),}
           use_target, history, target = select_utterances(args, text_so_far, target, split)
           if use_target:
-            example = {'utterances': history, 'target': target, 'prev_state': prev_state}
+            example = {'utterances':history, 'target':target, 'prev_state':prev_state, 'corpus':'sgd'}
             examples[convo_id][global_id].append(example)
           pval = '<none>' if value == '<remove>' else value
           prior_values[f'{service}-{slot}'] = pval
@@ -171,7 +171,7 @@ def build_mwoz(args, data, ontology, split):
           target = {'domain': domain, 'slot': slot, 'value': value}
           use_target, history, target = select_utterances(args, text_so_far, target, split)
           if use_target:
-            example = {'utterances': history, 'target': target, 'prev_state': prev_state}
+            example = {'utterances':history, 'target':target, 'prev_state':prev_state, 'corpus':'mwoz'}
             examples[convo_id][global_id].append(example)
           pval = '<none>' if value == '<remove>' else value
           prior_values[f'{domain}-{slot}'] = pval
@@ -370,22 +370,10 @@ def build_abcd(args, data, mappings, split):
           target = {'domain': domain, 'slot': slot, 'value': value}
           use_target, history, target = select_abcd_utterances(utt_so_far, target, prev_state, split)
           if use_target:
-            example = {'utterances': history, 'target': target, 'prev_state': prev_state}
+            example = {'utterances':history, 'target':target, 'prev_state':prev_state, 'corpus':'abcd'}
             examples[convo_id][global_id].append(example)
           if value != "<none>":
             prior_values[f'{domain}-{slot}'] = value
-        """
-        if global_id in ['5776_2', '8581_2', '10577_4']:
-          for example in examples[convo_id][global_id]:
-            print(example['utterances'])
-            print(example['target'])
-            real = []
-            for slot, value in example['prev_state'].items():
-              if value != '<none>':
-                real.append((slot, value))
-            print(real)
-          pdb.set_trace()
-        """ 
       else:
         text = turn['text']
         utt_so_far.append(f"<{speaker}> {text}")
@@ -422,7 +410,7 @@ def build_dstc(args, data, ontology, split):
           target = {'domain': 'restaurant', 'slot': slot, 'value': value}
           use_target, history, target = select_utterances(args, text_so_far, target, split)
           if use_target:
-            example = {'utterances': history, 'target': target, 'prev_state':prev_state}
+            example = {'utterances':history, 'target':target, 'prev_state':prev_state, 'corpus':'dstc'}
             examples[convo_id][global_id].append(example)
 
           if value != "<none>":
@@ -461,7 +449,7 @@ def build_gsim(args, data, ontology, split):
                    'value': value,}
         use_target, history, target = select_utterances(args, text_so_far, target, split)
         if use_target:
-          example = {'utterances': history, 'target': target, 'prev_state':prev_state}
+          example = {'utterances':history, 'target':target, 'prev_state':prev_state, 'corpus':'gsim'}
           examples[convo_id][global_id].append(example)
         if value != "<none>":
           prior_values[f'{domain}-{slot}'] = value
@@ -503,8 +491,7 @@ def build_tt(args, data, ontology, split):
           target = {'domain': 'movies', 'slot': slot, 'value': value,}
           use_target, history, target = select_utterances(args, text_so_far, target, split)
           if use_target:
-            # examples.append({'utterances': history, 'target': target, 'prev_state':prev_state})
-            example = {'utterances': history, 'target': target, 'prev_state':prev_state}
+            example = {'utterances':history, 'target':target, 'prev_state':prev_state, 'corpus':'tt'}
             examples[convo_id][global_id].append(example)
           prior_values[f'{domain}-{slot}'] = value
   return examples
