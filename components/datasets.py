@@ -41,7 +41,6 @@ class BaseDataset(Dataset):
       else:
         for global_id, turn in conversation.items():
           for example in turn:
-            example['global_id'] = global_id
             data.append(example)
     return data
 
@@ -234,9 +233,6 @@ class FineTuneDataset(BaseDataset):
     for example in examples:
       history = ' '.join(example['utterances'])
       target = example['target']
-      if self.split != 'test':
-        target['global_id'] = example['global_id']
-
       state_str = super().state_to_string(example['prev_state'])
       prompt = find_prompt(args.prompt_style, target['domain'], target['slot'])
 

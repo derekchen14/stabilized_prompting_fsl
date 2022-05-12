@@ -97,7 +97,6 @@ def batchify(args, turn, global_id, prior_pred_state):
   batch = []
   for example in turn:
     example['prev_state'] = prev_state
-    example['target']['global_id'] = global_id
     batch.append(example)
 
     if len(batch) == args.batch_size:

@@ -134,7 +134,7 @@ def build_sgd(args, data, ontology, split):
         targets = extract_label_sgd(turn['frames'], prior_values)
         prev_state = {k:v for k,v in prior_values.items()}
         for service, slot, value in targets:
-          target = {'domain': service, 'slot': slot, 'value': value.strip(),}
+          target = {'domain': service, 'slot': slot, 'value': value.strip(), 'global_id': global_id}
           use_target, history, target = select_utterances(args, text_so_far, target, split)
           if use_target:
             example = {'utterances':history, 'target':target, 'prev_state':prev_state, 'corpus':'sgd'}
@@ -168,7 +168,7 @@ def build_mwoz(args, data, ontology, split):
         targets = extract_label(turn['metadata'], prior_values)
         prev_state = {k:v for k,v in prior_values.items()}
         for domain, slot, value in targets: 
-          target = {'domain': domain, 'slot': slot, 'value': value}
+          target = {'domain': domain, 'slot': slot, 'value': value, 'global_id': global_id}
           use_target, history, target = select_utterances(args, text_so_far, target, split)
           if use_target:
             example = {'utterances':history, 'target':target, 'prev_state':prev_state, 'corpus':'mwoz'}
@@ -195,30 +195,30 @@ def build_mwoz22(args, data):
       speaker = speakers[turn['speaker'].lower()]
       utterance = f"{speaker} {text}"
       text_so_far.append(utterance)
-      
+      global_id = conversation['dialogue_id'] + '_' + turn['turn_id']
+
       if len(turn['frames']) > 0 and speaker == '<customer>':
         act_dom = [fr['service'] for fr in turn['frames'] if fr['state']['active_intent'] != "NONE"]
         
         for frame in turn['frames']:
-          current_domain = frame['service']
-          if current_domain in allowed_domains:
+          domain = frame['service']
+          if domain in allowed_domains:
 
             slotvals = frame['state']['slot_values']
             if len(slotvals) > 0:
               active_slots = [domain_slot.split('-')[1] for domain_slot, _ in slotvals.items()]
               
-              for slot in DOMAIN_SLOTS_MWOZ[current_domain]:
+              for slot in DOMAIN_SLOTS_MWOZ[domain]:
                 if slot in active_slots:
-                  domain_slot = '-'.join([current_domain, slot])
+                  domain_slot = '-'.join([domain, slot])
                   value = slotvals[domain_slot][0]
                 else:
                   value = 'none'
 
-                target = {'domain': current_domain, 'slot': slot, 'value': value,
-                        'global_id': conversation['dialogue_id'] + '_' + turn['turn_id'] }
+                target = {'domain': domain, 'slot': slot, 'value': value, 'global_id': global_id}
                 use_target, history, target = select_utterances(args, text_so_far, target, split)
                 if use_target:
-                  examples.append({'utterances': history, 'target': target})      
+                  examples.append({'utterances': history, 'target': target, 'corpus': 'mwoz'})      
   return examples
 
 def create_abcd_mappings(ontology):
@@ -367,7 +367,7 @@ def build_abcd(args, data, mappings, split):
           else:
             value = curr_value
 
-          target = {'domain': domain, 'slot': slot, 'value': value}
+          target = {'domain': domain, 'slot': slot, 'value': value, 'global_id': global_id}
           use_target, history, target = select_abcd_utterances(utt_so_far, target, prev_state, split)
           if use_target:
             example = {'utterances':history, 'target':target, 'prev_state':prev_state, 'corpus':'abcd'}
@@ -407,7 +407,7 @@ def build_dstc(args, data, ontology, split):
           if value in GENERAL_TYPO:
             value = GENERAL_TYPO[value]
 
-          target = {'domain': 'restaurant', 'slot': slot, 'value': value}
+          target = {'domain': 'restaurant', 'slot': slot, 'value': value, 'global_id': global_id}
           use_target, history, target = select_utterances(args, text_so_far, target, split)
           if use_target:
             example = {'utterances':history, 'target':target, 'prev_state':prev_state, 'corpus':'dstc'}
@@ -444,9 +444,7 @@ def build_gsim(args, data, ontology, split):
       current_slots_tmp = {slot["slot"]:slot["value"] for slot in turn["dialogue_state"]}
       for slot in ontology[domain]:
         value = current_slots_tmp.get(slot, "<none>")
-        target = {'domain': domain, 
-                    'slot': slot,
-                   'value': value,}
+        target = {'domain': domain, 'slot': slot, 'value': value, 'global_id': global_id}
         use_target, history, target = select_utterances(args, text_so_far, target, split)
         if use_target:
           example = {'utterances':history, 'target':target, 'prev_state':prev_state, 'corpus':'gsim'}
@@ -488,7 +486,7 @@ def build_tt(args, data, ontology, split):
 
         for slot in ontology["entities"]['movie']:
           value = labels.get(slot, "<none>")
-          target = {'domain': 'movies', 'slot': slot, 'value': value,}
+          target = {'domain': 'movies', 'slot': slot, 'value': value, 'global_id': global_id}
           use_target, history, target = select_utterances(args, text_so_far, target, split)
           if use_target:
             example = {'utterances':history, 'target':target, 'prev_state':prev_state, 'corpus':'tt'}
