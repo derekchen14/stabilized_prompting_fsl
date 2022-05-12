@@ -155,13 +155,14 @@ def build_mwoz(args, data, ontology, split):
 
     prior_values = {f'{domain}-{slot}': '<none>' for domain, slots in ontology.items() for slot in slots}
     for turn in conversation['log']:
-      turn_count += 1
       text = turn['text']
       speaker = speakers[speaker_id]
       utterance = f"{speaker} {text}"
-      global_id = f'{convo_id}_{turn_count}'
 
       if speaker == '<agent>':
+        turn_count += 1
+        global_id = f'{convo_id}_{turn_count}'
+        
         targets = extract_label(turn['metadata'], prior_values)
         prev_state = {k:v for k,v in prior_values.items()}
         for domain, slot, value in targets: 
@@ -244,10 +245,24 @@ def create_abcd_mappings(ontology):
               'valid': validity_map, 'valid_actions': has_slotvals }
   return mappings
 
+def select_abcd_utterances(utt_so_far, target, prev_state, split):
+  domain, slot, value = target['domain'], target['slot'], target['value']
+  domain, slot = standardize_format(domain, slot)
+  target['domain'], target['slot'] = domain, slot
+  utterances = utt_so_far[-3:]
+  previous = [val.lower() for slot, val in prev_state.items() if val != '<none>']
+  
+  use_target = False
+  if value.lower() in ''.join(utterances).lower() or value in previous:
+    use_target = True
+  if value == '<none>' and random.random() < 0.04:
+    use_target = True
+  return use_target, utterances, target
+
 def is_slotval(scenario, mappings, cand_slot, cand_val):
   if cand_slot in mappings['enumerable_values']:
-    cand_values = mappings['enumerable_values'][cand_slot]
-    if cand_val in cand_values:
+    cand_values = [cv.lower() for cv in mappings['enumerable_values'][cand_slot]]
+    if cand_val.lower() in cand_values:
       return True
   else:
     for category, scene in scenario.items():
@@ -289,7 +304,7 @@ def make_dialogue_state(action, values, scene, mappings):
   slot_state = {}
   if action in mappings['valid_actions']:    #  if this is a valid action that requires a slot-val
     for value in values:
-      cand_val = value.lower().strip() 
+      cand_val = value.strip() 
       candidate_slots = mappings['valid_actions'][action]
    
       if len(candidate_slots) == 1:
@@ -300,6 +315,8 @@ def make_dialogue_state(action, values, scene, mappings):
           scenario = {k: v for k, v in scene.items() if not k.endswith('flow')}
           if is_slotval(scenario, mappings, cand_slot, cand_val):
             slot = cand_slot.replace('_', ' ')
+            if slot == 'account id':
+              cand_val = cand_val.upper()
             slot_state[slot] = cand_val
             break
 
@@ -320,6 +337,7 @@ def build_abcd(args, data, mappings, split):
     convo_id = str(convo['convo_id'])
     examples[convo_id] = defaultdict(list)
     utt_so_far = []
+    action_count = 1
 
     prior_values = {f'{domain}-{slot}': '<none>' for domain, slots in ontology.items() for slot in slots}
     for turn in convo['conversation']:
@@ -327,25 +345,45 @@ def build_abcd(args, data, mappings, split):
       speaker = turn['speaker']
 
       if speaker == 'action':  # skip action turns
-        global_id = f"{convo_id}_{turn['turn_count']}"
+        global_id = f"{convo_id}_{action_count}"
         # each target is a 5-part list: intent, nextstep, action, value, utt_rank
         intent, nextstep, action, values, utt_rank = turn['targets']
         domain = subflow_to_flow[intent]  # intent is the subflow
 
         prev_state = {k:v for k,v in prior_values.items()}
-        slot_state = make_dialogue_state(domain, action, values, convo['scene'], mappings)
+        slot_state = make_dialogue_state(action, values, convo['scene'], mappings)
+
+        if len(slot_state) == 0:  # no valid slot-vals this turn 
+          continue
+        action_count += 1
 
         for slot in ontology[domain]:
-          value = slot_state.get(slot, '<none>')
-          target = {'domain': domain, 'slot': slot, 'value': value}
+          curr_value = slot_state.get(slot, '<none>')
+          prev_value = prev_state[f"{domain}-{slot}"]
+          if prev_value != '<none>' and curr_value == '<none>':
+            value = prev_value
+          else:
+            value = curr_value
 
-          use_target, history, target = select_utterances(args, utt_so_far, target, split)
+          target = {'domain': domain, 'slot': slot, 'value': value}
+          use_target, history, target = select_abcd_utterances(utt_so_far, target, prev_state, split)
           if use_target:
-            example = {'utterances': history, 'target': target, 'prev_state':prev_state}
+            example = {'utterances': history, 'target': target, 'prev_state': prev_state}
             examples[convo_id][global_id].append(example)
           if value != "<none>":
             prior_values[f'{domain}-{slot}'] = value
-
+        """
+        if global_id in ['5776_2', '8581_2', '10577_4']:
+          for example in examples[convo_id][global_id]:
+            print(example['utterances'])
+            print(example['target'])
+            real = []
+            for slot, value in example['prev_state'].items():
+              if value != '<none>':
+                real.append((slot, value))
+            print(real)
+          pdb.set_trace()
+        """ 
       else:
         text = turn['text']
         utt_so_far.append(f"<{speaker}> {text}")

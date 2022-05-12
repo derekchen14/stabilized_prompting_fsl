@@ -285,7 +285,7 @@ class FineTuneDataset(BaseDataset):
         dial_input = f"{dialog} {prompt}"
         max_length = self.max_len - 12
       if args.use_pre_state:
-        dial_input = f"{state_string} {dial_input}"
+        dial_input = f"{state_string}{dial_input}"
       dialogues.append(dial_input)
       labels.append(target)
     inputs = self.tokenizer(dialogues, padding=True, max_length=max_length,

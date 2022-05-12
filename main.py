@@ -71,6 +71,13 @@ def run_test(args, dataset, exp_logger, detective):
       batches = batchify(args, turn, global_id, prior_pred_state)
       for batch in batches:
         inputs, target_dict = dataset.collate(args, batch)
+        if args.verbose: 
+          tbd = tokenizer.batch_decode(inputs['input_ids'])
+          for input_str in tbd:
+            print(input_str.replace('<pad>', '|'))
+          pdb.set_trace()
+
+        review_inputs(args, target_dict, tokenizer)
         all_targets[global_id].extend(target_dict) #  all the target labels for this turn 
 
         if args.task == 'in_context':
@@ -79,9 +86,10 @@ def run_test(args, dataset, exp_logger, detective):
           maxl = inputs['input_ids'].shape[1] + 12
 
         with no_grad():
-          outputs = model.generate(**inputs, max_length=maxl, early_stopping=True)
+          outputs = model.generate(**inputs, max_length=maxl, early_stopping=True,
+                                          repetition_penalty=1.4, temperature=0.8)
         output_strings = tokenizer.batch_decode(outputs.detach(), skip_special_tokens=False)
-        
+       
         exp_logger.log_eval(args.qualify, output_strings, target_dict)
         for target, output_str in zip(target_dict, output_strings):
           state_key = f"{target['domain']}-{target['slot']}"
@@ -113,7 +121,8 @@ def run_eval(args, model, dataset, exp_logger, detective):
     with no_grad():
       # defaults to greedy sampling, for param details see https://huggingface.co/docs/transformers/
       #        v4.15.0/en/main_classes/model#transformers.generation_utils.GenerationMixin.generate 
-      outputs = model.generate(**inputs, max_length=maxl, early_stopping=True)
+      outputs = model.generate(**inputs, max_length=maxl, early_stopping=True,
+                                  repetition_penalty=1.4, temperature=0.8)
     output_strings = tokenizer.batch_decode(outputs.detach(), skip_special_tokens=False)
     all_outputs.extend(output_strings)
 

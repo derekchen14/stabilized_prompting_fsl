@@ -62,5 +62,35 @@
     "update-account": ["account_slotval", "street_address", "customer_name", "payment_method", "phone"],
     "membership": ["membership_level"],
     "notify-team": ["company_team"]
-  }
+  },
+  "enumerable_values": {
+			"account_slotval": ["add service", "extend subscription", "remove service", "renew subscription"],
+			"company_team": ["manager", "website team", "purchasing department"],
+			"customer_name": ["Alessandro Phoenix", "Joyce Wu", "Albert Sanders", "David Williams", "Sanya Afzal",
+				"Crystal Minh", "Chloe Zhang", "Rodriguez Domingo", "Joseph Banter", "Norman Bouchard"],
+			"details_slotval": ["troubleshoot"],
+			"membership_level": ["guest", "bronze", "silver", "gold"],
+			"change_option": ["change address", "change date", "change item", "change method",
+				"change order", "change price", "change time"],
+			"order_slotval": ["give credit", "tomorrow", "next week", "cancel shipment",
+				"by mail", "in store", "drop off center", "waive fee"],
+			"payment_method": ["credit card", "debit card", "paypal"],
+			"product": ["calvin klein boots", "calvin klein jacket", "calvin klein jeans", "calvin klein shirt",
+				"guess boots", "guess jacket", "guess jeans", "guess shirt",
+				"michael kors boots", "michael kors jacket", "michael kors jeans", "michael kors shirt",
+				"tommy hilfiger boots", "tommy hilfiger jacket", "tommy hilfiger jeans", "tommy hilfiger shirt"],
+			"refund_target": ["add value", "credit card", "gift card", "paper check"],
+			"reason_slotval": ["subscription refund", "previous purchase", "promotional package",
+				"email", "spouse", "news", "competitor", "yesterday", "9 days", "5 days"],
+			"security_answer": ["Alexander", "Martinez", "Livingston", "Singh", "Ahmed"],
+			"shipping_option": ["delivered", "in transit", "order received", "out for delivery"],
+			"single_item_query": ["boots_how_1", "boots_how_2", "boots_how_3", "boots_how_4", "boots_other_1", "boots_other_2", "boots_other_3", "boots_other_4",
+				"jacket_how_1", "jacket_how_2", "jacket_how_3", "jacket_how_4", "jacket_other_1", "jacket_other_2", "jacket_other_3", "jacket_other_4",
+				"jeans_how_1", "jeans_how_2", "jeans_how_3", "jeans_how_4", "jeans_other_1", "jeans_other_2", "jeans_other_3", "jeans_other_4",
+				"shirt_how_1", "shirt_how_2", "shirt_how_3", "shirt_how_4", "shirt_other_1", "shirt_other_2", "shirt_other_3", "shirt_other_4"],
+			"storewide_query": ["membership_1", "membership_2", "membership_3", "membership_4",
+				"policy_1", "policy_2", "policy_3", "policy_4",
+				"pricing_1", "pricing_2", "pricing_3", "pricing_4",
+				"timing_1", "timing_2", "timing_3", "timing_4"]
+	}
 }

@@ -126,10 +126,9 @@ class ExperienceLogger:
 
         global_id = target['global_id']
         if global_id not in self.past_history:
-          print(history)
+          print(history, global_id)
           self.past_history.append(global_id)
-        print('predicted:', prompt_and_pred.strip(), 'actual:', target['value'])
-
+        print('  predicted:', prompt_and_pred.strip(), ', actual:', target['value'])
     return is_done or is_checkpoint
 
   def train_stop(self, args, step, debug_break):

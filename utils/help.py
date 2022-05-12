@@ -86,22 +86,26 @@ def batchify(args, turn, global_id, prior_pred_state):
   replaced with the predicted prior_state from the previous turn """
   batches = []
 
-  convo_id, turn_count = global_id.split('_')
+  convo_id, turn_str = global_id.split('_')
+  turn_count = int(turn_str)
   if turn_count == 1:
     prev_state = {}
   else:
-    prev_gid = f"{convo_id}_{int(turn_count) - 1}"
+    prev_gid = f"{convo_id}_{turn_count - 1}"
     prev_state = prior_pred_state[prev_gid]
 
   batch = []
   for example in turn:
     example['prev_state'] = prev_state
+    example['target']['global_id'] = global_id
     batch.append(example)
 
     if len(batch) == args.batch_size:
       batches.append(batch)
       batch = []
-  batches.append(batch)
+  
+  if len(batch) > 0:
+    batches.append(batch)
   return batches
 
 def get_all_checkpoints(args, load_dir):
