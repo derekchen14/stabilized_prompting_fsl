@@ -99,6 +99,7 @@ re_punc = re.compile(r'[!"#$%&()*+,-./:;=?@\[\]\\^`{|}~_\']')
 def normalize_text(s):
   # Lower text and remove punctuation, articles and extra whitespace.
   if s in ['remove', '<remove>', 'none', '<none>']:
+    # if s in ['none', '<none>']:
     return '<none>'
   s = s.lower().strip()
   s = re_punc.sub(' ', s)
@@ -138,71 +139,49 @@ def sort_by_turn(conversations):
         turn_data = turns[turn_index]
         group_by_ds = {}
         for pred_val, domain, slot, target_val in turn_data:
-          group_by_ds[f'{domain}_{slot}'] = (pred_val, target_val)
+          clean_pred = GENERAL_TYPO[pred_val] if pred_val in GENERAL_TYPO else pred_val
+          clean_target = normalize_text(target_val)
+          group_by_ds[f'{domain}_{slot}'] = (clean_pred, clean_target)
         sorted_convos[convo_id].append(group_by_ds)  # in order due to looping by turn_count
   return sorted_convos
 
-def fill_carryover(conversations, use_history=False):
-  """ Automatically carry over slots when the current estimate is none"""
-  filled = defaultdict(list) 
-  carry_count = Counter()
 
+def fill_carryover(conversations):
+  """ Automatically carry over slots when the current estimate is none
+  Input: conversatations is a dictionary with keys of convo_id,
+    the values is a list, where each item in the list is a turn, each turn is also a dict
+    the turn dict has keys of domain_slot and values of turn_data
+    each turn data contains a tuple of (predicted_value and target_value)
+
+  This function serves two purposes:
+    1) clean up the predicted values based on general typos
+    2) clean up the target values based on normalizing text
+    3) perform slot carryover
+
+  Output: filled is also a dictionary with keys of convo_id,
+    the values is a list, where each item in the list is a combined dialog_state for one turn
+    each dialog_state has domain_slot keys for each valid dom-slot in that turn
+    the value for each item is a tuple of (history, predicted value and target_value)
+  """
+  filled = defaultdict(list) 
   for convo_id, turns in conversations.items():
 
     carry = {}
-    for turn_data in turns:
+    for turn in turns:
       dialog_state = {}
-      for domain_slot, turn_data in turn_data.items():
-        if use_history:
-          package, target_val = turn_data
-          history, pred_val = package
-        else:
-          pred_val, target_val = turn_data
-          history = ''
+      for domain_slot, turn_data in turn.items():
+        pred_val, target_val = turn_data
 
-        target_val = normalize_text(target_val)
-        if pred_val in GENERAL_TYPO:
-          pred_val = GENERAL_TYPO[pred_val]
-        """
         if pred_val == '<none>' and domain_slot in carry:
-          # pred_val = carry[domain_slot] # then carry over the old value
-          carry_count['actual'] += 1
-          if pred_val == target_val:
-            carry_count['correct'] += 1
-        if domain_slot in carry and carry[domain_slot] != '<none>':
-          carry_count['possible'] += 1
-        """
+          pred_val = carry[domain_slot] # then carry over the old value
         if pred_val == '<remove>':
           pred_val = '<none>'
 
-        dialog_state[domain_slot] = (history, pred_val, target_val)
+        dialog_state[domain_slot] = (pred_val, target_val)
         carry[domain_slot] = pred_val  # store it for the next round
       
       filled[convo_id].append(dialog_state)
-
-  """
-  possible carry - the previous dialogue state was not empty
-  actual carry - previous state has a value and the predicted value is <none>
-  correct carry - carried value matches the ground truth value; the important ratio is (correct / actual)
-  print(carry_count)
-  """
   return filled
-
-def parse_history(args, generated_string):
-  """parses the output for evaluation , only works with GPT
-  TODO: cannot run, needs to be fixed
-  """
-  history, pred_string = generated_string.split('<label>')
-  pred_string.replace('<pad>', '').strip()
-  
-  eos_index = len(pred_string)
-  for tok in ['<pad>', '<sep>', '<|endoftext|>']:
-    cand_index = pred_string.find(tok)  # returns -1 if not found
-    if 0 < cand_index and cand_index < eos_index:
-      eos_index = cand_index
-  pred_string = pred_string[:eos_index]
-  parsed_str = normalize_text(pred_string)
-  return history[10:], parsed_str
 
 def calculate_jga(results, final_preds, verbose):
   """ Return a results dictionary that contains the JGA and accuracy """
@@ -215,10 +194,11 @@ def calculate_jga(results, final_preds, verbose):
     turn_correct = True
     for dialog_state in filled_turns:
       for domain_slot, turn_data in dialog_state.items():
-        _, pred_val, target_val = turn_data
+        pred_val, target_val = turn_data
+        
         if target_val != '<none>':
-          # if pred_val == target_val:
-          if pred_val.startswith(target_val):
+          # if pred_val.startswith(target_val):
+          if pred_val == target_val:
             correct += 1
           else:
             turn_correct = False
@@ -273,7 +253,7 @@ def eval_quantify(args, predictions, targets, exp_logger, tokenizer):
     # the left out query set is MWOZ or SGD
     grouped_preds = group_by_convo(args, predictions, targets)
     sorted_preds = sort_by_turn(grouped_preds)
-    final_preds = fill_carryover(sorted_preds)
+    final_preds = sorted_preds  # fill_carryover(sorted_preds)
     results = calculate_jga(results, final_preds, args.verbose)
 
   elif args.style == 'domain':
@@ -282,42 +262,13 @@ def eval_quantify(args, predictions, targets, exp_logger, tokenizer):
   exp_logger.log_info(results)
   return results
 
-def eval_qualify(args, predictions, targets, exp_logger):
-  grouped_preds = group_by_convo(args, predictions, targets, use_history=True)
-  sorted_preds = sort_by_turn(grouped_preds)
-  final_preds = fill_carryover(sorted_preds, use_history=True)
-
-  errors = Counter()
-  for convo_id, filled_turns in final_preds.items():
-    for dialog_state in filled_turns:
-      for domain_slot, turn_data in dialog_state.items():
-        history, pred_val, target_val = turn_data
-        if target_val != '<none>' and pred_val != target_val:
-
-          if random.random() < 0.005 and args.verbose:
-            print(history)
-            print(f'{domain_slot}, pred: {pred_val}, actual: {target_val}')
-          val_key = f"{domain_slot}|{pred_val}|{target_val}"
-          errors[val_key] += 1
-
-  for error, count in errors.most_common(10):
-    print(error, count)
-
-  if args.do_save:
-    save_filepath = os.path.join(exp_logger.save_path, f'{args.prompt_style}_lr{args.learning_rate}_clen{args.context_length}_qualify.txt')
-    with open(save_filepath, 'w') as file:
-      for error, count in errors.items():
-        file.writeline((error, count))
-    print("results written to", save_filepath)
-  return errors
-
 def dst_breakdown(predictions, labels, results):
   label_keys = ['intents', 'requests', 'slots', 'values']
 
   matches = defaultdict(float)
   poss_match = defaultdict(float)
   founds = defaultdict(float)
-  poss_found = defaultdict(float)
+  possnormalize_text(_found = defaultdict(float))
 
   for prediction, label_dict in zip(predictions, labels):
     parsed = parse_pred_output(prediction, label_keys)
