@@ -304,7 +304,7 @@ def eval_qualify(args, predictions, targets, exp_logger):
     print(error, count)
 
   if args.do_save:
-    save_filepath = os.path.join(exp_logger.save_path, 'qualify.txt')
+    save_filepath = os.path.join(exp_logger.save_path, f'{args.prompt_style}_lr{args.learning_rate}_clen{args.context_length}_qualify.txt')
     with open(save_filepath, 'w') as file:
       for error, count in errors.items():
         file.writeline((error, count))
