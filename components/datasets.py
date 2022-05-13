@@ -117,8 +117,8 @@ class BaseDataset(Dataset):
 class InContextDataset(BaseDataset):
 
   def remove_special(self, text):
-    text = text.replace('<agent>', 'agent:')
-    text = text.replace('<customer>', 'customer:')
+    text = text.replace('<agent>', ' agent:')
+    text = text.replace('<customer>', ' customer:')
     text = text.replace('<none>', 'none')
     text = text.replace('<label>', 'answer:')
     text = text.replace('<sep>', ';')

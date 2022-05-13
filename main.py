@@ -90,8 +90,8 @@ def run_test(args, dataset, exp_logger, detective):
                                           repetition_penalty=1.4, temperature=0.8)
         output_strings = tokenizer.batch_decode(outputs.detach(), skip_special_tokens=False)
        
-        exp_logger.eval_step -= 1  # to cancel out the log_eval
         exp_logger.log_eval(args.qualify, output_strings, target_dict)
+        exp_logger.eval_step -= 1  # to cancel out the log_eval
         for target, output_str in zip(target_dict, output_strings):
           state_key = f"{target['domain']}-{target['slot']}"
           pred_value = parse_output(args, output_str)

@@ -101,7 +101,8 @@ def normalize_text(s):
   s = s.lower().strip()
   s = re_punc.sub(' ', s)
   s = re_art.sub(' ', s)
-  s = ' '.join(s.split())
+  parts = s.split()
+  s = ' '.join(parts[:6])
   return s
 
 def group_by_convo(args, predictions, targets, use_history=False):
