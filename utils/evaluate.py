@@ -43,14 +43,14 @@ def parse_in_context(generated_string):
     current_example = parts[-2]
 
   try:
-    prompt_with_pred = current_example.split(';')[1]
+    prompt_with_pred = current_example.rsplit(';')[1]
   except(IndexError):
     prompt_with_pred = current_example
 
   try:
     pred_string = prompt_with_pred.split(' is ')[1]
   except(IndexError):
-    pred_string = prompt_with_pred.split()[-1]
+    pred_string = prompt_with_pred.rsplit()[-1]
   
   parsed_str = normalize_text(pred_string)
   return parsed_str
