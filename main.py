@@ -87,7 +87,7 @@ def run_test(args, dataset, exp_logger, detective):
 
         with no_grad():
           outputs = model.generate(**inputs, max_length=maxl, early_stopping=True,
-                                          repetition_penalty=1.4, temperature=0.8)
+                              repetition_penalty=args.threshold, temperature=args.temperature)
         output_strings = tokenizer.batch_decode(outputs.detach(), skip_special_tokens=False)
        
         exp_logger.log_eval(args.qualify, output_strings, target_dict)
@@ -124,7 +124,7 @@ def run_eval(args, model, dataset, exp_logger, detective):
       # defaults to greedy sampling, for param details see https://huggingface.co/docs/transformers/
       #        v4.15.0/en/main_classes/model#transformers.generation_utils.GenerationMixin.generate 
       outputs = model.generate(**inputs, max_length=maxl, early_stopping=True,
-                                  repetition_penalty=1.4, temperature=0.8)
+                          repetition_penalty=args.threshold, temperature=args.temperature)
     output_strings = tokenizer.batch_decode(outputs.detach(), skip_special_tokens=False)
     all_outputs.extend(output_strings)
 
