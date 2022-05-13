@@ -189,8 +189,8 @@ class ExperienceLogger:
         if regex_found:
           accuracy = int(regex_found[0])
           # prune only ckpt under the same arguments
-          # if model_match(fname, self.args):
-          acc_and_folders.append((accuracy, fname))
+          if model_match(fname, self.args):
+            acc_and_folders.append((accuracy, fname))
 
       # scores_and_files.sort(key=lambda tup: tup[0], reverse=True)  # largest to smallest
       acc_and_folders.sort(key=lambda tup: tup[0], reverse=True)
