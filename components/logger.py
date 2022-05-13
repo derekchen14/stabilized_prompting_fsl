@@ -116,7 +116,7 @@ class ExperienceLogger:
     self.eval_step += 1
     self.past_history = []
 
-    is_done = self.eval_step == self.final_step
+    is_done = self.eval_step >= self.final_step
     is_checkpoint = self.eval_step % self.interval_checkpoint == 0 
 
     self.previous_outputs.append(output_strings)

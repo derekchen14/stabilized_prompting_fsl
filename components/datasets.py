@@ -72,7 +72,7 @@ class BaseDataset(Dataset):
       exemplar = self.detective.search(example, use_oracle)
       ctx_domain, ctx_slot, ctx_label = exemplar['dsv']
       ctx_prompt = find_prompt(args.prompt_style, ctx_domain, ctx_slot)
-      state_str = super().state_to_string(exemplar['prev_state'])
+      state_str = self.__class__.state_to_string(exemplar['prev_state'])
       context = f"{state_str}{exemplar['history']} {ctx_prompt} {ctx_label}{eos}"
       contexts.append(context)
 
@@ -117,8 +117,8 @@ class BaseDataset(Dataset):
 class InContextDataset(BaseDataset):
 
   def remove_special(self, text):
-    text = text.replace('<agent>', 'agent:')
-    text = text.replace('<customer>', 'customer:')
+    text = text.replace('<agent>', ' agent:')
+    text = text.replace('<customer>', ' customer:')
     text = text.replace('<none>', 'none')
     text = text.replace('<label>', 'answer:')
     text = text.replace('<sep>', ';')
