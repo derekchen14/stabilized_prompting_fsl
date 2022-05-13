@@ -107,16 +107,32 @@ class ExperienceLogger:
       self.interval_checkpoint = math.ceil(num_batches / 10)
     self.final_step = num_batches
 
+    # to allow for more variety in qualitative review
+    self.previous_outputs = []
+    self.previous_targets = []
+
   def log_eval(self, qualify, output_strings, target_dicts):
     self.eval_loss = 0  # no loss, since inference only
     self.eval_step += 1
     self.past_history = []
 
-    is_done = self.eval_step == self.final_step
+    is_done = self.eval_step >= self.final_step
     is_checkpoint = self.eval_step % self.interval_checkpoint == 0 
 
+    self.previous_outputs.append(output_strings)
+    self.previous_targets.append(target_dicts)
+
+    if len(self.previous_targets) > 5:
+      position = random.randint(0,5)
+      self.previous_targets.pop(position)
+      self.previous_outputs.pop(position)
+
     if qualify and is_checkpoint:
-      for out_str, target in zip(output_strings, target_dicts):
+      position = random.randint(0,len(self.previous_targets) - 1)
+      selected_outputs = self.previous_outputs.pop(position)
+      selected_targets = self.previous_targets.pop(position)
+
+      for out_str, target in zip(selected_outputs, selected_targets):
         replaced = out_str.replace("<pad>","").replace("<|endoftext|>", "").replace("</s>", "")
         try:
           history, prompt_and_pred = replaced.split('<sep>')
