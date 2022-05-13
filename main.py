@@ -71,7 +71,7 @@ def run_test(args, dataset, exp_logger, detective):
       batches = batchify(args, turn, global_id, prior_pred_state)
       for batch in batches:
         inputs, target_dict = dataset.collate(args, batch)
-        if args.verbose: 
+        if args.verbose and args.debug: 
           tbd = tokenizer.batch_decode(inputs['input_ids'])
           for input_str in tbd:
             print(input_str.replace('<pad>', '|'))
@@ -86,8 +86,9 @@ def run_test(args, dataset, exp_logger, detective):
           maxl = inputs['input_ids'].shape[1] + 12
 
         with no_grad():
-          outputs = model.generate(**inputs, max_length=maxl, early_stopping=True,
-                              repetition_penalty=args.threshold, temperature=args.temperature)
+          outputs = model.generate(**inputs, max_length=maxl, repetition_penalty=args.threshold,
+                                              early_stopping=True, temperature=args.temperature, 
+                                              forced_eos_token_id=tokenizer.eos_token_id)
         output_strings = tokenizer.batch_decode(outputs.detach(), skip_special_tokens=False)
        
         exp_logger.log_eval(args.qualify, output_strings, target_dict)

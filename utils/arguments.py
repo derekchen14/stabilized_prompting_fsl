@@ -28,9 +28,9 @@ def solicit_params():
     parser.add_argument("--num-shots", default="full", type=str,
                 choices=["point", "one", "five", "ten", "full"], help="point allows only 0.1 of data, \
                 while full is used with all training data, 1/5/10 is percent of training data")
-    parser.add_argument("--threshold", default=1.2, type=float,
+    parser.add_argument("--threshold", default=1.1, type=float,
                 help="Used as the repetition penalty during inference of generation")
-    parser.add_argument("--temperature", default=0.8, type=float,
+    parser.add_argument("--temperature", default=1.0, type=float,
                 help="Temperature for increasing diversity when decoding, mainly for paraphrase")
     parser.add_argument("--style", default='dataset', type=str, choices=['domain', 'dataset'],
                 help="Subset of data held out for testing. For example, if domain is the chosen style, \

@@ -98,6 +98,8 @@ re_punc = re.compile(r'[!"#$%&()*+,-./:;=?@\[\]\\^`{|}~_\']')
 
 def normalize_text(s):
   # Lower text and remove punctuation, articles and extra whitespace.
+  if s in ['remove', '<remove>', 'none', '<none>']:
+    return '<none>'
   s = s.lower().strip()
   s = re_punc.sub(' ', s)
   s = re_art.sub(' ', s)
@@ -256,7 +258,7 @@ def test_quantify(args, predictions, targets, exp_logger, tokenizer):
 
     dialog_state = {}
     for domain_slot, pred_val in preds.items():
-      target_val = labels[domain_slot]
+      target_val = normalize_text(labels[domain_slot])
       dialog_state[domain_slot] = ('', pred_val, target_val)
     final_preds[convo_id].append(dialog_state)
 
