@@ -28,7 +28,7 @@ def check_cache(args):
     print(f'Creating new dataset for {args.dataset.upper()} from scratch ...')
     return cache_path, False
 
-def extract_label(targets, prior_values):
+def extract_label(targets, prior_values, history):
   # returns a list of (domain, slot, value) tuples when the domain is an active 
   swaps = {'not mentioned': '<none>', '': '<none>'}
   valid_domains = ['train', 'taxi', 'restaurant', 'hotel', 'attraction']
@@ -46,22 +46,30 @@ def extract_label(targets, prior_values):
 
     if active_domain:
       for slot, value in domain_data['book'].items():
+        ds = f'{domain}-{slot.lower()}'
+
         if not isinstance(value, list) and slot != 'ticket':
           if value in swaps:
             value = swaps[value]
           if value in GENERAL_TYPO:
             value = GENERAL_TYPO[value]
-          if value == '<none>' and prior_values[f'{domain}-{slot.lower()}'] != '<none>':
+          if value == '<none>' and prior_values[ds] != '<none>':
             value = '<remove>'
+          if value == prior_values[ds] and value not in history:
+            value == '<none>'
           labels.append((domain, slot.lower(), value))
 
       for slot, value in domain_data['semi'].items():
+        ds = f'{domain}-{slot.lower()}'
+
         if value in swaps:
           value = swaps[value]
         if value in GENERAL_TYPO:
           value = GENERAL_TYPO[value]
-        if value == '<none>' and prior_values[f'{domain}-{slot.lower()}'] != '<none>':
+        if value == '<none>' and prior_values[ds] != '<none>':
           value = '<remove>'
+        if value == prior_values[ds] and value not in history:
+          value == '<none>'
         labels.append((domain, slot.lower(), value))
 
   return labels
@@ -156,16 +164,19 @@ def build_mwoz(args, data, ontology, split):
     turn_count = 0
 
     prior_values = {f'{domain}-{slot}': '<none>' for domain, slots in ontology.items() for slot in slots}
+    recent_history = ''
+
     for turn in conversation['log']:
       text = turn['text']
       speaker = speakers[speaker_id]
       utterance = f"{speaker} {text}"
+      recent_history += text
 
       if speaker == '<agent>':
         turn_count += 1
         global_id = f'{convo_id}_{turn_count}'
         
-        targets = extract_label(turn['metadata'], prior_values)
+        targets = extract_label(turn['metadata'], prior_values, recent_history)
         prev_state = {k:v for k,v in prior_values.items()}
         for domain, slot, value in targets: 
           target = {'domain': domain, 'slot': slot, 'value': value, 'global_id': global_id}
