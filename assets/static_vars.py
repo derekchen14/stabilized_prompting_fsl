@@ -64,7 +64,7 @@ GENERAL_TYPO = {
     "4 star":"4", "4 stars":"4", "0 star rarting":"<none>", "3 .":"3",
     # others
     "n":"no", "does not":"no", "does not care":"any", "dontcare": "any",
-    "not men":"<none>", "not":"<none>", "art":"<none>", "not mendtioned":"<none>", "fun":"<none>",
+    "not men":"none", "not":"none", "art":"none", "not mendtioned":"none", "fun":"none",
 }
 
 SLOT_MAPPING = {

@@ -98,9 +98,8 @@ re_punc = re.compile(r'[!"#$%&()*+,-./:;=?@\[\]\\^`{|}~_\']')
 
 def normalize_text(s):
   # Lower text and remove punctuation, articles and extra whitespace.
-  if s in ['remove', '<remove>', 'none', '<none>']:
-    # if s in ['none', '<none>']:
-    return '<none>'
+  if s in ['remove', '<remove>']:
+    return 'none'
   s = s.lower().strip()
   s = re_punc.sub(' ', s)
   s = re_art.sub(' ', s)
@@ -144,44 +143,6 @@ def sort_by_turn(conversations):
           group_by_ds[f'{domain}_{slot}'] = (clean_pred, clean_target)
         sorted_convos[convo_id].append(group_by_ds)  # in order due to looping by turn_count
   return sorted_convos
-
-
-def fill_carryover(conversations):
-  """ Automatically carry over slots when the current estimate is none
-  Input: conversatations is a dictionary with keys of convo_id,
-    the values is a list, where each item in the list is a turn, each turn is also a dict
-    the turn dict has keys of domain_slot and values of turn_data
-    each turn data contains a tuple of (predicted_value and target_value)
-
-  This function serves two purposes:
-    1) clean up the predicted values based on general typos
-    2) clean up the target values based on normalizing text
-    3) perform slot carryover
-
-  Output: filled is also a dictionary with keys of convo_id,
-    the values is a list, where each item in the list is a combined dialog_state for one turn
-    each dialog_state has domain_slot keys for each valid dom-slot in that turn
-    the value for each item is a tuple of (history, predicted value and target_value)
-  """
-  filled = defaultdict(list) 
-  for convo_id, turns in conversations.items():
-
-    carry = {}
-    for turn in turns:
-      dialog_state = {}
-      for domain_slot, turn_data in turn.items():
-        pred_val, target_val = turn_data
-
-        if pred_val == '<none>' and domain_slot in carry:
-          pred_val = carry[domain_slot] # then carry over the old value
-        if pred_val == '<remove>':
-          pred_val = '<none>'
-
-        dialog_state[domain_slot] = (pred_val, target_val)
-        carry[domain_slot] = pred_val  # store it for the next round
-      
-      filled[convo_id].append(dialog_state)
-  return filled
 
 def calculate_jga(results, final_preds, verbose):
   """ Return a results dictionary that contains the JGA and accuracy """
@@ -239,7 +200,7 @@ def test_quantify(args, predictions, targets, exp_logger, tokenizer):
     dialog_state = {}
     for domain_slot, pred_val in preds.items():
       target_val = normalize_text(labels[domain_slot])
-      dialog_state[domain_slot] = ('', pred_val, target_val)
+      dialog_state[domain_slot] = (pred_val, target_val)
     final_preds[convo_id].append(dialog_state)
 
   results = calculate_jga(results, final_preds, args.verbose)
@@ -252,8 +213,7 @@ def eval_quantify(args, predictions, targets, exp_logger, tokenizer):
   if args.style == 'dataset':
     # the left out query set is MWOZ or SGD
     grouped_preds = group_by_convo(args, predictions, targets)
-    sorted_preds = sort_by_turn(grouped_preds)
-    final_preds = sorted_preds  # fill_carryover(sorted_preds)
+    final_preds = sort_by_turn(grouped_preds)
     results = calculate_jga(results, final_preds, args.verbose)
 
   elif args.style == 'domain':
