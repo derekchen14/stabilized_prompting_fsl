@@ -30,7 +30,7 @@ def check_cache(args):
 
 def extract_label(targets, prior_values):
   # returns a list of (domain, slot, value) tuples when the domain is an active 
-  swaps = {'not mentioned': 'none', '': 'none'}
+  swaps = {'not mentioned': '<none>', '': '<none>'}
   valid_domains = ['train', 'taxi', 'restaurant', 'hotel', 'attraction']
   labels = []
 
@@ -46,29 +46,24 @@ def extract_label(targets, prior_values):
 
     if active_domain:
       for slot, value in domain_data['book'].items():
-        ds = f'{domain}-{slot.lower()}'
-
         if not isinstance(value, list) and slot != 'ticket':
           if value in swaps:
             value = swaps[value]
           if value in GENERAL_TYPO:
             value = GENERAL_TYPO[value]
-          if value == 'none' and prior_values[ds] != 'none':
+          if value == '<none>' and prior_values[f'{domain}-{slot.lower()}'] != '<none>':
             value = '<remove>'
           labels.append((domain, slot.lower(), value))
 
       for slot, value in domain_data['semi'].items():
-        ds = f'{domain}-{slot.lower()}'
-
         if value in swaps:
           value = swaps[value]
         if value in GENERAL_TYPO:
           value = GENERAL_TYPO[value]
-        if value == 'none' and prior_values[ds] != 'none':
+        if value == '<none>' and prior_values[f'{domain}-{slot.lower()}'] != '<none>':
           value = '<remove>'
         # if value == prior_values[ds] and value not in history:
         #   value = '<none>'
- 
         labels.append((domain, slot.lower(), value))
   return labels
 
@@ -170,7 +165,7 @@ def build_mwoz(args, data, ontology, split):
       if speaker == '<agent>':
         turn_count += 1
         global_id = f'{convo_id}_{turn_count}'
-        targets = extract_label(turn['metadata'], prior_values, recent_history)
+        targets = extract_label(turn['metadata'], prior_values)
 
         prev_state = {k:v for k,v in prior_values.items()}
         for domain, slot, value in targets: 
