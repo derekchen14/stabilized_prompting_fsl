@@ -69,7 +69,7 @@ class BaseDataset(Dataset):
     self.detective.reset()
     contexts = []
     while current_size < max_allowed:
-      exemplar = self.detective.search(example, args.task=='in_context')
+      exemplar = self.detective.search(example)
       ctx_domain, ctx_slot, ctx_label = exemplar['dsv']
       ctx_prompt = find_prompt(args.prompt_style, ctx_domain, ctx_slot)
       state_str = self.__class__.state_to_string(exemplar['prev_state'])
@@ -79,13 +79,14 @@ class BaseDataset(Dataset):
       tokenized_context = self.tokenizer(context)
       current_size += len(tokenized_context['input_ids'])
 
-    self.detective.report(args.verbose)
+    self.detective.num_exemplars.append(len(contexts))
     additional_context = ' '.join(contexts)
     return additional_context
 
   def add_detective(self, detective):
     if self.detective is None:
       self.detective = detective
+    print(f"Using {detective.search_method} distance to search ...")
 
   @staticmethod
   def state_to_string(prev_state):
@@ -194,13 +195,13 @@ class MetaLearnDataset(BaseDataset):
       contexts.append(additional_context)
       dialogues.append(dialog)
       
-      inputs = self.tokenizer(contexts, dialogues, padding=True, max_length=max_len,
+    self.detective.report(args.verbose)
+    inputs = self.tokenizer(contexts, dialogues, padding=True, max_length=max_len,
                                 truncation='only_first', return_tensors='pt').to(device)
-      if self.split == 'train':
-        labels = inputs['input_ids']
-      else:
-        labels.append(target)
-    
+    if self.split == 'train':
+      labels = inputs['input_ids']
+    else:
+      labels.append(target)
     return inputs, labels
 
 class FineTuneDataset(BaseDataset):

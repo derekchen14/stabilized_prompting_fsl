@@ -16,7 +16,11 @@ class ExemplarDetective(object):
     self.left_out = args.left_out
     self.num_shots = args.num_shots
     self.candidates = defaultdict(list)
-    
+
+    self.regular_loops = 0
+    self.missed_loops = 0
+    self.num_exemplars = []
+
     if args.task == 'in_context':
       corpus = args.dataset
       self.check_embed_cache(args, data, corpus, 'mpnet')  # roberta
@@ -72,30 +76,30 @@ class ExemplarDetective(object):
     samples = np.random.choice(data, size=num_samples, replace=False)
     return samples
 
-  def search(self, example, use_oracle):
+  def search(self, example):
     """ returns the closest exemplars from the candidate pool not already chosen"""
     corpus = example['corpus']
     if self.search_method == 'oracle' or use_oracle:
-      print("Using oracle search ...")
       return self.oracle_search(example, corpus)
     else:
-      print(f"Using {self.search_method} distance to search ...")
       return self.distance_search(example, corpus)
 
   def reset(self):
     self.selected_gids = []
     self.distances = []
     self.sorted_exemplars = []
-    self.missed_loops = 0
-    self.regular_loops = 0
 
-  def report(self, verbose):
-    # total loops should equal number of exemplars chosen
-    regular = self.regular_loops
-    total_loops = self.missed_loops + self.regular_loops
-    rate = round((regular / total_loops) * 100, 2)
-    if verbose:
-      print(f"Loop success rate is {regular} out of {total_loops} exemplars ({rate}%)")
+  def report(self, verbose, task):
+    if task == 'in_context':
+      avg_context_size = round(np.mean(self.num_exemplars), 2)
+      print(f"Found an average of {avg_context_size} exemplars for each input example")
+
+      if verbose:
+        # total loops should equal number of exemplars chosen
+        regular = self.regular_loops
+        total_loops = self.missed_loops + self.regular_loops
+        rate = round((regular / total_loops) * 100, 2)
+        print(f"Loop success rate is {regular} out of {total_loops} exemplars ({rate}%)")
 
   def oracle_search(self, example, corpus):
     target = example['target']

@@ -56,7 +56,7 @@ def run_test(args, dataset, exp_logger, detective):
   ontology, tokenizer = exp_logger.ontology, dataset.tokenizer
   dataset.add_detective(detective)
   exp_logger.start_eval(len(dataset), args.eval_interval)
-
+  
   if args.task in ['meta_learn', 'fine_tune']:
     model = load_best_model(args, exp_logger, tokenizer)
   else:
@@ -76,7 +76,6 @@ def run_test(args, dataset, exp_logger, detective):
 
         if args.task == 'in_context':
           maxl = 2048 if args.size == 'large' else 1024
-          args.quantify = True
         else:
           maxl = inputs['input_ids'].shape[1] + 12
 
@@ -86,21 +85,17 @@ def run_test(args, dataset, exp_logger, detective):
                                               forced_eos_token_id=tokenizer.eos_token_id)
         output_strings = tokenizer.batch_decode(outputs.detach(), skip_special_tokens=False)
        
-        if exp_logger.log_eval(args.qualify, output_strings, target_dict):
-          test_quantify(args, prior_pred_state, all_targets, exp_logger, tokenizer)
-        exp_logger.eval_step -= 1  # to cancel out the log_eval
         for target, output_str in zip(target_dict, output_strings):
           state_key = f"{target['domain']}-{target['slot']}"
           pred_value = parse_output(args, output_str)
           prior_pred_state[global_id][state_key] = pred_value
-        if args.debug and exp_logger.eval_step >= (debug_break * 200): break
-    exp_logger.eval_step += 1
-
-  if args.quantify:
-    results = test_quantify(args, prior_pred_state, all_targets, exp_logger, tokenizer)
+    if exp_logger.log_eval(args.qualify, output_strings, target_dict):
+      results = test_quantify(args, prior_pred_state, all_targets, exp_logger, tokenizer)
+      dataset.detective.report(args.verbose, args.task)
+  
   if args.do_save:
     output_name = f'{args.prompt_style}_lr{args.learning_rate}_clen{args.context_length}.json'
-    json.dump(outputs, open(os.path.join(save_path, output_name), 'w'), indent=2)
+    json.dump(results, open(os.path.join(save_path, output_name), 'w'), indent=2)
 
 def run_eval(args, model, dataset, exp_logger, detective):
   tokenizer = dataset.tokenizer
