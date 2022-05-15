@@ -32,6 +32,7 @@ def statement_style(domain, slot):
   try:
     desc = statement_descriptions[domain][slot]
   except(KeyError):
+    print(f"Expected domain {domain}, slot {slot}")
     pdb.set_trace()
   prompt = f"<sep> {desc} is"
   return prompt
@@ -57,23 +58,23 @@ schema_slots = {
     "day": "what day of the week to book the table at the restaurant",
     "food": "food type for the restaurant",
     "people": "number of people booking the restaurant",
-    "pricerange": "price budget for the restaurant",
+    "price range": "price budget for the restaurant",
     "time": "time of the restaurant booking",
     "name": "name of the restaurant"},
   "taxi": {
-    "leaveat": "what time you want the taxi to leave your departure location by",
+    "leave at": "what time you want the taxi to leave your departure location by",
     "destination": "what place do you want the taxi to go",
     "departure": "what place do you want to meet the taxi",
-    "arriveby": "when you want the taxi to drop you off at your destination" }, 
+    "arrive by": "when you want the taxi to drop you off at your destination" }, 
   "train": {
     "destination": "destination of the train",
     "day": "what day you want to take the train",
     "departure": "departure location of the train",
-    "arriveby": "what time you want the train to arrive at your destination station by",
+    "arrive by": "what time you want the train to arrive at your destination station by",
     "people": "number of people booking for train",
-    "leaveat": "when you want to arrive at your destination by train"},
+    "leave at": "when you want to arrive at your destination by train"},
   "hotel": {
-    "pricerange": "preferred cost of the hotel",
+    "price range": "preferred cost of the hotel",
     "type": "type of hotel building",
     "parking": "parking facility at the hotel",
     "stay": "length of stay at the hotel",
@@ -95,21 +96,21 @@ statement_descriptions = {
     "day": "The day for the restaurant booking",
     "food": "The restaurant cuisine",
     "people": "The number of people for the restaurant",
-    "pricerange": "The price range of the restaurant",
+    "price range": "The price range of the restaurant",
     "time": "The time of the restaurant booking",
     "name": "The name of the restaurant"},
   "taxi": {
     "arriveby": "The arrival time of the taxi",
     "destination": "The destination location of the taxi",
     "departure": "The departure location of the taxi",
-    "leaveat": "The leave at time of the taxi"}, 
+    "leave at": "The leave at time of the taxi"}, 
   "train": {
-    "arriveby": "The arrival time of the train",
+    "arrive by": "The arrival time of the train",
     "people": "The number of people for the train",
     "day": "The day for the train booking",
     "destination": "The destination of the train",
     "departure": "The departure location of the train",
-    "leaveat": "The leave at time of the train"},
+    "leave at": "The leave at time of the train"},
   "hotel": {
     "area": "The area of the hotel",
     "day": "The day for the hotel booking",
@@ -118,7 +119,7 @@ statement_descriptions = {
     "internet": "The internet at the hotel",
     "name": "The name of hotel",
     "parking": "The parking at the hotel",
-    "pricerange": "The price range of the hotel",
+    "price range": "The price range of the hotel",
     "stars": "The number of stars for the hotel",
     "type": "The type of hotel"},
   "attraction": {
@@ -173,19 +174,19 @@ question_descriptions = {
     "time": "When is time of the restaurant booking?",
     "food": "What type of food is the user interested in?",
     "name": "What is the name of the restaurant?",
-    "pricerange": "What is the price range of the restaurant?"},
+    "price range": "What is the price range of the restaurant?"},
   "taxi": {
-    "arriveby": "When is the arrive by time of the taxi?",
+    "arrive by": "When is the arrive by time of the taxi?",
     "destination": "Where is the destination of the taxi?",
     "departure": "Where is the departure of the taxi?",
-    "leaveat": "When is the leave at time of the taxi?"}, 
+    "leave at": "When is the leave at time of the taxi?"}, 
   "train": {
-    "arriveby": "When is the arrive by time of the train?",
+    "arrive by": "When is the arrive by time of the train?",
     "people": "How many people is the train booking for?",
     "day": "What day is the train booking for?",
     "destination": "Where is the destination of the train?",
     "departure": "Where is the departure of the train?",
-    "leaveat": "When is the leave at time of the train?"},
+    "leave at": "When is the leave at time of the train?"},
   "hotel": {
     "area": "Which area of the hotel is the user interested in?",
     "day": "What is the start day of the hotel?",
@@ -194,7 +195,7 @@ question_descriptions = {
     "internet": "Does the hotel offer internet?",
     "name": "What is the name of the hotel?",
     "parking": "Does the hotel offer parking?",
-    "pricerange": "What is the price range of the hotel?",
+    "price range": "What is the price range of the hotel?",
     "stars": "How many stars does the hotel have?",
     "type": "What type of hotel is the user interested in?"},
   "attraction": {
