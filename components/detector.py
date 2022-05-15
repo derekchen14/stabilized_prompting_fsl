@@ -76,14 +76,26 @@ class ExemplarDetective(object):
     """ returns the closest exemplars from the candidate pool not already chosen"""
     corpus = example['corpus']
     if self.search_method == 'oracle' or use_oracle:
+      print("Using oracle search ...")
       return self.oracle_search(example, corpus)
     else:
+      print(f"Using {self.search_method} distance to search ...")
       return self.distance_search(example, corpus)
 
   def reset(self):
     self.selected_gids = []
     self.distances = []
     self.sorted_exemplars = []
+    self.missed_loops = 0
+    self.regular_loops = 0
+
+  def report(self, verbose):
+    # total loops should equal number of exemplars chosen
+    regular = self.regular_loops
+    total_loops = self.missed_loops + self.regular_loops
+    rate = round((regular / total_loops) * 100, 2)
+    if verbose:
+      print(f"Loop success rate is {regular} out of {total_loops} exemplars ({rate}%)")
 
   def oracle_search(self, example, corpus):
     target = example['target']
@@ -104,8 +116,10 @@ class ExemplarDetective(object):
       if new_example and matching_ds and not_empty:
         self.selected_gids.append(exemplar['gid'])
         acceptable = True
+        self.regular_loops += 1
       loops += 1
       if loops > 10000:
+        self.missed_loops += 1
         acceptable = True
 
     return exemplar
@@ -129,13 +143,20 @@ class ExemplarDetective(object):
         exemplar = self.candidates[corpus][near_id]
         self.sorted_exemplars.append(exemplar)
 
+    loops = 0
     acceptable = False
     while not acceptable:
       exemplar = self.sorted_exemplars.pop(0)
       domain, slot, value = exemplar['dsv']
       global_id = exemplar['gid']
+
       if global_id not in self.selected_gids and value != '<none>':
         self.selected_gids.append(global_id)
+        self.regular_loops += 1
+        acceptable = True
+
+      if loops > 50:
+        self.missed_loops += 1
         acceptable = True
 
     return exemplar

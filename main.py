@@ -76,6 +76,7 @@ def run_test(args, dataset, exp_logger, detective):
 
         if args.task == 'in_context':
           maxl = 2048 if args.size == 'large' else 1024
+          args.quantify = True
         else:
           maxl = inputs['input_ids'].shape[1] + 12
 
@@ -85,7 +86,8 @@ def run_test(args, dataset, exp_logger, detective):
                                               forced_eos_token_id=tokenizer.eos_token_id)
         output_strings = tokenizer.batch_decode(outputs.detach(), skip_special_tokens=False)
        
-        exp_logger.log_eval(args.qualify, output_strings, target_dict)
+        if exp_logger.log_eval(args.qualify, output_strings, target_dict):
+          test_quantify(args, prior_pred_state, all_targets, exp_logger, tokenizer)
         exp_logger.eval_step -= 1  # to cancel out the log_eval
         for target, output_str in zip(target_dict, output_strings):
           state_key = f"{target['domain']}-{target['slot']}"

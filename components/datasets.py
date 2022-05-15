@@ -79,6 +79,7 @@ class BaseDataset(Dataset):
       tokenized_context = self.tokenizer(context)
       current_size += len(tokenized_context['input_ids'])
 
+    self.detective.report(args.verbose)
     additional_context = ' '.join(contexts)
     return additional_context
 
