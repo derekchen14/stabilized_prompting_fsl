@@ -98,8 +98,8 @@ re_punc = re.compile(r'[!"#$%&()*+,-./:;=?@\[\]\\^`{|}~_\']')
 
 def normalize_text(s):
   # Lower text and remove punctuation, articles and extra whitespace.
-  if s in ['remove', '<remove>']:
-    return 'none'
+  if s in ['none', '<none>', 'remove', '<remove>']:
+    return '<none>'
   s = s.lower().strip()
   s = re_punc.sub(' ', s)
   s = re_art.sub(' ', s)

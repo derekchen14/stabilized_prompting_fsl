@@ -62,7 +62,7 @@ def load_support(args):
 
 def load_tokenizer(args):
   special = { 'additional_special_tokens': ['<customer>', '<agent>', '<label>',
-      '<none>', '<remove>'], 'sep_token': '<sep>', 'pad_token': '<pad>'}
+      '<remove>', '<none>'], 'sep_token': '<sep>', 'pad_token': '<pad>'}
   token_ckpt = CHECKPOINTS[args.model][args.size]
 
   if args.model == 't5':
