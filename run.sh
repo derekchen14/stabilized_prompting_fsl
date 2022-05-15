@@ -1,20 +1,20 @@
 # ________ Fine-tuned Model Training ________
 # Training with all available data
-# python main.py --dataset mwoz --task fine_tune --style dataset --do-train --do-save \
-#       --model gpt --size small --num-shots full --maximum-len 512 --prompt-style naive \
-#       --prune-keep 3 --log-interval 900 --context-len 2 --batch-size 12 --n-epochs 7 \
-#       --learning-rate 3e-5 --seed 15 # --ignore-cache # --percent 0.4 --eval-interval quarter --qualify 
-      # --ignore-cache # --verbose
+python main.py --dataset mwoz --task fine_tune --style dataset --do-train --do-save \
+      --model gpt --size medium --num-shots full --maximum-len 512 --prompt-style naive \
+      --prune-keep 3 --log-interval 1200 --context-len 2 --batch-size 2 --n-epochs 10 \
+      --learning-rate 3e-5 --qualify --grad-accum-steps 4 --eval-interval half # --verbose
 # python main.py --dataset sgd --task fine_tune --n-epochs 7 --do-train --debug \
 #       --style dataset --model gpt --size small --num-shots full --batch-size 9 \
 #       --learning-rate 1e-4  --maximum-len 512 --prompt-style naive # --ignore-cache
-python main.py --dataset dstc --task fine_tune --n-epochs 7 --do-train --do-save \
-      --style dataset --model gpt --size small --num-shots full --batch-size 18 \
-      --learning-rate 2e-5  --maximum-len 512 --prompt-style naive --verbose \
-      --log-interval 700 --prune-keep 3 --seed 11 --ignore-cache # --eval-interval half
-# python main.py --dataset abcd --task fine_tune --n-epochs 7 --do-train --do-save \
-#       --style dataset --model gpt --size small --parallel --num-shots full --batch-size 12 \
-#       --learning-rate 3e-5  --maximum-len 512 --prompt-style naive --log-interval 900
+# python main.py --dataset dstc --task fine_tune --n-epochs 7 --do-train --do-save \
+#       --style dataset --model gpt --size small --num-shots full --batch-size 18 \
+#       --learning-rate 2e-5  --maximum-len 512 --prompt-style naive --verbose \
+#       --log-interval 700 --prune-keep 3 --seed 11 --ignore-cache # --eval-interval half
+# python main.py --dataset abcd --task fine_tune --n-epochs 10 --do-train --do-save --verbose \
+#       --model gpt --size medium --num-shots full --batch-size 4 --context-len 3 --qualify \
+#       --learning-rate 1e-5  --maximum-len 512 --prompt-style naive --seed 12 \
+#       --log-interval 800 --eval-interval quarter
 # python main.py --dataset tt --task fine_tune --n-epochs 7 --do-train --debug \
 #       --style dataset --model gpt --size small --num-shots full --batch-size 12 \
 #       --learning-rate 1e-4  --maximum-len 512 --prompt-style naive --ignore-cache
@@ -42,9 +42,9 @@ python main.py --dataset dstc --task fine_tune --n-epochs 7 --do-train --do-save
 #       --model gpt --size small --num-shots full --maximum-length 512 --prompt-style naive \
 #       --temperature 0.8 --verbose --context-length 2 --ignore-cache --batch-size 4
 # python main.py --dataset mwoz --task in_context --style dataset --do-eval --seed 15 \
-#       --model gpt --size small --num-shots five --maximum-len 1024 --prompt-style statement \
-#       --temperature 0.8 --threshold 1.4 --context-len 3 --left-out mwoz \
-#       --batch-size 3 --search cosine --quantify --debug # --parallel  # --ignore-cache
+#       --model gpt --size small --num-shots five --maximum-len 1024 --prompt-style naive \
+#       --temperature 0.8 --threshold 1.4 --context-len 2 --left-out mwoz --ignore-cache \
+#       --batch-size 3 --search cosine --quantify --debug --eval-interval quarter
 
 # ________ Meta-Stabilize Pre-training Mode ___________
 # >> Our System
@@ -63,7 +63,6 @@ python main.py --dataset dstc --task fine_tune --n-epochs 7 --do-train --do-save
 #       --model gpt --size medium --batch-size 7 --num-shots zero --threshold 1.4 \
 #       --temperature 1.2
 # >> Evaluation Mode
-# python main.py --dataset dstc --task fine_tune --do-eval --context-len 2 --batch-size 16 \
-#       --model gpt --size small --num-shots full --maximum-len 512 --prompt-style naive \
-#       --checkpoint naive_epoch10_lr1e-05_clen2_acc522.pt --quantify
-
+# python main.py --dataset mwoz --task fine_tune --do-eval --context-len 2 --batch-size 16 \
+#       --model gpt --size small --maximum-len 512 --prompt-style naive --eval-interval quarter \
+#       --quantify --qualify --verbose  --checkpoint naive_epoch10_lr1e-05_clen2_acc522.pt

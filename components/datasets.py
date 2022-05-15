@@ -58,7 +58,7 @@ class BaseDataset(Dataset):
     target_tensor = torch.tensor(padded).to(device)
     return target_tensor
 
-  def select_context(self, args, example, history, use_oracle=False):
+  def select_context(self, args, example, history):
     bpe_tokens = self.tokenizer(history)
     current_size = len(bpe_tokens['input_ids'])
     eos = self.tokenizer.eos_token
@@ -69,7 +69,7 @@ class BaseDataset(Dataset):
     self.detective.reset()
     contexts = []
     while current_size < max_allowed:
-      exemplar = self.detective.search(example, use_oracle)
+      exemplar = self.detective.search(example, args.task=='in_context')
       ctx_domain, ctx_slot, ctx_label = exemplar['dsv']
       ctx_prompt = find_prompt(args.prompt_style, ctx_domain, ctx_slot)
       state_str = self.__class__.state_to_string(exemplar['prev_state'])

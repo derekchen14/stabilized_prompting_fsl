@@ -78,9 +78,6 @@ def select_utterances(args, utt_so_far, target, split):
 
   if args.task == 'in_context' and value == '<none>':  # TODO: query result none value slot
     use_target = False
-  elif value == '<remove>':
-    value = '<none>'
-    use_target = True
   elif split == 'train' and value == '<none>' and random.random() < 0.8:
     use_target = False
   return use_target, utterances, target

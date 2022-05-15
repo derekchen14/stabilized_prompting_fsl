@@ -71,13 +71,7 @@ def run_test(args, dataset, exp_logger, detective):
       batches = batchify(args, turn, global_id, prior_pred_state)
       for batch in batches:
         inputs, target_dict = dataset.collate(args, batch)
-        if args.verbose and args.debug: 
-          tbd = tokenizer.batch_decode(inputs['input_ids'])
-          for input_str in tbd:
-            print(input_str.replace('<pad>', '|'))
-          pdb.set_trace()
-
-        review_inputs(args, target_dict, tokenizer)
+        review_inputs(args, inputs['input_ids'], tokenizer)
         all_targets[global_id].extend(target_dict) #  all the target labels for this turn 
 
         if args.task == 'in_context':

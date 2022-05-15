@@ -78,8 +78,8 @@ def review_inputs(args, targets, tokenizer):
     tbd = tokenizer.batch_decode(targets)
     print(f"Batch with {len(tbd)} items")
     for batch_item in tbd:
-      print(batch_item.replace('<pad>', ''))
-      pdb.set_trace()
+      print(batch_item.replace('<pad>', '|'))
+    pdb.set_trace()
 
 def batchify(args, turn, global_id, prior_pred_state):
   """ returns a list of batches where the ground_truth prev_state has been 
