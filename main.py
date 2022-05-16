@@ -32,7 +32,7 @@ def run_train(args, model, datasets, exp_logger, detective):
 
     for step, batch in enumerate(train_dataloader):
       inputs, targets = dataset.collate(args, batch)
-      review_inputs(args, targets, datasets['train'].tokenizer)
+      review_inputs(args, inputs, targets, datasets['train'].tokenizer)
       outputs = model(**inputs, labels=targets)
       exp_logger.tr_loss += outputs.loss.item()
       loss = outputs.loss / args.grad_accum_steps
@@ -74,7 +74,7 @@ def run_test(args, dataset, exp_logger, detective):
       batches = batchify(args, turn, global_id, prior_pred_state)
       for batch in batches:
         inputs, target_dict = dataset.collate(args, batch)
-        review_inputs(args, inputs['input_ids'], tokenizer)
+        review_inputs(args, inputs, inputs['input_ids'], tokenizer)
         all_targets[global_id].extend(target_dict) #  all the target labels for this turn 
 
         if args.task == 'in_context':

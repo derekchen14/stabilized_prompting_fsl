@@ -73,12 +73,20 @@ def setup_optimization(args, model, total_steps):
   scheduler = get_scheduler('cosine', optimizer, num_warmup_steps=warmup, num_training_steps=total_steps)
   return optimizer, scheduler
 
-def review_inputs(args, targets, tokenizer):
+def review_inputs(args, inputs, targets, tokenizer):
   if args.debug and args.verbose:
-    tbd = tokenizer.batch_decode(targets)
-    print(f"Batch with {len(tbd)} items")
-    for batch_item in tbd:
-      print(batch_item.replace('<pad>', '|'))
+    if args.model == 'gpt':
+      tbd = tokenizer.batch_decode(targets)
+      print(f"Batch with {len(tbd)} items")
+      for batch_item in tbd:
+        print(batch_item.replace('<pad>', '|'))
+    else:
+      tbdi = tokenizer.batch_decode(inputs['input_ids'])
+      targets[targets==-100] = 0
+      tbdt = tokenizer.batch_decode(targets)
+      print(f"Batch with {len(tbdi)} items")
+      for batch_input, batch_target in zip(tbdi, tbdt):
+        print(batch_input.replace('<pad> ', '|'), batch_target.replace('<pad>', ''))
     pdb.set_trace()
 
 def batchify(args, turn, global_id, prior_pred_state):

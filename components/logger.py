@@ -134,11 +134,16 @@ class ExperienceLogger:
 
       for out_str, target in zip(selected_outputs, selected_targets):
         replaced = out_str.replace("<pad>","").replace("<|endoftext|>", "").replace("</s>", "")
-        try:
-          history, prompt_and_pred = replaced.split('<sep>')
-        except(ValueError):
-          history = replaced
-          prompt_and_pred = replaced[-20:]
+        
+        if 'history' in target:
+          history = target['history']
+          prompt_and_pred = replaced  # just the prediction for seq2seq models
+        else:
+          try:
+            history, prompt_and_pred = replaced.split('<sep>')
+          except(ValueError):
+            history = replaced
+            prompt_and_pred = replaced[-20:]
 
         global_id = target['global_id']
         if global_id not in self.past_history:
