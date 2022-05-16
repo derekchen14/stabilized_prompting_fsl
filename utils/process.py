@@ -33,7 +33,7 @@ def extract_label(targets, prior_values):
   swaps = {'not mentioned': '<none>', '': '<none>'}
   valid_domains = ['train', 'taxi', 'restaurant', 'hotel', 'attraction']
   labels = []
-
+  
   for domain, domain_data in targets.items():
     if domain not in valid_domains:
       continue
@@ -60,12 +60,22 @@ def extract_label(targets, prior_values):
           value = swaps[value]
         if value in GENERAL_TYPO:
           value = GENERAL_TYPO[value]
+        value = normalize_length(value)
         if value == '<none>' and prior_values[f'{domain}-{slot.lower()}'] != '<none>':
           value = '<remove>'
         # if value == prior_values[ds] and value not in history:
         #   value = '<none>'
         labels.append((domain, slot.lower(), value))
   return labels
+
+def normalize_length(value):
+  parts = value.replace('|', ' ').split()
+  if len(parts) > 5:
+    if parts[0] == 'the':
+      value = ' '.join(parts[1:6])
+    else:
+      value = ' '.join(parts[:5])
+  return value
 
 def select_utterances(args, utt_so_far, target, split):
   domain, slot, value = target['domain'], target['slot'], target['value']
@@ -148,7 +158,7 @@ def build_mwoz(args, data, ontology, split):
   # written for MultiWoz v2.0, 2.1 and 2.3
   examples = {}
   speakers = ["<customer>", "<agent>"]
-  
+
   for convo_id, conversation in progress_bar(data.items(), total=len(data)):
     examples[convo_id] = defaultdict(list)
     text_so_far = []

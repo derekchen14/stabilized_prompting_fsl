@@ -46,13 +46,18 @@ class BaseDataset(Dataset):
 
   def _pad_right(self, targets):
     max_vec_len = max([len(vector) for vector in targets.input_ids])
-    assert(max_vec_len < 12)
+    assert(max_vec_len < 20)
+    if max_vec_len > 12:
+      max_vec_len = 13
 
     padded = []
     for vector in targets.input_ids:
-      diff = max_vec_len - len(vector)
-      for i in range(diff):
-        vector.append(-100)  # id of -100 means to not pay attention on training
+      if len(vector) > 12:
+        vector = vector[:13]
+      else:
+        diff = max_vec_len - len(vector)
+        for i in range(diff):
+          vector.append(-100)  # id of -100 means to not pay attention on training
       padded.append(vector)
 
     target_tensor = torch.tensor(padded).to(device)
@@ -211,11 +216,19 @@ class FineTuneDataset(BaseDataset):
     dialogues, labels = [], []
 
     for example in examples:
-      dialog = ' '.join(example['utterances'])
-      state_string = super().state_to_string(example['prev_state'])
-      dialog = f"{state_string} {dialog}"
+      history = ' '.join(example['utterances'])
+      target = example['target']
+      state_str = super().state_to_string(example['prev_state'])
+      prompt = find_prompt(args.prompt_style, target['domain'], target['slot'])
+      
+      dialog = f"{state_str}{history} {prompt}"
       dialogues.append(dialog)
-      labels.append(example['target']['value'] if self.split == 'train' else example['target'])
+
+      if self.split == 'train':
+        labels.append(target['value'])
+      else:
+        target['history'] = history
+        labels.append(target)
 
     max_length = self.max_len - 12
     inputs = self.tokenizer(dialogues, padding='longest', max_length=max_length,
