@@ -16,12 +16,15 @@ from utils.evaluate import eval_quantify, test_quantify, parse_output
 from assets.static_vars import device, debug_break, STOP_TOKENS
 
 def run_train(args, model, datasets, exp_logger, detective):
-  dataset = datasets['train']
+  dataset, dev_dataset = datasets['train'], datasets['dev']
   train_dataloader = get_dataloader(args, dataset)
   total_steps = len(train_dataloader) // args.grad_accum_steps * args.n_epochs
   optimizer, scheduler = setup_optimization(args, model, total_steps)
   exp_logger.update_optimization(optimizer, scheduler)
-  dataset.add_detective(detective)
+  
+  if args.task == 'meta_learn':
+    dataset.add_detective(detective)
+    dev_dataset.add_detective(detective)
 
   for epoch_count in range(exp_logger.num_epochs):
     exp_logger.start_epoch(train_dataloader, args.percent)
@@ -43,7 +46,7 @@ def run_train(args, model, datasets, exp_logger, detective):
         exp_logger.log_train(step)
       if exp_logger.train_stop(args, step, debug_break): break
 
-    eval_res = run_eval(args, model, datasets['dev'], exp_logger, detective)
+    eval_res = run_eval(args, model, dev_dataset, exp_logger)
     if eval_res[exp_logger.metric] >= exp_logger.best_score[exp_logger.metric]:
       exp_logger.best_score = eval_res
       exp_logger.save_best_model(model, tokenizer, args.prune_keep)
@@ -97,10 +100,8 @@ def run_test(args, dataset, exp_logger, detective):
     output_name = f'{args.prompt_style}_lr{args.learning_rate}_clen{args.context_length}.json'
     json.dump(results, open(os.path.join(save_path, output_name), 'w'), indent=2)
 
-def run_eval(args, model, dataset, exp_logger, detective):
+def run_eval(args, model, dataset, exp_logger):
   tokenizer = dataset.tokenizer
-  dataset.add_detective(detective)
-
   dataloader = get_dataloader(args, dataset, 'dev')
   num_batches = debug_break if args.debug else len(dataloader)
   exp_logger.start_eval(num_batches, args.eval_interval)

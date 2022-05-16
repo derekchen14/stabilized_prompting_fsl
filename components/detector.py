@@ -79,7 +79,7 @@ class ExemplarDetective(object):
   def search(self, example):
     """ returns the closest exemplars from the candidate pool not already chosen"""
     corpus = example['corpus']
-    if self.search_method == 'oracle' or use_oracle:
+    if self.search_method == 'oracle':
       return self.oracle_search(example, corpus)
     else:
       return self.distance_search(example, corpus)
@@ -170,19 +170,27 @@ class ExemplarDetective(object):
       cos_sim = np.dot(example, exp) / (norm(example)*norm(exp))
       self.distances.append(1 - cos_sim)
 
-  def mahalanobis(self, example, exemplars):
+  def mahalanobis(self, example, cand_embeds):
+    differences = example - cand_embeds
+    distances = np.sqrt(np.sum((differences) ** 2, axis=1))
+    nearest_indexes = np.argpartition(distances, 200)[:200]
+    filtered_exp = [cand_embeds[ni] for ni in nearest_indexes]
+    
+    exemplars = np.stack(filtered_exp)
     num_exp, hidden_dim = exemplars.shape
-    covar = torch.zeros(hidden_dim, hidden_dim)
-    for exp in progress_bar(exemplars, total=num_exp, desc="Covariance matrix"):
-      diff = (example - exp).expand_dims(axis=1)     # hidden_dim, 1
+    covar = np.zeros((hidden_dim, hidden_dim))
+    for exp in exemplars: # progress_bar(exemplars, total=num_exp, desc="Covariance matrix"):
+      diff = np.expand_dims((example-exp), axis=1)     # hidden_dim, 1
       covar += np.dot(diff, diff.T)                  # hidden_dim, hidden_dim
     inv_cov_matrix = np.linalg.inv(covar)
 
-    for exp in progress_bar(exemplars, total=num_exp, desc="Calculating distances"):
-      difference = example - exp
-      left_term = np.dot(difference, inv_cov_matrix)
-      score = np.dot(left_term, difference.T)    
-      distance = np.sqrt(abs(score))
+    for index, diff in enumerate(differences):
+      if index in nearest_indexes:
+        left_term = np.dot(diff, inv_cov_matrix)
+        score = np.dot(left_term, diff.T)    
+        distance = np.sqrt(abs(score))
+      else:
+        distance = 10000
       self.distances.append(distance)
 
   #@staticmethod

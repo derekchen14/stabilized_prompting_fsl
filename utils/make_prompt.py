@@ -100,7 +100,7 @@ statement_descriptions = {
     "time": "The time of the restaurant booking",
     "name": "The name of the restaurant"},
   "taxi": {
-    "arriveby": "The arrival time of the taxi",
+    "arrive by": "The arrival time of the taxi",
     "destination": "The destination location of the taxi",
     "departure": "The departure location of the taxi",
     "leave at": "The leave at time of the taxi"}, 
