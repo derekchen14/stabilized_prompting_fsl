@@ -446,7 +446,6 @@ def build_gsim(args, data, ontology, split):
         sys_utt = f"<agent> {sys_text}"
         text_so_far.append(sys_utt)
 
-
       user_text = turn['user_utterance']['text']
       user_utt = f"<customer> {user_text}"
       text_so_far.append(user_utt)
@@ -455,6 +454,8 @@ def build_gsim(args, data, ontology, split):
       current_slots_tmp = {slot["slot"]:slot["value"] for slot in turn["dialogue_state"]}
       for slot in ontology[domain]:
         value = current_slots_tmp.get(slot, "<none>")
+        if value in GENERAL_TYPO:
+          value = GENERAL_TYPO[value]
         target = {'domain': domain, 'slot': slot, 'value': value, 'global_id': global_id}
         use_target, history, target = select_utterances(args, text_so_far, target, split)
         if use_target:

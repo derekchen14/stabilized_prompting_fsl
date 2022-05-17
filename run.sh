@@ -1,16 +1,16 @@
 # ________ Fine-tuned Model Training ________
 # Training with all available data
-python main.py --dataset mwoz --task fine_tune --style dataset --do-train --do-save \
-      --model gpt --size medium --num-shots full --maximum-len 512 --prompt-style naive \
-      --prune-keep 3 --log-interval 1200 --context-len 2 --batch-size 2 --n-epochs 10 \
-      --learning-rate 3e-5 --qualify --grad-accum-steps 4 --eval-interval half # --verbose
+# python main.py --dataset mwoz --task fine_tune --style dataset --do-train --do-save \
+#       --model gpt --size medium --num-shots full --maximum-len 512 --prompt-style naive \
+#       --prune-keep 3 --log-interval 1200 --context-len 2 --batch-size 2 --n-epochs 10 \
+#       --learning-rate 3e-5 --qualify --grad-accum-steps 4 --eval-interval half # --verbose
 # python main.py --dataset sgd --task fine_tune --n-epochs 7 --do-train --debug \
 #       --style dataset --model gpt --size small --num-shots full --batch-size 9 \
 #       --learning-rate 1e-4  --maximum-len 512 --prompt-style naive # --ignore-cache
 # python main.py --dataset dstc --task fine_tune --n-epochs 7 --do-train --do-save \
-#       --style dataset --model gpt --size small --num-shots full --batch-size 18 \
-#       --learning-rate 2e-5  --maximum-len 512 --prompt-style naive --verbose \
-#       --log-interval 700 --prune-keep 3 --seed 11 --ignore-cache # --eval-interval half
+#       --style dataset --model t5 --size small --num-shots full --batch-size 16 \
+#       --learning-rate 2e-5  --maximum-len 512 --prompt-style naive \
+#       --log-interval 700 --prune-keep 2 --eval-interval half # quarter
 # python main.py --dataset abcd --task fine_tune --n-epochs 10 --do-train --do-save --verbose \
 #       --model gpt --size medium --num-shots full --batch-size 4 --context-len 3 --qualify \
 #       --learning-rate 1e-5  --maximum-len 512 --prompt-style naive --seed 12 \
@@ -48,14 +48,13 @@ python main.py --dataset mwoz --task fine_tune --style dataset --do-train --do-s
 
 # ________ Meta-Stabilize Pre-training Mode ___________
 # >> Our System
-# python main.py --dataset mwoz --task meta_learn --style domain --do-train --seed 15 \
-#       --model gpt --size large --num-shots one --maximum-len 1020 --prompt-style schema
-# python main.py --dataset mwoz --task meta_learn --n-epochs 3 --do-train --debug \
-#       --style domain --left-out hotel --model gpt --size small --num-shots ten \
-#       --learning-rate 1e-5  --prune-keep 3 --batch-size 4 --log-interval 800
-# python main.py --dataset mwoz --task meta_learn --n-epochs 3 --do-train --debug \
-#       --style dataset --left-out mwoz --model gpt --size small --num-shots five \
-#       --learning-rate 1e-5  --prompt-style naive --batch-size 4 --context-len 3
+# python main.py --dataset mwoz --task meta_learn --n-epochs 8 --do-train --do-save \
+#       --style domain --left-out hotel --model gpt --size medium --num-shots one \
+#       --learning-rate 1e-5 --batch-size 6 --prompt-style schema  --seed 15
+python main.py --dataset mwoz --task meta_learn --n-epochs 7 --do-train --do-save \
+      --style dataset --left-out mwoz --model gpt --size small --num-shots five \
+      --learning-rate 3e-5 --prompt-style naive --batch-size 8 --log-interval 800 \
+      --percent 0.5 --verbose --qualify --eval-interval quarter
 
 # ______________ Special Modes ________________
 # >> Interactive Mode

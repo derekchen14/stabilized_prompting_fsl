@@ -189,7 +189,7 @@ class MetaLearnDataset(BaseDataset):
       prompt = find_prompt(args.prompt_style, target['domain'], target['slot'])
 
       if self.split == 'train':
-        additional_context = self.select_context(args, example, history, True)
+        additional_context = self.select_context(args, example, history)
         dialog = f"{state_str}{history} {prompt} {target['value']}{eos}"
         max_len = self.max_len
       elif self.split in ['dev', 'test']:
@@ -200,7 +200,6 @@ class MetaLearnDataset(BaseDataset):
       contexts.append(additional_context)
       dialogues.append(dialog)
       
-    self.detective.report(args.verbose)
     inputs = self.tokenizer(contexts, dialogues, padding=True, max_length=max_len,
                                 truncation='only_first', return_tensors='pt').to(device)
     if self.split == 'train':
