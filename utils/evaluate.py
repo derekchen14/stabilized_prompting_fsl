@@ -58,7 +58,11 @@ def parse_in_context(generated_string):
 def parse_gpt(style, generated_string):
   if style in ['schema', 'statement', 'naive', 'human']:
     prompt_with_pred = generated_string.split('<sep>')[1]
-    pred_string = prompt_with_pred.split(' is ')[1]
+    try:
+      pred_string = prompt_with_pred.split(' is ')[1]
+    except(IndexError):
+      # pred is very likely incorrect, so we feed something just to prevent code from breaking 
+      pred_string = prompt_with_pred[-20:]
   elif style == 'question':
     prompt_with_pred = generated_string.split('<sep>')[1]
     pred_string = prompt_with_pred.split('? ')[1]

@@ -37,7 +37,8 @@ class BaseDataset(Dataset):
     data = []
     for convo_id, conversation in examples.items():
       if split == 'test':
-        data.append(conversation)
+        if len(conversation) > 0:  # some convos have no examples after filtering
+          data.append(conversation)
       else:
         for global_id, turn in conversation.items():
           for example in turn:
