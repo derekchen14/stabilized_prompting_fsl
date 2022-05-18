@@ -166,8 +166,7 @@ class MetaLearnDataset(BaseDataset):
     for support_name, support_data in supports.items():
       if support_name != left_out:
         self.supported_datasets.append(support_name)
-        for example in support_data[self.split]:
-          support_set.append(example)
+        support_set.extend(support_data[self.split])
         setattr(self, f"{support_name}_ont", support_data['ont'])
     
     self.leftout = query_set

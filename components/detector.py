@@ -6,7 +6,7 @@ from numpy.linalg import norm
 
 from tqdm import tqdm as progress_bar
 from assets.static_vars import device, DATASETS
-from utils.load import load_sent_transformer
+from utils.load import load_sent_transformer, load_support
 from collections import defaultdict
 
 class ExemplarDetective(object):
@@ -25,8 +25,10 @@ class ExemplarDetective(object):
       corpus = args.dataset
       self.check_embed_cache(args, data, corpus, 'mpnet')  # roberta
     elif args.task == 'meta_learn':
+      supports = load_support(args)
       for corpus, full_name in DATASETS.items():
-        self.check_embed_cache(args, data, corpus, 'mpnet')
+        support_data = supports[corpus]['train']
+        self.check_embed_cache(args, support_data, corpus, 'mpnet')
 
   def check_embed_cache(self, args, data, corpus, embed_method):
     ctx_len = args.context_length
