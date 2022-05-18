@@ -83,8 +83,9 @@ class ExperienceLogger:
   def early_stop(self, metric):
     below_threshold = False
     
-    if self.epoch > 4 and self.args.debug:
+    if self.epoch > 3 and self.args.debug:
       below_threshold = True
+
     self.past_metrics.append(metric)
     if len(self.past_metrics) >= 5:
       trail = self.past_metrics[-5:]
