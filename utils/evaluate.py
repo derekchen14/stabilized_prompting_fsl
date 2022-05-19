@@ -20,9 +20,9 @@ def parse_output(args, generated_string):
     # [:6] is to truncate the "<pad>" token.
     pred_string = generated_string[6:]
   elif args.model == 'gpt':
-    if args.task == 'in_context':
-      return parse_in_context(generated_string)
-    pred_string = parse_gpt(args.prompt_style, generated_string)
+    if args.task in ['in_context', 'meta_learn']:
+      generated_string = drop_exemplars(generated_string)
+    pred_string = parse_gpt(args.prompt_style, args.task, generated_string)
 
   eos_index = len(pred_string)
   for tok in ['<pad>', '<sep>', '</s>', '<|endoftext|>']:
@@ -34,41 +34,37 @@ def parse_output(args, generated_string):
   parsed_str = normalize_text(pred_string)
   return parsed_str
 
-def parse_in_context(generated_string):
-  """ unlike a typical parse output, the in context string has no special tokens """
+def drop_exemplars(generated_string):
   parts = generated_string.split('<|endoftext|>')
   if len(parts[-1]) > 14:
     current_example = parts[-1]  # failed to generate a eos_token
   else:
     current_example = parts[-2]
+  return current_example
+
+def parse_gpt(style, task, current_example):
+  if task == 'in_context':  # in-context string has no special tokens
+    separator, label_sep = ';', ':'
+  else:
+    separator, label_sep = '<sep>', '<label>'
 
   try:
-    prompt_with_pred = current_example.rsplit(';')[1]
+    prompt_with_pred = current_example.split(separator)[1]
   except(IndexError):
     prompt_with_pred = current_example
 
   try:
-    pred_string = prompt_with_pred.split(' is ')[1]
-  except(IndexError):
-    pred_string = prompt_with_pred.rsplit()[-1]
-  
-  parsed_str = normalize_text(pred_string)
-  return parsed_str
-
-def parse_gpt(style, generated_string):
-  if style in ['schema', 'statement', 'naive', 'human']:
-    prompt_with_pred = generated_string.split('<sep>')[1]
-    try:
+    if style in ['schema', 'statement', 'naive', 'human']:
       pred_string = prompt_with_pred.split(' is ')[1]
-    except(IndexError):
-      # pred is very likely incorrect, so we feed something just to prevent code from breaking 
-      pred_string = prompt_with_pred[-20:]
-  elif style == 'question':
-    prompt_with_pred = generated_string.split('<sep>')[1]
-    pred_string = prompt_with_pred.split('? ')[1]
-  elif style in ['none', 'random']:
-    pred_string = generated_string.split('<label>')[1]
-  return pred_string.strip().replace(' <pad>', '')
+    elif style == 'question':
+      pred_string = prompt_with_pred.split('? ')[1]
+    elif style in ['none', 'random']:
+      pred_string = prompt_with_pred.split(label_sep)[1]
+  
+  except(IndexError):
+    # pred is very likely incorrect, so we feed something just to prevent code from breaking 
+    pred_string = prompt_with_pred.split()[-1]
+  return pred_string.replace(' <pad>', '').strip()
 
 def calculate_prec_rec(predicted_outputs, labels):
   label_keys = ['intents', 'requests', 'slots', 'values']  # services is part of input

@@ -134,14 +134,14 @@ class ExperienceLogger:
       selected_targets = self.previous_targets.pop(position)
 
       for out_str, target in zip(selected_outputs, selected_targets):
-        replaced = out_str.replace("<pad>","").replace("<|endoftext|>", "").replace("</s>", "")
+        replaced = out_str.replace("<pad>","")
         
         if 'history' in target:
           history = target['history']
           prompt_and_pred = replaced  # just the prediction for seq2seq models
         else:
           try:
-            history, prompt_and_pred = replaced.split('<sep>')
+            history, prompt_and_pred = replaced.rsplit('<sep>', 1)
           except(ValueError):
             history = replaced
             prompt_and_pred = replaced[-20:]
