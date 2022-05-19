@@ -65,8 +65,8 @@ def solicit_params():
                 help="Whether to run eval on the test set.")
     parser.add_argument("--do-save", action="store_true",
                 help="Whether to save models, which override previous checkpoints")
-    parser.add_argument("--do-interact", action="store_true",
-                help="When turned on, you dynamically feed in a prompt for inference")
+    parser.add_argument("--do-leave", action='store_true',
+                help="Run the leftout dataset as extra evaluation")
     parser.add_argument("--log-interval", type=int, default=500,
                 help="Log every X updates steps.")
     parser.add_argument("--eval-interval", default='whole', type=str, 
@@ -80,8 +80,6 @@ def solicit_params():
                 help="Number of models to keep around after pruning, by default does not prune")
     parser.add_argument("--parallel", action="store_true",
                 help="Whether to run in parallel")
-    parser.add_argument("--run-extra", action='store_true',
-                help="Run the leftout dataset as extra evaluation")
     
     # Hyper-parameters for tuning
     parser.add_argument("--batch-size", default=12, type=int,

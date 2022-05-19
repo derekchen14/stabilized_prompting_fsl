@@ -45,7 +45,7 @@ def run_train(args, model, datasets, exp_logger, detective):
         exp_logger.log_train(step)
       if exp_logger.train_stop(args, step, debug_break): break
 
-    if args.task == 'meta_learn' and args.run_extra:
+    if args.task == 'meta_learn' and args.do_leave:
       run_leftout(args, model, dev_dataset, exp_logger)
     eval_res = run_eval(args, model, dev_dataset, exp_logger)
     if eval_res[exp_logger.metric] >= exp_logger.best_score[exp_logger.metric]:
@@ -103,20 +103,20 @@ def run_test(args, dataset, exp_logger, detective):
 
 def run_leftout(args, model, dataset, exp_logger):
   tokenizer = dataset.tokenizer
-  bs, num_examples = args.batch_size, len(dataset.leftout)
-  description = f"Evaluating {args.leftout}"
+  bs, num_exp = args.batch_size, len(dataset.leftout)
+  description = f"Evaluating {args.left_out}"
   all_outputs, all_targets = [], []
 
-  for idx in progress_bar(range(0, num_examples, bs), total=num_examples//bs, desc=description):
+  for idx in progress_bar(range(0, num_exp, bs), total=num_exp//bs, desc=description):
     batch = dataset.leftout[idx:idx+bs]
     inputs, target_dict = dataset.collate(args, batch)
     all_targets.extend(target_dict)   # notice this is "extend", not "append"
-
+    """
     tbd = tokenizer.batch_decode(inputs['input_ids'], skip_special_tokens=False)
     for ans in tbd:
       print(ans.replace('<pad>', '|'))
     pdb.set_trace()
-
+    """
     maxl = inputs['input_ids'].shape[1] + 12
     with no_grad():
       outputs = model.generate(**inputs, max_length=maxl, early_stopping=True,
