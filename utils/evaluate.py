@@ -226,6 +226,16 @@ def eval_quantify(args, predictions, targets, exp_logger, tokenizer):
   exp_logger.log_info(results)
   return results
 
+def eval_qualify(args, all_outputs, all_targets):
+  assert(len(all_outputs) == len(all_targets))
+  if args.verbose:
+    positions = random.sample(range(len(all_outputs)), 10)  # sample 10 random examples
+
+    for pos in positions:
+      output_str, target = all_outputs[pos], all_targets[pos]
+      print(output_str)
+      print(f'--- Target: {target} ---')
+
 def dst_breakdown(predictions, labels, results):
   label_keys = ['intents', 'requests', 'slots', 'values']
 

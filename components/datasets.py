@@ -168,6 +168,8 @@ class MetaLearnDataset(BaseDataset):
         self.supported_datasets.append(support_name)
         support_set.extend(support_data[self.split])
         setattr(self, f"{support_name}_ont", support_data['ont'])
+        print(f"Added {DATASETS[support_name]} as a support dataset.")
+    print(f"Moved {DATASETS[left_out]} as the query dataset.")
     
     self.leftout = query_set
     self.data = support_set

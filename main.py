@@ -10,9 +10,8 @@ from components.detector import ExemplarDetective
 from utils.help import *
 from utils.process import process_data, get_dataloader
 from utils.arguments import solicit_params
-from utils.load import load_tokenizer, load_model, load_data, load_best_model
-from utils.load import load_support
-from utils.evaluate import eval_quantify, test_quantify, parse_output
+from utils.load import load_tokenizer, load_model, load_data, load_best_model, load_support
+from utils.evaluate import eval_quantify, eval_qualify, test_quantify, parse_output
 from assets.static_vars import device, debug_break, STOP_TOKENS
 
 def run_train(args, model, datasets, exp_logger, detective):
@@ -46,6 +45,8 @@ def run_train(args, model, datasets, exp_logger, detective):
         exp_logger.log_train(step)
       if exp_logger.train_stop(args, step, debug_break): break
 
+    if args.task == 'meta_learn' and args.run_extra:
+      run_leftout(args, model, dev_dataset, exp_logger)
     eval_res = run_eval(args, model, dev_dataset, exp_logger)
     if eval_res[exp_logger.metric] >= exp_logger.best_score[exp_logger.metric]:
       exp_logger.best_score = eval_res
@@ -99,6 +100,33 @@ def run_test(args, dataset, exp_logger, detective):
   if args.do_save:
     output_name = f'{args.prompt_style}_lr{args.learning_rate}_clen{args.context_length}.json'
     json.dump(results, open(os.path.join(save_path, output_name), 'w'), indent=2)
+
+def run_leftout(args, model, dataset, exp_logger):
+  tokenizer = dataset.tokenizer
+  bs, num_examples = args.batch_size, len(dataset.leftout)
+  description = f"Evaluating {args.leftout}"
+  all_outputs, all_targets = [], []
+
+  for idx in progress_bar(range(0, num_examples, bs), total=num_examples//bs, desc=description):
+    batch = dataset.leftout[idx:idx+bs]
+    inputs, target_dict = dataset.collate(args, batch)
+    all_targets.extend(target_dict)   # notice this is "extend", not "append"
+
+    tbd = tokenizer.batch_decode(inputs['input_ids'], skip_special_tokens=False)
+    for ans in tbd:
+      print(ans.replace('<pad>', '|'))
+    pdb.set_trace()
+
+    maxl = inputs['input_ids'].shape[1] + 12
+    with no_grad():
+      outputs = model.generate(**inputs, max_length=maxl, early_stopping=True,
+                          repetition_penalty=args.threshold, temperature=args.temperature)
+    output_strings = tokenizer.batch_decode(outputs.detach(), skip_special_tokens=False)
+    all_outputs.extend(output_strings)
+  
+  eval_quantify(args, all_outputs, all_targets, exp_logger, tokenizer)
+  eval_qualify(args, all_outputs, all_targets)
+
 
 def run_eval(args, model, dataset, exp_logger):
   tokenizer = dataset.tokenizer
