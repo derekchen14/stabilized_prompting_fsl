@@ -199,13 +199,12 @@ class MetaLearnDataset(BaseDataset):
 
       contexts.append(additional_context)
       dialogues.append(dialog)
+      labels.append(target)
       
     inputs = self.tokenizer(contexts, dialogues, padding=True, max_length=max_len,
                                 truncation='only_first', return_tensors='pt').to(device)
     if self.split == 'train':
       labels = inputs['input_ids']
-    else:
-      labels.append(target)
     return inputs, labels
 
 class FineTuneDataset(BaseDataset):

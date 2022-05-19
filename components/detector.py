@@ -27,10 +27,13 @@ class ExemplarDetective(object):
     elif args.task == 'meta_learn':
       supports = load_support(args)
       for corpus, full_name in DATASETS.items():
-        support_data = supports[corpus]['train']
-        self.check_embed_cache(args, support_data, corpus, 'mpnet')
+        if corpus == args.left_out:
+          self.check_embed_cache(args, data, corpus)
+        else:
+          support_data = supports[corpus]['train']
+          self.check_embed_cache(args, support_data, corpus)
 
-  def check_embed_cache(self, args, data, corpus, embed_method):
+  def check_embed_cache(self, args, data, corpus, embed_method='mpnet'):
     ctx_len = args.context_length
     cache_file = f'{embed_method}_{args.style}_{corpus}_lookback{ctx_len}_embeddings.pkl'
     cache_path = os.path.join(args.input_dir, 'cache', args.dataset, cache_file)
