@@ -51,7 +51,8 @@ GENERAL_TYPO = {
     "scentre":"centre", "town centre":"centre", "in town":"centre", "north part of town":"north",
     "centre of town":"centre", "cb30aq": "none",
     # price
-    "mode":"moderate", "moderate -ly": "moderate", "mo":"moderate",
+    "mode":"moderate", "moderate -ly": "moderate", "mo":"moderate", "moderately priced": "moderate",
+    "inexpensive": "cheap", 
     # day
     "next friday":"friday", "monda": "monday",
     # names
