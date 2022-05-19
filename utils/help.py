@@ -143,6 +143,8 @@ def model_match(fname, args):
   f'results/{dataset}/{task}/{model}_{size}/{prompt_style}_lr{}_clen{context_length}_epoch{}_acc{}.pt'
   """
   model_type, model_size = fname.split('/')[-2].split("_")
+  if len(fname.split('/')[-1].split("_")) != 5:
+    return False
   prompt_style, lr, clen, _, _ = fname.split('/')[-1].split("_")
   if model_type == args.model and \
      model_size == args.size  and \
