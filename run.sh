@@ -53,8 +53,12 @@
 #       --learning-rate 1e-5 --batch-size 6 --prompt-style schema  --seed 15
 python main.py --dataset mwoz --task meta_learn --n-epochs 7 --do-train --do-save \
       --style dataset --left-out mwoz --model gpt --size small --num-shots five \
-      --learning-rate 3e-5 --prompt-style naive --batch-size 8 --log-interval 800 \
-      --percent 0.5 --verbose --qualify --eval-interval quarter
+      --learning-rate 3e-5 --prompt-style naive --batch-size 4 --log-interval 1200 \
+      --percent 0.5 --verbose --eval-interval half --do-leave
+# python main.py --dataset sgd --task meta_learn --n-epochs 7 --do-train --debug \
+#       --style dataset --left-out sgd --model gpt --size small --num-shots five \
+#       --learning-rate 3e-5 --prompt-style naive --batch-size 4 --log-interval 1200 \
+#       --percent 0.7 --verbose --qualify --eval-interval quarter
 
 # ______________ Special Modes ________________
 # >> Interactive Mode

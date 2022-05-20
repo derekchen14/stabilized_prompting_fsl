@@ -36,8 +36,9 @@ def parse_output(args, generated_string):
 
 def drop_exemplars(generated_string):
   parts = generated_string.split('<|endoftext|>')
-  if len(parts[-1]) > 14:
-    current_example = parts[-1]  # failed to generate a eos_token
+  candidate_part = parts[-1].replace('<pad>', '').replace('<sep>', '')
+  if len(candidate_part) > 14:
+    current_example = candidate_part  # failed to generate a eos_token
   else:
     current_example = parts[-2]
   return current_example

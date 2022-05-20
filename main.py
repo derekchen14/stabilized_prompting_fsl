@@ -108,15 +108,11 @@ def run_leftout(args, model, dataset, exp_logger):
   all_outputs, all_targets = [], []
 
   for idx in progress_bar(range(0, num_exp, bs), total=num_exp//bs, desc=description):
+    if random.random() < 0.7: continue  # sample from the data to speed things up
     batch = dataset.leftout[idx:idx+bs]
     inputs, target_dict = dataset.collate(args, batch)
     all_targets.extend(target_dict)   # notice this is "extend", not "append"
-    """
-    tbd = tokenizer.batch_decode(inputs['input_ids'], skip_special_tokens=False)
-    for ans in tbd:
-      print(ans.replace('<pad>', '|'))
-    pdb.set_trace()
-    """
+    
     maxl = inputs['input_ids'].shape[1] + 12
     with no_grad():
       outputs = model.generate(**inputs, max_length=maxl, early_stopping=True,

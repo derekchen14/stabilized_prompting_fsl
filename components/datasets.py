@@ -47,7 +47,7 @@ class BaseDataset(Dataset):
 
   def _pad_right(self, targets):
     max_vec_len = max([len(vector) for vector in targets.input_ids])
-    assert(max_vec_len < 20)
+    assert(max_vec_len < 24)
     if max_vec_len > 12:
       max_vec_len = 13
 
