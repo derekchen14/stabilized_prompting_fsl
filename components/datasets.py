@@ -14,7 +14,10 @@ class BaseDataset(Dataset):
   def __init__(self, args, examples, tokenizer, split):
     self.split = split
     self.shuffle = (split == 'train')
-    self.data = self._unravel(examples, split)
+    if args.speed:
+      self.data = examples
+    else:
+      self.data = self._unravel(examples, split)
     self.size = len(self.data)
 
     self.tokenizer = tokenizer

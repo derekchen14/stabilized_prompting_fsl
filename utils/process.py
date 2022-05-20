@@ -154,6 +154,45 @@ def build_sgd(args, data, ontology, split):
 
   return examples
 
+
+def build_sgd_speed(args, data, ontology, split):
+  examples = []
+  prompt = "The topic of conversation is about"
+
+  for conversation in progress_bar(data, total=len(data)):
+    convo_id = split + "-" + conversation['dialogue_id'].replace('_','-')
+    # examples[convo_id] = defaultdict(list)
+    text_so_far = []
+
+    prior_values = {f'{service}-{slot}': '<none>' for service, slots in ontology.items() for slot in slots}
+    turn_count = 1
+    for turn in conversation['turns']:
+      global_id = convo_id + '_' + str(turn_count)
+      text = turn['utterance']
+
+      if turn['speaker'] == 'SYSTEM':
+        sys_text = f"<agent> {text}"
+        text_so_far.append(sys_text)
+
+      elif turn['speaker'] == 'USER':
+        user_utt = f"<customer> {text}"
+        text_so_far.append(user_utt)
+        turn_count += 1
+
+        targets = extract_label_sgd(turn['frames'], prior_values)
+        prev_state = {k:v for k,v in prior_values.items()}
+        for service, slot, value in targets:
+          target = {'domain': service, 'slot': slot, 'value': value.strip(), 'global_id': global_id}
+          use_target, history, target = select_utterances(args, text_so_far, target, split)
+          if use_target:
+            # example = {'utterances':history, 'target':target, 'prev_state':prev_state, 'corpus':'sgd'}
+            example = {'label':value, 'text':history}
+            examples.append(example)
+          pval = '<none>' if value == '<remove>' else value
+          prior_values[f'{service}-{slot}'] = pval
+
+  return examples
+
 def build_mwoz(args, data, ontology, split):
   # written for MultiWoz v2.0, 2.1 and 2.3
   examples = {}
@@ -540,7 +579,9 @@ def prepare_examples(args, data, ontology, split):
   elif args.dataset.startswith('mwoz'):  # MultiWoz 2.1 or 2.2
     examples = build_mwoz(args, data, ontology, split)
   elif args.dataset == 'sgd':   # Schema Guided Dialogue
-    examples = build_sgd(args, data, ontology, split) 
+    examples = build_sgd_speed(args, data, ontology, split) 
+  elif args.dataset == 'sgds':   # Schema Guided Dialogue
+    examples = build_sgd_speed(args, data, ontology, split) 
   elif args.dataset == 'tt':    # TicketTalk / TaskMaster 3
     examples = build_tt(args, data, ontology, split) 
 
@@ -561,6 +602,9 @@ def process_data(args, raw_data, tokenizer):
       elif args.task == 'in_context':
         datasets[split] = InContextDataset(args, examples, tokenizer, split)
       elif args.task == 'fine_tune':
+        # if args.speed:
+        #   datasets[split] = examples
+        # else:
         datasets[split] = FineTuneDataset(args, examples, tokenizer, split)
       print(f"Running with {len(datasets[split])} {split} examples")
     pkl.dump(datasets, open(cache_results, 'wb'))

@@ -9,8 +9,8 @@ def solicit_params():
                 help="The input training data file (a text file).")
     parser.add_argument("--output-dir", default='results', type=str,
                 help="Output directory where the model predictions and checkpoints are written.")
-    parser.add_argument("--dataset", default='mwoz', type=str, 
-                choices=['abcd', 'dstc', 'gsim', 'mwoz', 'sgd', 'tt'],
+    parser.add_argument("--dataset", default='sgd', type=str, 
+                choices=['abcd', 'dstc', 'gsim', 'mwoz', 'sgd', 'tt','sgds'],
                 help="which dataset to choose from out of all possible options")
     parser.add_argument("--task", default='fine_tune', type=str,
                 choices=['in_context', 'meta_learn', 'fine_tune', 'reptile'],
@@ -104,6 +104,8 @@ def solicit_params():
                 help="Linear warmup over warmup-steps.")
     parser.add_argument("--percent", default=1.0, type=float, 
                 help="Amount of train and dev data to use during training.")
+    parser.add_argument("--speed", default=True, type=bool, 
+                help="try for deepspeed.")
 
     args = parser.parse_args()
     return args

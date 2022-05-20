@@ -13,6 +13,18 @@ from utils.arguments import solicit_params
 from utils.load import load_tokenizer, load_model, load_data, load_best_model, load_support
 from utils.evaluate import eval_quantify, eval_qualify, test_quantify, parse_output
 from assets.static_vars import device, debug_break, STOP_TOKENS
+from transformers import (
+    CONFIG_MAPPING,
+    MODEL_FOR_CAUSAL_LM_MAPPING,
+    AutoConfig,
+    AutoModelForCausalLM,
+    AutoTokenizer,
+    HfArgumentParser,
+    Trainer,
+    TrainingArguments,
+    default_data_collator,
+    set_seed,
+)
 
 def run_train(args, model, datasets, exp_logger, detective):
   dataset, dev_dataset = datasets['train'], datasets['dev']
@@ -158,11 +170,16 @@ def check_support(args, datasets):
     datasets['dev'].add_support(supports, args.left_out)
   return datasets
 
+def compute_metrics(eval_pred):
+    logits, labels = eval_pred
+    predictions = np.argmax(logits, axis=-1)
+    return metric.compute(predictions=predictions, references=labels)
+
 if __name__ == "__main__":
   args = solicit_params()
   args = setup_gpus(args)
   args, save_path = check_directories(args)
-  set_seed(args)
+  # set_seed(args)
 
   reformat_data(args)
   raw_data = load_data(args)
@@ -171,9 +188,46 @@ if __name__ == "__main__":
   exp_logger = ExperienceLogger(args, ontology, save_path)
   detective = ExemplarDetective(args, datasets['train'])
 
-  if args.do_train:
-    model = load_model(args, ontology, tokenizer, save_path)
-    datasets = check_support(args, datasets)
-    run_train(args, model, datasets, exp_logger, detective)
-  elif args.do_eval:
-    run_test(args, datasets['test'], exp_logger, detective)
+  # if args.do_train:
+  #   model = load_model(args, ontology, tokenizer, save_path)
+  #   datasets = check_support(args, datasets)
+  #   run_train(args, model, datasets, exp_logger, detective)
+  # elif args.do_eval:
+  #   run_test(args, datasets['test'], exp_logger, detective)
+
+
+
+  parser = HfArgumentParser(ourarugments, TrainingArguments)
+  training_args = parser.parse_args_into_dataclasses()
+
+
+
+  model = load_model(args, ontology, tokenizer, save_path)
+  # training_args = TrainingArguments(output_dir="test_trainer", evaluation_strategy="epoch")
+  # Initialize our Trainer
+  trainer = Trainer(
+      model=model,
+      args=training_args,
+      train_dataset=datasets["train"] if training_args.do_train else None,
+      eval_dataset=datasets["test"] if training_args.do_eval else None,
+      tokenizer=tokenizer,
+      data_collator=default_data_collator,
+  )
+
+  trainer.train()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
