@@ -180,6 +180,37 @@ class MetaLearnDataset(BaseDataset):
     self.data = support_set
     self.size = len(self.data)
 
+  def collate_seq2seq(self, args, examples):
+    contexts, dialogues, labels = [], [], []
+
+    for example in examples:
+      state_str = super().state_to_string(example['prev_state'])
+      history = ' '.join(example['utterances'])
+      target = example['target']
+      prompt = find_prompt(args.prompt_style, target['domain'], target['slot'])
+
+      additional_context = self.select_context(args, example, history)
+      dialog = f"{state_str}{history} {prompt}"
+
+      contexts.append(additional_context)
+      dialogues.append(dialog)
+
+      if self.split == 'train':
+        labels.append(target['value'])
+      else:
+        target['history'] = history
+        labels.append(target)
+      
+    max_len = self.max_len - 12
+    inputs = self.tokenizer(contexts, dialogues, padding=True, max_length=max_len,
+                                truncation='only_first', return_tensors='pt').to(device)
+    if self.split == 'train':
+      targets = self.tokenizer(labels)
+      target_tensor = self._pad_right(targets)
+      return inputs, target_tensor
+    else:
+      return inputs, labels
+
   def collate_lm(self, args, examples):
     """
     train - use support dataset
@@ -213,6 +244,7 @@ class MetaLearnDataset(BaseDataset):
     if self.split == 'train':
       labels = inputs['input_ids']
     return inputs, labels
+
 
 class FineTuneDataset(BaseDataset):
 

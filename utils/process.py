@@ -508,6 +508,7 @@ def build_gsim(args, data, ontology, split):
 def build_tt(args, data, ontology, split):
   examples = {}
   domain = 'movie'
+  sc = Counter()
   for convo in progress_bar(data, total=len(data)):
     convo_id = convo['conversation_id'].replace('_', '-')
     examples[convo_id] = defaultdict(list)
@@ -533,24 +534,33 @@ def build_tt(args, data, ontology, split):
         if 'segments' in turn:
           labels = extract_slotvals(turn['segments'], ontology['slotvals'])
         else:
-          labels = {}
+          continue   # no valid labels this turn
+        if len(labels) == 0:
+          continue
 
-        for slot in ontology["entities"]['movie']:
+        for slot in ontology["slotvals"].values():
           value = labels.get(slot, "<none>")
+          if value == '<none>':
+            if split == 'train':
+              if random.random() > 0.5: continue
+            else:
+              if random.random() > 0.1: continue
+
           target = {'domain': 'movies', 'slot': slot, 'value': value, 'global_id': global_id}
           use_target, history, target = select_utterances(args, text_so_far, target, split)
           if use_target:
             example = {'utterances':history, 'target':target, 'prev_state':prev_state, 'corpus':'tt'}
             examples[convo_id][global_id].append(example)
           prior_values[f'{domain}-{slot}'] = value
+  
   return examples
 
 def extract_slotvals(segments, ontology):
   labels = {}
   for segment in segments:
     slot_candidate = segment['annotations'][0]['name']
-    value = segment['text']
-    if slot_candidate in ontology:
+    value = segment['text'].replace('!', '').replace('.', '').replace('?', '')
+    if slot_candidate in ontology and len(value) < 28:
       slot = ontology[slot_candidate]
       labels[slot] = value
   return labels
