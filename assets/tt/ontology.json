@@ -6,18 +6,12 @@
                 "review.critic", "seating", "time.preference", "time.showing", "type.screening"]
 	},
 	"slotvals": {
-		"date.release": "release",
 		"date.showing": "show date",
 		"location": "location",
-		"name.character": "character",
 		"name.genre": "genre",
 		"name.movie": "movie",
-		"name.person": "name",
 		"name.theater": "theater",
 		"num.tickets": "num tickets",
-		"review.audience": "audience review",
-		"review.critic": "critic review",
-		"seating": "seating",
 		"time.preference": "preferred time",
 		"time.showing": "show time",
 		"type.screening": "screening"
