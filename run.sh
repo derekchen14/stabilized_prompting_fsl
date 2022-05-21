@@ -51,10 +51,10 @@
 # python main.py --dataset mwoz --task meta_learn --n-epochs 8 --do-train --do-save \
 #       --style domain --left-out hotel --model gpt --size medium --num-shots one \
 #       --learning-rate 1e-5 --batch-size 6 --prompt-style schema  --seed 15
-python main.py --dataset mwoz --task meta_learn --n-epochs 7 --do-train --do-save \
-      --style dataset --left-out mwoz --model gpt --size small --num-shots five \
-      --learning-rate 3e-5 --prompt-style naive --batch-size 4 --log-interval 1200 \
-      --percent 0.5 --verbose --eval-interval half --do-leave
+# python main.py --dataset mwoz --task meta_learn --n-epochs 7 --do-train --do-save \
+#      --style dataset --left-out mwoz --model gpt --size small --num-shots five \
+#      --learning-rate 3e-5 --prompt-style naive --batch-size 4 --log-interval 1200 \
+#      --percent 0.5 --verbose --eval-interval half --do-leave
 # python main.py --dataset sgd --task meta_learn --n-epochs 7 --do-train --debug \
 #       --style dataset --left-out sgd --model gpt --size small --num-shots five \
 #       --learning-rate 3e-5 --prompt-style naive --batch-size 4 --log-interval 1200 \
@@ -66,6 +66,9 @@ python main.py --dataset mwoz --task meta_learn --n-epochs 7 --do-train --do-sav
 #       --model gpt --size medium --batch-size 7 --num-shots zero --threshold 1.4 \
 #       --temperature 1.2
 # >> Evaluation Mode
+python main.py --dataset mwoz --task meta_learn --do-eval --num-shots five --context-len 2  \
+      --model gpt --size small --maximum-len 1024 --batch-size 8 --prompt-style naive \
+      --eval-interval quarter --quantify --qualify --verbose
 # python main.py --dataset mwoz --task fine_tune --do-eval --context-len 2 --batch-size 16 \
 #       --model gpt --size small --maximum-len 512 --prompt-style naive --eval-interval quarter \
 #       --quantify --qualify --verbose  --checkpoint naive_epoch10_lr1e-05_clen2_acc522.pt

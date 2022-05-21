@@ -119,7 +119,6 @@ def extract_label_sgd(frames, prior_values):
 
 def build_sgd(args, data, ontology, split):
   examples = {}
-  prompt = "The topic of conversation is about"
 
   for conversation in progress_bar(data, total=len(data)):
     convo_id = split + "-" + conversation['dialogue_id'].replace('_','-')
@@ -521,6 +520,10 @@ def extract_slotvals(segments, ontology):
   for segment in segments:
     slot_candidate = segment['annotations'][0]['name']
     value = segment['text'].replace('!', '').replace('.', '').replace('?', '')
+    if value in GENERAL_TYPO:
+      value = GENERAL_TYPO[value]
+    if slot_candidate == "name.theater" and value.lower().endswith("theater"):
+      value = value[:-7].strip()
     if slot_candidate in ontology and len(value) < 28:
       slot = ontology[slot_candidate]
       labels[slot] = value
