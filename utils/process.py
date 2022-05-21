@@ -494,7 +494,9 @@ def build_tt(args, data, ontology, split):
         if 'segments' in turn:
           labels = extract_slotvals(turn['segments'], ontology['slotvals'])
         else:
-          labels = {}
+          continue   # no valid labels this turn
+        if len(labels) == 0:
+          continue
 
         for slot in ontology["entities"]['movie']:
           value = labels.get(slot, "<none>")
@@ -511,7 +513,7 @@ def extract_slotvals(segments, ontology):
   for segment in segments:
     slot_candidate = segment['annotations'][0]['name']
     value = segment['text']
-    if slot_candidate in ontology:
+    if slot_candidate in ontology and len(value) < 28:
       slot = ontology[slot_candidate]
       labels[slot] = value
   return labels
