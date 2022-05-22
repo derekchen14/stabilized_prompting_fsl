@@ -228,7 +228,7 @@ def eval_quantify(args, predictions, targets, exp_logger, tokenizer):
 
 def eval_qualify(args, all_outputs, all_targets):
   assert(len(all_outputs) == len(all_targets))
-  if args.verbose:
+  if args.qualify:
     positions = random.sample(range(len(all_outputs)), 10)  # sample 10 random examples
 
     for pos in positions:
