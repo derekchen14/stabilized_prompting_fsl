@@ -49,12 +49,13 @@ GENERAL_TYPO = {
     "cen":"centre", "east side":"east", "east area":"east", "west part of town":"west", "ce":"centre",
     "town center":"centre", "centre of cambridge":"centre", "city center":"centre", "the south":"south",
     "scentre":"centre", "town centre":"centre", "in town":"centre", "north part of town":"north",
-    "centre of town":"centre", "cb30aq": "none",
+    "centre of town":"centre", "cb30aq": "none", "avis california": "davis california", 
     # price
     "mode":"moderate", "moderate -ly": "moderate", "mo":"moderate", "moderately priced": "moderate",
     "inexpensive": "cheap", 
     # day
-    "next friday":"friday", "monda": "monday",
+    "next friday":"friday", "monda": "monday", 
+    "oday": "today", "onight": "tonight", "omorrow": "tomorrow", 
     # names
     "catherine s": "catherines",
     # parking
@@ -62,10 +63,14 @@ GENERAL_TYPO = {
     # internet
     "free internet":"yes", "y":"yes", "True": "yes", "False": "no",
     # star
-    "4 star":"4", "4 stars":"4", "0 star rarting":"<none>", "3 .":"3",
+    "4 star":"4", "4 stars":"4", "0 star rarting":"<none>", "3 .":"3", "hree": "three", "wo": "two",
     # others
     "n":"no", "does not":"no", "does not care":"any", "dontcare": "any",
     "not men":"<none>", "not":"<none>", "art":"<none>", "not mendtioned":"<none>", "fun":"<none>",
+    # movies
+    "ction": "action", "eyond storm": "beyond storm", "huttered": "shuttered",
+    # theatres
+    "mc mountain 16": "amc mountain 16", "mc holiday": "amc holiday", "MC Holiday": "AMC Holiday"
 }
 
 SLOT_MAPPING = {
