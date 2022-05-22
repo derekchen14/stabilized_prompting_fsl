@@ -1,457 +1,457 @@
 {
-  "Alarm_1": [
-    "alarm_time",
-    "alarm_name",
-    "new_alarm_time",
-    "new_alarm_name"
-  ],
-  "Buses_3": [
-    "from_city",
-    "to_city",
-    "from_station",
-    "to_station",
-    "departure_date",
-    "departure_time",
-    "price",
-    "additional_luggage",
-    "num_passengers",
-    "category"
-  ],
-  "Events_3": [
-    "event_type",
-    "event_name",
-    "date",
-    "time",
-    "number_of_tickets",
-    "price_per_ticket",
-    "city",
-    "venue",
-    "venue_address"
-  ],
-  "Flights_4": [
-    "number_of_tickets",
-    "seating_class",
-    "origin_airport",
-    "destination_airport",
-    "departure_date",
-    "return_date",
-    "is_nonstop",
-    "outbound_departure_time",
-    "outbound_arrival_time",
-    "inbound_arrival_time",
-    "inbound_departure_time",
-    "price",
-    "airlines"
-  ],
-  "Homes_2": [
-    "intent",
-    "area",
-    "address",
-    "property_name",
-    "phone_number",
-    "has_garage",
-    "in_unit_laundry",
-    "price",
-    "visit_date",
-    "number_of_beds",
-    "number_of_baths"
-  ],
-  "Hotels_2": [
-    "where_to",
-    "number_of_adults",
-    "check_in_date",
-    "check_out_date",
-    "rating",
-    "address",
-    "phone_number",
-    "total_price",
-    "has_laundry_service"
-  ],
-  "Hotels_4": [
-    "location",
-    "number_of_rooms",
-    "check_in_date",
-    "stay_length",
-    "star_rating",
-    "place_name",
-    "street_address",
-    "phone_number",
-    "price_per_night",
-    "smoking_allowed"
-  ],
-  "Media_3": [
-    "title",
-    "genre",
-    "subtitle_language",
-    "starring"
-  ],
-  "Messaging_1": [
-    "location",
-    "contact_name"
-  ],
-  "Movies_1": [
-    "price",
-    "number_of_tickets",
-    "show_type",
-    "theater_name",
-    "show_time",
-    "show_date",
-    "genre",
-    "street_address",
-    "location",
-    "movie_name"
-  ],
-  "Movies_3": [
-    "movie_title",
-    "genre",
-    "percent_rating",
-    "cast",
-    "directed_by"
-  ],
-  "Music_3": [
-    "track",
-    "artist",
-    "album",
-    "genre",
-    "year",
-    "device"
-  ],
-  "Payment_1": [
-    "payment_method",
-    "amount",
-    "receiver",
-    "private_visibility"
-  ],
-  "RentalCars_3": [
-    "car_type",
-    "car_name",
-    "pickup_location",
-    "start_date",
-    "pickup_time",
-    "city",
-    "end_date",
-    "price_per_day",
-    "add_insurance"
-  ],
-  "Restaurants_2": [
-    "restaurant_name",
-    "date",
-    "time",
-    "has_seating_outdoors",
-    "has_vegetarian_options",
-    "phone_number",
-    "rating",
-    "address",
-    "number_of_seats",
-    "price_range",
-    "location",
-    "category"
-  ],
-  "RideSharing_2": [
-    "destination",
-    "ride_type",
-    "ride_fare",
-    "wait_time",
-    "number_of_seats"
-  ],
-  "Services_1": [
-    "stylist_name",
-    "phone_number",
-    "average_rating",
-    "is_unisex",
-    "street_address",
-    "city",
-    "appointment_date",
-    "appointment_time"
-  ],
-  "Services_4": [
-    "therapist_name",
-    "phone_number",
-    "address",
-    "city",
-    "appointment_date",
-    "appointment_time",
-    "type"
-  ],
-  "Trains_1": [
-    "from",
-    "to",
-    "from_station",
-    "to_station",
-    "date_of_journey",
-    "journey_start_time",
-    "total",
-    "number_of_adults",
-    "class",
-    "trip_protection"
-  ],
-  "Travel_1": [
-    "location",
-    "attraction_name",
-    "category",
-    "phone_number",
-    "free_entry",
-    "good_for_kids"
-  ],
-  "Weather_1": [
-    "precipitation",
-    "humidity",
-    "wind",
-    "temperature",
-    "city",
-    "date"
-  ],
-  "Banks_2": [
-    "account_type",
-    "recipient_account_type",
-    "account_balance",
-    "transfer_amount",
-    "recipient_name",
-    "transfer_time"
-  ],
-  "Buses_1": [
-    "from_location",
-    "to_location",
-    "from_station",
-    "to_station",
-    "leaving_date",
-    "leaving_time",
-    "fare",
-    "travelers",
-    "transfers"
-  ],
-  "Events_1": [
-    "category",
-    "subcategory",
-    "event_name",
-    "date",
-    "time",
-    "number_of_seats",
-    "city_of_event",
-    "event_location",
-    "address_of_location"
-  ],
-  "Flights_3": [
-    "passengers",
-    "flight_class",
-    "origin_city",
-    "destination_city",
-    "origin_airport_name",
-    "destination_airport_name",
-    "departure_date",
-    "return_date",
-    "number_stops",
-    "outbound_departure_time",
-    "outbound_arrival_time",
-    "inbound_arrival_time",
-    "inbound_departure_time",
-    "price",
-    "number_checked_bags",
-    "airlines",
-    "arrives_next_day"
-  ],
-  "Homes_1": [
-    "area",
-    "address",
-    "property_name",
-    "phone_number",
-    "furnished",
-    "pets_allowed",
-    "rent",
-    "visit_date",
-    "number_of_beds",
-    "number_of_baths"
-  ],
-  "Hotels_1": [
-    "destination",
-    "number_of_rooms",
-    "check_in_date",
-    "number_of_days",
-    "star_rating",
-    "hotel_name",
-    "street_address",
-    "phone_number",
-    "price_per_night",
-    "has_wifi"
-  ],
-  "Media_2": [
-    "movie_name",
-    "genre",
-    "subtitle_language",
-    "director",
-    "actors",
-    "price"
-  ],
-  "Movies_2": [
-    "title",
-    "genre",
-    "aggregate_rating",
-    "starring",
-    "director"
-  ],
-  "Music_1": [
-    "song_name",
-    "artist",
-    "album",
-    "genre",
-    "year",
-    "playback_device"
-  ],
-  "RentalCars_1": [
-    "type",
-    "car_name",
-    "pickup_location",
-    "pickup_date",
-    "pickup_time",
-    "pickup_city",
-    "dropoff_date",
-    "total_price"
-  ],
-  "RideSharing_1": [
-    "destination",
-    "shared_ride",
-    "ride_fare",
-    "approximate_ride_duration",
-    "number_of_riders"
-  ],
-  "Banks_1": [
-    "account_type",
-    "recipient_account_type",
-    "balance",
-    "amount",
-    "recipient_account_name"
-  ],
-  "Buses_2": [
-    "origin",
-    "destination",
-    "origin_station_name",
-    "destination_station_name",
-    "departure_date",
-    "price",
-    "departure_time",
-    "group_size",
-    "fare_type"
-  ],
-  "Calendar_1": [
-    "event_date",
-    "event_time",
-    "event_location",
-    "event_name",
-    "available_start_time",
-    "available_end_time"
-  ],
-  "Events_2": [
-    "event_type",
-    "category",
-    "event_name",
-    "date",
-    "time",
-    "number_of_tickets",
-    "city",
-    "venue",
-    "venue_address"
-  ],
-  "Flights_1": [
-    "passengers",
-    "seating_class",
-    "origin_city",
-    "destination_city",
-    "origin_airport",
-    "destination_airport",
-    "departure_date",
-    "return_date",
-    "number_stops",
-    "outbound_departure_time",
-    "outbound_arrival_time",
-    "inbound_arrival_time",
-    "inbound_departure_time",
-    "price",
-    "refundable",
-    "airlines"
-  ],
-  "Flights_2": [
-    "passengers",
-    "seating_class",
-    "origin",
-    "destination",
-    "origin_airport",
-    "destination_airport",
-    "departure_date",
-    "return_date",
-    "number_stops",
-    "outbound_departure_time",
-    "outbound_arrival_time",
-    "inbound_arrival_time",
-    "inbound_departure_time",
-    "fare",
-    "is_redeye",
-    "airlines"
-  ],
-  "Hotels_3": [
-    "location",
-    "number_of_rooms",
-    "check_in_date",
-    "check_out_date",
-    "average_rating",
-    "hotel_name",
-    "street_address",
-    "phone_number",
-    "price",
-    "pets_welcome"
-  ],
-  "Media_1": [
-    "title",
-    "genre",
-    "subtitles",
-    "directed_by"
-  ],
-  "Music_2": [
-    "song_name",
-    "artist",
-    "album",
-    "genre",
-    "playback_device"
-  ],
-  "RentalCars_2": [
-    "car_type",
-    "car_name",
-    "pickup_location",
-    "pickup_date",
-    "pickup_time",
-    "pickup_city",
-    "dropoff_date",
-    "total_price"
-  ],
-  "Restaurants_1": [
-    "restaurant_name",
-    "date",
-    "time",
-    "serves_alcohol",
-    "has_live_music",
-    "phone_number",
-    "street_address",
-    "party_size",
-    "price_range",
-    "city",
-    "cuisine"
-  ],
-  "Services_2": [
-    "dentist_name",
-    "phone_number",
-    "address",
-    "city",
-    "appointment_date",
-    "appointment_time",
-    "offers_cosmetic_services"
-  ],
-  "Services_3": [
-    "doctor_name",
-    "phone_number",
-    "average_rating",
-    "street_address",
-    "city",
-    "appointment_date",
-    "appointment_time",
-    "type"
-  ]
+  "Alarm_1": {
+    "alarm_time": "time",
+    "alarm_name": "name",
+    "new_alarm_time": "new_time",
+    "new_alarm_name": "new_name"
+  },
+  "Banks_1": {
+    "account_type": "account_type",
+    "recipient_account_type": "recipient_type",
+    "balance": "balance",
+    "amount": "amount",
+    "recipient_account_name": "recipient_name"
+  },
+  "Banks_2": {
+    "account_type": "account_type",
+    "recipient_account_type": "recipient_type",
+    "account_balance": "account_balance",
+    "transfer_amount": "amount",
+    "recipient_name": "recipient_name",
+    "transfer_time": "transfer_time"
+  },
+  "Buses_1": {
+    "from_location": "departure",
+    "to_location": "destination",
+    "from_station": "from_station",
+    "to_station": "to_station",
+    "leaving_date": "date",
+    "leaving_time": "time",
+    "fare": "fare",
+    "travelers": "num_people",
+    "transfers": "transfers"
+  },
+  "Buses_2": {
+    "origin": "departure",
+    "destination": "destination",
+    "origin_station_name": "from_station",
+    "destination_station_name": "to_station",
+    "departure_date": "date",
+    "price": "price",
+    "departure_time": "time",
+    "group_size": "num_people",
+    "fare_type": "fare"
+  },
+  "Buses_3": {
+    "from_city": "departure",
+    "to_city": "destination",
+    "from_station": "from_station",
+    "to_station": "to_station",
+    "departure_date": "date",
+    "departure_time": "time",
+    "price": "price",
+    "additional_luggage": "luggage",
+    "num_passengers": "num_people",
+    "category": "category"
+  },
+  "Calendar_1": {
+    "event_date": "date",
+    "event_time": "time",
+    "event_location": "location",
+    "event_name": "name",
+    "available_start_time": "start_time",
+    "available_end_time": "end_time"
+  },
+  "Events_1": {
+    "category": "category",
+    "subcategory": "type",
+    "event_name": "name",
+    "date": "date",
+    "time": "time",
+    "number_of_seats": "num_people",
+    "city_of_event": "city",
+    "event_location": "venue",
+    "address_of_location": "address"
+  },
+  "Events_2": {
+    "event_type": "type",
+    "category": "category",
+    "event_name": "name",
+    "date": "date",
+    "time": "time",
+    "number_of_tickets": "num_people",
+    "city": "city",
+    "venue": "venue",
+    "venue_address": "address"
+  },
+  "Events_3": {
+    "event_type": "type",
+    "event_name": "name",
+    "date": "date",
+    "time": "time",
+    "number_of_tickets": "num_people",
+    "price_per_ticket": "price",
+    "city": "city",
+    "venue": "venue",
+    "venue_address": "address"
+  },
+  "Flights_1": {
+    "passengers": "passengers",
+    "seating_class": "seating_class",
+    "origin_city": "origin",
+    "destination_city": "destination",
+    "origin_airport": "origin_airport",
+    "destination_airport": "destination_airport",
+    "departure_date": "departure_date",
+    "return_date": "return_date",
+    "number_stops": "number_stops",
+    "outbound_departure_time": "outbound_departure_time",
+    "outbound_arrival_time": "outbound_arrival_time",
+    "inbound_arrival_time": "inbound_arrival_time",
+    "inbound_departure_time": "inbound_departure_time",
+    "price": "price",
+    "refundable": "refundable",
+    "airlines": "airlines"
+  },
+  "Flights_2": {
+    "passengers": "passengers",
+    "seating_class": "seating_class",
+    "origin": "origin",
+    "destination": "destination",
+    "origin_airport": "origin_airport",
+    "destination_airport": "destination_airport",
+    "departure_date": "departure_date",
+    "return_date": "return_date",
+    "number_stops": "number_stops",
+    "outbound_departure_time": "outbound_departure_time",
+    "outbound_arrival_time": "outbound_arrival_time",
+    "inbound_arrival_time": "inbound_arrival_time",
+    "inbound_departure_time": "inbound_departure_time",
+    "fare": "price",
+    "is_redeye": "is_redeye",
+    "airlines": "airlines"
+  },
+  "Flights_3": {
+    "passengers": "passengers",
+    "flight_class": "seating_class",
+    "origin_city": "origin",
+    "destination_city": "destination",
+    "origin_airport_name": "origin_airport",
+    "destination_airport_name": "destination_airport",
+    "departure_date": "departure_date",
+    "return_date": "return_date",
+    "number_stops": "number_stops",
+    "outbound_departure_time": "outbound_departure_time",
+    "outbound_arrival_time": "outbound_arrival_time",
+    "inbound_arrival_time": "inbound_arrival_time",
+    "inbound_departure_time": "inbound_departure_time",
+    "price": "price",
+    "number_checked_bags": "number_checked_bags",
+    "airlines": "airlines",
+    "arrives_next_day": "is_redeye"
+  },
+  "Flights_4": {
+    "number_of_tickets": "passengers",
+    "seating_class": "seating_class",
+    "origin_airport": "origin_airport",
+    "destination_airport": "destination_airport",
+    "departure_date": "departure_date",
+    "return_date": "return_date",
+    "is_nonstop": "is_nonstop",
+    "outbound_departure_time": "outbound_departure_time",
+    "outbound_arrival_time": "outbound_arrival_time",
+    "inbound_arrival_time": "inbound_arrival_time",
+    "inbound_departure_time": "inbound_departure_time",
+    "price": "price",
+    "airlines": "airlines"
+  },
+  "Homes_1": {
+    "area": "area",
+    "address": "address",
+    "property_name": "property_name",
+    "phone_number": "phone_number",
+    "furnished": "furnished",
+    "pets_allowed": "pets_allowed",
+    "rent": "rent",
+    "visit_date": "date",
+    "number_of_beds": "number_of_beds",
+    "number_of_baths": "number_of_baths"
+  },
+  "Homes_2": {
+    "intent": "intent",
+    "area": "area",
+    "address": "address",
+    "property_name": "property_name",
+    "phone_number": "phone_number",
+    "has_garage": "has_garage",
+    "in_unit_laundry": "in_unit_laundry",
+    "price": "price",
+    "visit_date": "date",
+    "number_of_beds": "number_of_beds",
+    "number_of_baths": "number_of_baths"
+  },
+  "Hotels_1": {
+    "destination": "location",
+    "number_of_rooms": "number_of_rooms",
+    "check_in_date": "check_in",
+    "number_of_days": "number_of_days",
+    "star_rating": "rating",
+    "hotel_name": "name",
+    "street_address": "street_address",
+    "phone_number": "phone_number",
+    "price_per_night": "price",
+    "has_wifi": "internet"
+  },
+  "Hotels_2": {
+    "where_to": "location",
+    "number_of_adults": "number_of_rooms",
+    "check_in_date": "check_in",
+    "check_out_date": "check_out",
+    "rating": "rating",
+    "address": "address",
+    "phone_number": "phone_number",
+    "total_price": "price",
+    "has_laundry_service": "laundry"
+  },
+  "Hotels_3": {
+    "location": "location",
+    "number_of_rooms": "number_of_rooms",
+    "check_in_date": "check_in",
+    "check_out_date": "check_out",
+    "average_rating": "rating",
+    "hotel_name": "name",
+    "street_address": "street_address",
+    "phone_number": "phone_number",
+    "price": "price",
+    "pets_welcome": "pets_welcome"
+  },
+  "Hotels_4": {
+    "location": "location",
+    "number_of_rooms": "number_of_rooms",
+    "check_in_date": "check_in",
+    "stay_length": "number_of_days",
+    "star_rating": "rating",
+    "place_name": "name",
+    "street_address": "street_address",
+    "phone_number": "phone_number",
+    "price_per_night": "price",
+    "smoking_allowed": "smoking"
+  },
+  "Media_1": {
+    "title": "title",
+    "genre": "genre",
+    "subtitles": "subtitles",
+    "directed_by": "directed_by"
+  },
+  "Media_2": {
+    "movie_name": "name",
+    "genre": "genre",
+    "subtitle_language": "language",
+    "director": "director",
+    "actors": "actors",
+    "price": "price"
+  },
+  "Media_3": {
+    "title": "title",
+    "genre": "genre",
+    "subtitle_language": "language",
+    "starring": "actors"
+  },
+  "Movies_1": {
+    "price": "price",
+    "number_of_tickets": "num_people",
+    "show_type": "type",
+    "theater_name": "theater",
+    "show_time": "time",
+    "show_date": "date",
+    "genre": "genre",
+    "street_address": "street_address",
+    "location": "location",
+    "movie_name": "title"
+  },
+  "Movies_2": {
+    "title": "title",
+    "genre": "genre",
+    "aggregate_rating": "rating",
+    "starring": "cast",
+    "director": "director"
+  },
+  "Movies_3": {
+    "movie_title": "title",
+    "genre": "genre",
+    "percent_rating": "rating",
+    "cast": "cast",
+    "directed_by": "director"
+  },
+  "Music_3": {
+    "track": "song",
+    "artist": "artist",
+    "album": "album",
+    "genre": "genre",
+    "year": "year",
+    "device": "device"
+  },
+  "Music_1": {
+    "song_name": "song",
+    "artist": "artist",
+    "album": "album",
+    "genre": "genre",
+    "year": "year",
+    "playback_device": "device"
+  },
+  "Music_2": {
+    "song_name": "song",
+    "artist": "artist",
+    "album": "album",
+    "genre": "genre",
+    "playback_device": "device"
+  },
+  "Messaging_1": {
+    "location": "location",
+    "contact_name": "contact_name"
+  },
+  "Payment_1": {
+    "payment_method": "payment_method",
+    "amount": "amount",
+    "receiver": "receiver",
+    "private_visibility": "private_visibility"
+  },
+  "Restaurants_1": {
+    "restaurant_name": "name",
+    "date": "date",
+    "time": "time",
+    "serves_alcohol": "alcohol",
+    "has_live_music": "live_music",
+    "phone_number": "phone_number",
+    "street_address": "address",
+    "party_size": "people",
+    "price_range": "price_range",
+    "city": "location",
+    "cuisine": "food"
+  },
+  "Restaurants_2": {
+    "restaurant_name": "name",
+    "date": "date",
+    "time": "time",
+    "has_seating_outdoors": "outdoor_seating",
+    "has_vegetarian_options": "has_vegetarian_options",
+    "phone_number": "phone_number",
+    "rating": "rating",
+    "address": "address",
+    "number_of_seats": "people",
+    "price_range": "price_range",
+    "location": "location",
+    "category": "food"
+  },
+  "RideSharing_1": {
+    "destination": "destination",
+    "shared_ride": "shared_ride",
+    "ride_fare": "fare",
+    "approximate_ride_duration": "duration",
+    "number_of_riders": "number_of_seats"
+  },
+  "RideSharing_2": {
+    "destination": "destination",
+    "ride_type": "type",
+    "ride_fare": "fare",
+    "wait_time": "wait_time",
+    "number_of_seats": "number_of_seats"
+  },
+  "RentalCars_1": {
+    "type": "type",
+    "car_name": "name",
+    "pickup_location": "departure",
+    "pickup_date": "pickup_date",
+    "pickup_time": "leave_at",
+    "pickup_city": "pickup_city",
+    "dropoff_date": "dropoff_date",
+    "total_price": "price"
+  },
+  "RentalCars_2": {
+    "car_type": "type",
+    "car_name": "name",
+    "pickup_location": "departure",
+    "pickup_date": "pickup_date",
+    "pickup_time": "leave_at",
+    "pickup_city": "pickup_city",
+    "dropoff_date": "dropoff_date",
+    "total_price": "price"
+  },
+  "RentalCars_3": {
+    "car_type": "type",
+    "car_name": "name",
+    "pickup_location": "departure",
+    "start_date": "pickup_date",
+    "pickup_time": "pickup_time",
+    "city": "pickup_city",
+    "end_date": "dropoff_date",
+    "price_per_day": "price",
+    "add_insurance": "insurance"
+  },
+  "Services_1": {
+    "stylist_name": "stylist_name",
+    "phone_number": "phone_number",
+    "average_rating": "average_rating",
+    "is_unisex": "is_unisex",
+    "street_address": "street_address",
+    "city": "city",
+    "appointment_date": "appointment_date",
+    "appointment_time": "appointment_time"
+  },
+  "Services_2": {
+    "dentist_name": "dentist_name",
+    "phone_number": "phone_number",
+    "address": "address",
+    "city": "city",
+    "appointment_date": "appointment_date",
+    "appointment_time": "appointment_time",
+    "offers_cosmetic_services": "offers_cosmetic_services"
+  },
+  "Services_3": {
+    "doctor_name": "doctor_name",
+    "phone_number": "phone_number",
+    "average_rating": "average_rating",
+    "street_address": "street_address",
+    "city": "city",
+    "appointment_date": "appointment_date",
+    "appointment_time": "appointment_time",
+    "type": "type"
+  },
+  "Services_4": {
+    "therapist_name": "therapist_name",
+    "phone_number": "phone_number",
+    "address": "address",
+    "city": "city",
+    "appointment_date": "appointment_date",
+    "appointment_time": "appointment_time",
+    "type": "type"
+  },
+  "Trains_1": {
+    "from": "departure",
+    "to": "destination",
+    "from_station": "origin",
+    "to_station": "arrival",
+    "date_of_journey": "date",
+    "journey_start_time": "leave_at",
+    "total": "price",
+    "number_of_adults": "number_of_seats",
+    "class": "class",
+    "trip_protection": "trip_protection"
+  },
+  "Travel_1": {
+    "location": "location",
+    "attraction_name": "name",
+    "category": "type",
+    "phone_number": "phone_number",
+    "free_entry": "free_entry",
+    "good_for_kids": "good_for_kids"
+  },
+  "Weather_1": {
+    "precipitation": "precipitation",
+    "humidity": "humidity",
+    "wind": "wind",
+    "temperature": "temperature",
+    "city": "city",
+    "date": "date"
+  }
 }
