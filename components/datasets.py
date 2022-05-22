@@ -158,6 +158,22 @@ class InContextDataset(BaseDataset):
 
 class MetaLearnDataset(BaseDataset):
 
+  def _filter_set(self, support_data):
+    new_support = []
+    relevant_domains = ['hotel', 'rental', 'rideshare', 'event', 'travel', 'restaurant', 'train']
+    if self.split == 'train':
+      for example in support_data['train']:
+        if example.domain in relevant_domains:
+          new_support.append(example)
+      for example in support_data['test']:
+        if example.domain in relevant_domains:
+          new_support.append(example)
+    elif self.split == 'dev':
+      for example in support_data['dev']:
+        if example.domain in relevant_domains:
+          new_support.append(example)
+    return new_support
+
   def add_support(self, supports, left_out):
     """ replaces the query set data with the support set data for training """
     # self.supported_datasets = [name for name, _ in DATASETS.items() if name != left_out]
@@ -165,6 +181,8 @@ class MetaLearnDataset(BaseDataset):
     support_set = []
     for support_name, support_data in supports.items():
       if support_name != left_out:
+        if support_name == 'sgd':
+          support_data = self._filter_set(support_data)
         self.supported_datasets.append(support_name)
         support_set.extend(support_data[self.split])
         setattr(self, f"{support_name}_ont", support_data['ont'])

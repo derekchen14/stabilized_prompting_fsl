@@ -60,7 +60,7 @@ GENERAL_TYPO = {
     # parking
     "free parking":"free",
     # internet
-    "free internet":"yes", "y":"yes",
+    "free internet":"yes", "y":"yes", "True": "yes", "False": "no",
     # star
     "4 star":"4", "4 stars":"4", "0 star rarting":"<none>", "3 .":"3",
     # others
@@ -82,6 +82,11 @@ SLOT_MAPPING = {
   "time preference": "preferred time",
   "time showing": "showtime",
 }
+
+ALL_SPLITS = ['bus', 'event', 'flight', 'home', 'hotel', 'medium', 'message', 'movie', 'music',
+        'restaurant', 'rideshare', 'rental', 'train', 'travel', 'weather']
+
+
 
 """
 <customer> i would like some soup and crackers.
