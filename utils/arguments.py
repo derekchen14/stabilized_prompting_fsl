@@ -80,6 +80,14 @@ def solicit_params():
                 help="Number of models to keep around after pruning, by default does not prune")
     parser.add_argument("--parallel", action="store_true",
                 help="Whether to run in parallel")
+    parser.add_argument("--local_rank", default=0, type=int,
+                help="local rank")
+    parser.add_argument("--deepspeed", default="ds_config.json", type=str,
+                help="deepspeed configure file")
+    parser.add_argument("--num_gpus", default=1, type=int,
+                help="number of gpu used")
+    parser.add_argument("--fp16", action="store_true",
+                help="number of gpu used")
     
     # Hyper-parameters for tuning
     parser.add_argument("--batch-size", default=12, type=int,

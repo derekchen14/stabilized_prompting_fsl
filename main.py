@@ -188,34 +188,37 @@ if __name__ == "__main__":
   exp_logger = ExperienceLogger(args, ontology, save_path)
   detective = ExemplarDetective(args, datasets['train'])
 
+  if args.do_train:
+    model = load_model(args, ontology, tokenizer, save_path)
+    datasets = check_support(args, datasets)
+    run_train(args, model, datasets, exp_logger, detective)
+  elif args.do_eval:
+    run_test(args, datasets['test'], exp_logger, detective)
+
+
+
+  # # parser = HfArgumentParser(ourarugments, TrainingArguments)
+  # # training_args = parser.parse_args_into_dataclasses()
+  # training_args = TrainingArguments(output_dir=args.output_dir, deepspeed=args.deepspeed, fp16=args.fp16, 
+  #           do_train=args.do_train, do_eval=args.do_eval, do_predict=args.do_eval, learning_rate=args.learning_rate, 
+  #           num_train_epochs=args.n_epochs, logging_steps=args.log_interval, save_strategy="epoch", seed=args.seed, 
+  #           eval_steps=args.eval_interval,)
+
+
+  # model = load_model(args, ontology, tokenizer, save_path)
+  # # training_args = TrainingArguments(output_dir="test_trainer", evaluation_strategy="epoch")
+  # # Initialize our Trainer
+  # trainer = DSTrainer(
+  #     model=model,
+  #     training_args=training_args,
+  #     tokenizer=tokenizer,
+  # )
+
+
   # if args.do_train:
-  #   model = load_model(args, ontology, tokenizer, save_path)
-  #   datasets = check_support(args, datasets)
-  #   run_train(args, model, datasets, exp_logger, detective)
+  #   trainer.train()
   # elif args.do_eval:
-  #   run_test(args, datasets['test'], exp_logger, detective)
-
-
-
-  parser = HfArgumentParser(ourarugments, TrainingArguments)
-  training_args = parser.parse_args_into_dataclasses()
-
-
-
-  model = load_model(args, ontology, tokenizer, save_path)
-  # training_args = TrainingArguments(output_dir="test_trainer", evaluation_strategy="epoch")
-  # Initialize our Trainer
-  trainer = Trainer(
-      model=model,
-      args=training_args,
-      train_dataset=datasets["train"] if training_args.do_train else None,
-      eval_dataset=datasets["test"] if training_args.do_eval else None,
-      tokenizer=tokenizer,
-      data_collator=default_data_collator,
-  )
-
-  trainer.train()
-
+  #   trainer.evaluate()
 
 
 
