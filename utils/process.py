@@ -105,28 +105,57 @@ def select_utterances(args, utt_so_far, target, split):
   # elif value.lower() in ['yes', 'no'] and (slot in history or 'wifi' in history):
   #   use_target = True  # to handle the internet and parking use cases
 
-def extract_label_sgd(frames, prior_values):
-  labels = []
+def extract_sgd(frames, domain_map, ontology):
+  labels = defaultdict(dict)
   for frame in frames:
     service = frame["service"]
-    if 'state' in frame:
-      for slot in frame['state']['slot_values']:
-        value = frame['state']['slot_values'][slot][0]    #by default, select the first value
-        if value == prior_values[f'{service}-{slot}']:
-          continue
-        labels.append((service, slot, value))
+    domain = domain_map[service]
+
+    if domain in ALL_SPLITS and 'state' in frame:
+      for pslot in frame['state']['slot_values']:
+        value = frame['state']['slot_values'][pslot][0]    # by default, select the first value
+        slot = ontology[service][pslot]
+        labels[domain][slot] = value
   return labels
+
+def prepare_ontology(ontology):
+  from nltk.stem import WordNetLemmatizer
+  lemmatizer = WordNetLemmatizer()
+
+  domain_map = {}
+  temp_ont = defaultdict(set)
+
+  for prev_domain, slot_dict in ontology.items():
+    domain, number = prev_domain.split("_")
+    post_domain = lemmatizer.lemmatize(domain.lower())
+    if post_domain.endswith('ing'):
+      post_domain = post_domain[:-3] + 'e'
+    if post_domain.endswith('cars'):
+      post_domain = post_domain[:-4]
+    domain_map[prev_domain] = post_domain
+
+    if post_domain in ALL_SPLITS:
+      for slot in slot_dict.values():
+        temp_ont[post_domain].add(slot)
+
+  new_ont = {domain: list(slots) for domain, slots in temp_ont.items()}
+
+  for domain, slots in new_ont.items():
+    print(domain)
+    print(slots)
+  pdb.set_trace()
+  return domain_map, new_ont
 
 def build_sgd(args, data, ontology, split):
   examples = {}
-  prompt = "The topic of conversation is about"
+  domain_map, new_ont = prepare_ontology(ontology)
 
   for conversation in progress_bar(data, total=len(data)):
     convo_id = split + "-" + conversation['dialogue_id'].replace('_','-')
     examples[convo_id] = defaultdict(list)
     text_so_far = []
 
-    prior_values = {f'{service}-{slot}': '<none>' for service, slots in ontology.items() for slot in slots}
+    prior_values = {f'{dom}-{slot}': '<none>' for dom, slots in new_ont.items() for slot in slots}
     turn_count = 1
     for turn in conversation['turns']:
       global_id = convo_id + '_' + str(turn_count)
@@ -141,16 +170,21 @@ def build_sgd(args, data, ontology, split):
         text_so_far.append(user_utt)
         turn_count += 1
 
-        targets = extract_label_sgd(turn['frames'], prior_values)
+        targets = extract_sgd(turn['frames'], domain_map, ontology)
         prev_state = {k:v for k,v in prior_values.items()}
-        for service, slot, value in targets:
-          target = {'domain': service, 'slot': slot, 'value': value.strip(), 'global_id': global_id}
-          use_target, history, target = select_utterances(args, text_so_far, target, split)
-          if use_target:
-            example = {'utterances':history, 'target':target, 'prev_state':prev_state, 'corpus':'sgd'}
-            examples[convo_id][global_id].append(example)
-          pval = '<none>' if value == '<remove>' else value
-          prior_values[f'{service}-{slot}'] = pval
+
+        for domain, slot_vals in targets.items():
+          active_slots = new_ont[domain]
+
+          for slot in active_slots:
+            value = slot_vals.get(slot, "<none>")
+            target = {'domain': domain, 'slot': slot, 'value': value.strip(), 'global_id': global_id}
+            use_target, history, target = select_utterances(args, text_so_far, target, split)
+            if use_target:
+              example = {'utterances':history, 'target':target, 'prev_state':prev_state, 'corpus':'sgd'}
+              examples[convo_id][global_id].append(example)
+            if value != '<none>':
+              prior_values[f'{domain}-{slot}'] = value
 
   return examples
 
@@ -560,6 +594,10 @@ def extract_slotvals(segments, ontology):
   for segment in segments:
     slot_candidate = segment['annotations'][0]['name']
     value = segment['text'].replace('!', '').replace('.', '').replace('?', '')
+    if value in GENERAL_TYPO:
+      value = GENERAL_TYPO[value]
+    if slot_candidate == "name.theater" and value.lower().endswith("theater"):
+      value = value[:-7].strip()
     if slot_candidate in ontology and len(value) < 28:
       slot = ontology[slot_candidate]
       labels[slot] = value
