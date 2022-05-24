@@ -85,6 +85,8 @@ def solicit_params():
                 help="Number of models to keep around after pruning, by default does not prune")
     parser.add_argument("--parallel", action="store_true",
                 help="Whether to run in parallel")
+
+    # deepspeed
     parser.add_argument("--local_rank", default=0, type=int,
                 help="local rank")
     parser.add_argument("--deepspeed", default="", type=str,
