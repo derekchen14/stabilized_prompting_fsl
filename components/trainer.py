@@ -3,6 +3,7 @@
 import os, sys, pdb
 import numpy as np
 import random
+import math
 
 from torch import nn, no_grad
 from tqdm import tqdm as progress_bar
@@ -14,64 +15,37 @@ from utils.process import process_data, get_dataloader
 from utils.arguments import solicit_params
 from utils.load import load_tokenizer, load_model, load_data, load_best_model, load_support
 from utils.evaluate import eval_quantify, eval_qualify, test_quantify, parse_output
-from assets.static_vars import device, debug_break, STOP_TOKENS
-from transformers import (
-  CONFIG_MAPPING,
-  MODEL_FOR_CAUSAL_LM_MAPPING,
-  AutoConfig,
-  AutoModelForCausalLM,
-  AutoTokenizer,
-  HfArgumentParser,
-  Trainer,
-  TrainingArguments,
-  default_data_collator,
-  set_seed,
-)
+from assets.static_vars import debug_break
+from transformers.deepspeed import deepspeed_init, deepspeed_reinit, is_deepspeed_zero3_enabled
+from transformers import Trainer
 
 
 
 class DSTrainer(Trainer):
-  """docstring for Trainer"""
-  def __init__(
-    self,
-    model: Union[PreTrainedModel, nn.Module] = None,
-    training_args: TrainingArguments = None,
-    tokenizer: Optional[PreTrainedTokenizerBase] = None,
-    args_customize = None,
-    dataset = None,
-    ):
-    super(Trainer, self).__init__(
-      model=model,
-      args=training_args,
-      train_dataset=datasets["train"] if training_args.do_train else None,
-      eval_dataset=datasets["test"] if training_args.do_eval else None,
-      tokenizer=tokenizer,
-      data_collator=default_data_collator,
-      is_model_parallel=args.parallel,)
-    self.args = args_customize
-    self.dataset = dataset
-
-  def get_train_dataloader(self):
-      return get_dataloader(self.args, dataset['train'])
-
-  def get_eval_dataloader(self):
-      return get_dataloader(self.args, dataset['dev'])
-
-  def get_test_dataloader(self):
-      return get_dataloader(self.args, dataset['test'])
-
-  def train(self):
-    detective = ExemplarDetective(self.args, self.dataset['train'])
+  def train(self, exp_logger, detective):
     # dataset, dev_dataset = datasets['train'], datasets['dev']
-    # train_dataloader = get_dataloader(self.args, self.dataset)
-    train_dataloader = get_train_dataloader()
+    train_dataloader = get_dataloader(self.args, self.train_dataset)
+    # train_dataloader = get_train_dataloader()
     total_steps = len(train_dataloader) // self.args.grad_accum_steps * self.args.n_epochs
-    optimizer, scheduler = setup_optimization(self.args, self.model, total_steps)
-    exp_logger.update_optimization(optimizer, scheduler)
+
+
+    if self.args.deepspeed:
+      deepspeed_engine, optimizer, lr_scheduler = deepspeed_init(
+          self, num_training_steps=total_steps, resume_from_checkpoint=False
+      )
+      self.model = deepspeed_engine.module
+      self.model_wrapped = deepspeed_engine
+      self.deepspeed = deepspeed_engine
+      self.optimizer = optimizer
+      self.lr_scheduler = lr_scheduler
+    else:
+      self.optimizer, self.scheduler = setup_optimization(self.args, self.model, total_steps)
+
+    exp_logger.update_optimization(self.optimizer, self.scheduler)
     
     if self.args.task == 'meta_learn':
-      self.dataset['train'].add_detective(detective)
-      dev_dataset.add_detective(detective)
+      self.train_dataset.add_detective(detective)
+      self.eval_dataset.add_detective(detective)
 
     for epoch_count in range(exp_logger.num_epochs):
       exp_logger.start_epoch(train_dataloader, self.args.percent)
@@ -79,33 +53,73 @@ class DSTrainer(Trainer):
 
       for step, batch in enumerate(train_dataloader):
         inputs, targets = self.dataset['train'].collate(self.args, batch)
-        review_inputs(self.args, inputs, targets, self.dataset['train'].tokenizer)
+        review_inputs(self.args, inputs, targets, self.tokenizer)
+
+        if self.deepspeed:
+          kwargs = dict(device=self.args.device)
+          kwargs.update(dict(dtype=self.args.hf_deepspeed_config.dtype()))
+          inputs =  inputs.to(**kwargs)
+          targets = targets.to(**kwargs)
+
         outputs = self.model(**inputs, labels=targets)
         exp_logger.tr_loss += outputs.loss.item()
         loss = outputs.loss / self.args.grad_accum_steps
-        loss.backward()
+        if self.deepspeed:
+          loss = self.deepspeed.backward(loss)
+        else:
+          loss.backward()
 
         if (step + 1) % self.args.grad_accum_steps == 0:
           nn.utils.clip_grad_norm_(self.model.parameters(), 5.0)
-          exp_logger.optimizer.step()  # backprop to update the weights
-          exp_logger.scheduler.step()  # Update learning rate schedule
+          if self.deepspeed:
+            self.deepspeed.step()
+          else:
+            exp_logger.optimizer.step()  # backprop to update the weights
+            exp_logger.scheduler.step()  # Update learning rate schedule
           self.model.zero_grad()
           exp_logger.log_train(step)
         if exp_logger.train_stop(self.args, step, debug_break): break
 
       if self.args.task == 'meta_learn' and self.args.do_leave:
-        run_leftout(self.args, self.model, self.dataset['dev'], exp_logger)
-      eval_res = run_eval(self.args, self.model, self.dataset['dev'], exp_logger)
+        run_leftout(self.args, self.model, self.eval_dataset, exp_logger)
+      eval_res = self.run_eval(self.args, self.model, self.dataset['dev'], exp_logger)
       if eval_res[exp_logger.metric] >= exp_logger.best_score[exp_logger.metric]:
         exp_logger.best_score = eval_res
-        exp_logger.save_best_model(self.model, tokenizer, self.args.prune_keep)
+        exp_logger.save_best_model(self.model, self.tokenizer, self.args.prune_keep)
       early_stop = exp_logger.end_epoch()
       if early_stop: break
 
-  return self.model
+    return self.model
 
-  def evaluate(self):
-    detective = ExemplarDetective(self.args, self.dataset['train'])
+
+  def run_eval(self, args, model, dataset, exp_logger):
+    tokenizer = dataset.tokenizer
+    dataloader = get_dataloader(args, dataset, 'dev')
+    num_batches = debug_break if args.debug else len(dataloader)
+    exp_logger.start_eval(num_batches, args.eval_interval)
+    all_outputs, all_targets = [], []
+    
+    ''' goes through model generation without backprop, rather than classification '''
+    for batch in progress_bar(dataloader, total=len(dataloader)):
+      inputs, target_dict = dataset.collate(args, batch)
+      all_targets.extend(target_dict)   # notice this is "extend", not "append"
+
+      maxl = inputs['input_ids'].shape[1] + 12
+      with no_grad():
+        # defaults to greedy sampling, for param details see https://huggingface.co/docs/transformers/
+        #        v4.15.0/en/main_classes/model#transformers.generation_utils.GenerationMixin.generate 
+        outputs = model.generate(**inputs, max_length=maxl, early_stopping=True,
+                            repetition_penalty=args.threshold, temperature=args.temperature)
+      output_strings = tokenizer.batch_decode(outputs.detach(), skip_special_tokens=False)
+      all_outputs.extend(output_strings)
+
+      if exp_logger.log_eval(args.qualify, output_strings, target_dict):
+        results = eval_quantify(args, all_outputs, all_targets, exp_logger, tokenizer)
+      if args.debug and exp_logger.eval_step >= debug_break: break
+
+    return results
+
+  def predict(self, exp_logger, detective):
     ontology, tokenizer = exp_logger.ontology, self.dataset['test'].tokenizer
     self.dataset['test'].add_detective(detective)
     exp_logger.start_eval(len(self.dataset['test']), self.args.eval_interval)

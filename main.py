@@ -6,6 +6,7 @@ from torch import nn, no_grad
 from tqdm import tqdm as progress_bar
 from components.logger import ExperienceLogger
 from components.detector import ExemplarDetective
+from components.trainer import DSTrainer
 
 from utils.help import *
 from utils.process import process_data, get_dataloader
@@ -13,23 +14,25 @@ from utils.arguments import solicit_params
 from utils.load import load_tokenizer, load_model, load_data, load_best_model, load_support
 from utils.evaluate import eval_quantify, eval_qualify, test_quantify, parse_output
 from assets.static_vars import device, debug_break, STOP_TOKENS
-from transformers import (
-    CONFIG_MAPPING,
-    MODEL_FOR_CAUSAL_LM_MAPPING,
-    AutoConfig,
-    AutoModelForCausalLM,
-    AutoTokenizer,
-    HfArgumentParser,
-    Trainer,
-    TrainingArguments,
-    default_data_collator,
-    set_seed,
-)
+# from .deepspeed import deepspeed_init, deepspeed_reinit, is_deepspeed_zero3_enabled
+from transformers import HfArgumentParser, TrainingArguments
 
 def run_train(args, model, datasets, exp_logger, detective):
   dataset, dev_dataset = datasets['train'], datasets['dev']
   train_dataloader = get_dataloader(args, dataset)
   total_steps = len(train_dataloader) // args.grad_accum_steps * args.n_epochs
+  deepspeed = None
+
+  # if args.deepspeed:
+  #     deepspeed_engine, optimizer, lr_scheduler = deepspeed_init(
+  #         self, num_training_steps=max_steps, resume_from_checkpoint=resume_from_checkpoint
+  #     )
+  #     model = deepspeed_engine.module
+  #     model_wrapped = deepspeed_engine
+  #     deepspeed = deepspeed_engine
+  #     optimizer = optimizer
+  #     lr_scheduler = lr_scheduler
+
   optimizer, scheduler = setup_optimization(args, model, total_steps)
   exp_logger.update_optimization(optimizer, scheduler)
   
@@ -44,15 +47,29 @@ def run_train(args, model, datasets, exp_logger, detective):
     for step, batch in enumerate(train_dataloader):
       inputs, targets = dataset.collate(args, batch)
       review_inputs(args, inputs, targets, datasets['train'].tokenizer)
+
+      # pdb.set_trace()
+
+      # if deepspeed:
+      #   kwargs = dict(device=self.args.device)
+      #   kwargs.update(dict(dtype=self.args.hf_deepspeed_config.dtype()))
+      #   return data.to(**kwargs)
+
       outputs = model(**inputs, labels=targets)
       exp_logger.tr_loss += outputs.loss.item()
       loss = outputs.loss / args.grad_accum_steps
-      loss.backward()
+      if deepspeed:
+        loss = deepspeed.backward(loss)
+      else:
+        loss.backward()
 
       if (step + 1) % args.grad_accum_steps == 0:
         nn.utils.clip_grad_norm_(model.parameters(), 5.0)
-        exp_logger.optimizer.step()  # backprop to update the weights
-        exp_logger.scheduler.step()  # Update learning rate schedule
+        if deepspeed:
+          deepspeed.step()
+        else:
+          exp_logger.optimizer.step()  # backprop to update the weights
+          exp_logger.scheduler.step()  # Update learning rate schedule
         model.zero_grad()
         exp_logger.log_train(step)
       if exp_logger.train_stop(args, step, debug_break): break
@@ -179,7 +196,11 @@ if __name__ == "__main__":
   args = solicit_params()
   args = setup_gpus(args)
   args, save_path = check_directories(args)
-  # set_seed(args)
+  set_seed(args)
+  if args.deepspeed:
+    from transformers.deepspeed import HfTrainerDeepSpeedConfig
+    args.hf_deepspeed_config = HfTrainerDeepSpeedConfig(args.deepspeed)
+    args.hf_deepspeed_config.trainer_config_process(args)
 
   reformat_data(args)
   raw_data = load_data(args)
@@ -188,37 +209,50 @@ if __name__ == "__main__":
   exp_logger = ExperienceLogger(args, ontology, save_path)
   detective = ExemplarDetective(args, datasets['train'])
 
-  if args.do_train:
-    model = load_model(args, ontology, tokenizer, save_path)
-    datasets = check_support(args, datasets)
-    run_train(args, model, datasets, exp_logger, detective)
-  elif args.do_eval:
-    run_test(args, datasets['test'], exp_logger, detective)
+  # if args.do_train:
+  #   model = load_model(args, ontology, tokenizer, save_path)
+  #   datasets = check_support(args, datasets)
+  #   run_train(args, model, datasets, exp_logger, detective)
+  # elif args.do_eval:
+  #   run_test(args, datasets['test'], exp_logger, detective)
 
 
 
-  # # parser = HfArgumentParser(ourarugments, TrainingArguments)
-  # # training_args = parser.parse_args_into_dataclasses()
+  # parser = HfArgumentParser(ourarugments, TrainingArguments)
+  # training_args = parser.parse_args_into_dataclasses()
+
   # training_args = TrainingArguments(output_dir=args.output_dir, deepspeed=args.deepspeed, fp16=args.fp16, 
   #           do_train=args.do_train, do_eval=args.do_eval, do_predict=args.do_eval, learning_rate=args.learning_rate, 
   #           num_train_epochs=args.n_epochs, logging_steps=args.log_interval, save_strategy="epoch", seed=args.seed, 
   #           eval_steps=args.eval_interval,)
 
+  training_args = TrainingArguments(output_dir=args.output_dir)
+  for arg in vars(args):
+    try:
+      setattr(training_args, arg, getattr(args, arg))
+    except:
+      pdb.set_trace()
+  # print("*"*20)
+  # pdb.set_trace()
+  datasets = check_support(training_args, datasets)
+  model = load_model(training_args, ontology, tokenizer, save_path)
+  
+  pdb.set_trace()
+  # training_args = TrainingArguments(output_dir="test_trainer", evaluation_strategy="epoch")
+  # Initialize our Trainer
+  trainer = DSTrainer(
+      model=model,
+      args=training_args,
+      train_dataset=datasets["train"],
+      eval_dataset=datasets["dev"],
+      tokenizer=tokenizer,
+  )
 
-  # model = load_model(args, ontology, tokenizer, save_path)
-  # # training_args = TrainingArguments(output_dir="test_trainer", evaluation_strategy="epoch")
-  # # Initialize our Trainer
-  # trainer = DSTrainer(
-  #     model=model,
-  #     training_args=training_args,
-  #     tokenizer=tokenizer,
-  # )
 
-
-  # if args.do_train:
-  #   trainer.train()
-  # elif args.do_eval:
-  #   trainer.evaluate()
+  if args.do_train:
+    trainer.train(exp_logger, detective)
+  elif args.do_eval:
+    trainer.predict(exp_logger, detective)
 
 
 

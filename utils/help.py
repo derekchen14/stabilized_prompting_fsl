@@ -18,15 +18,15 @@ def set_seed(args):
   random.seed(args.seed)
   np.random.seed(args.seed)
   torch.manual_seed(args.seed)
-  if args.n_gpu > 0:
+  if args.num_gpus > 0:
     torch.cuda.manual_seed_all(args.seed)
 
 def setup_gpus(args):
-  n_gpu = 0  # set the default to 0
+  num_gpus = 0  # set the default to 0
   if torch.cuda.is_available():
-    n_gpu = torch.cuda.device_count()
-  args.n_gpu = n_gpu
-  if n_gpu > 0:   # this is not an 'else' statement and cannot be combined
+    num_gpus = torch.cuda.device_count()
+  args.num_gpus = num_gpus
+  if num_gpus > 0:   # this is not an 'else' statement and cannot be combined
     torch.backends.cudnn.benchmark = False
     torch.backends.cudnn.deterministic = True
   return args
@@ -153,7 +153,6 @@ def model_match(fname, args):
        # and clen == f'clen{args.context_length}':
       return True
   return False
-
 
 def reformat_data(args):
   if not os.path.exists(os.path.join(args.input_dir, args.dataset)) and args.ignore_cache:

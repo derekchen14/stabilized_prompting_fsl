@@ -1,7 +1,12 @@
 import argparse
-import os
+import sys, os
+from transformers import HfArgumentParser, TrainingArguments
+
 
 def solicit_params():
+    # training_args = TrainingArguments(output_dir="test_trainer")
+    # parser_hf = HfArgumentParser(training_args, add_help=False)
+    # parser = argparse.ArgumentParser(parents=[parser_hf], conflict_handler='resolve')
     parser = argparse.ArgumentParser()
 
     # Required parameters
@@ -82,7 +87,7 @@ def solicit_params():
                 help="Whether to run in parallel")
     parser.add_argument("--local_rank", default=0, type=int,
                 help="local rank")
-    parser.add_argument("--deepspeed", default="ds_config.json", type=str,
+    parser.add_argument("--deepspeed", default="", type=str,
                 help="deepspeed configure file")
     parser.add_argument("--num_gpus", default=1, type=int,
                 help="number of gpu used")
