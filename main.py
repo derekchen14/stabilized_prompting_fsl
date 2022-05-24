@@ -1,6 +1,7 @@
 import os, sys, pdb
 import numpy as np
 import random
+import deepspeed
 
 from torch import nn, no_grad
 from tqdm import tqdm as progress_bar
@@ -14,26 +15,30 @@ from utils.arguments import solicit_params
 from utils.load import load_tokenizer, load_model, load_data, load_best_model, load_support
 from utils.evaluate import eval_quantify, eval_qualify, test_quantify, parse_output
 from assets.static_vars import device, debug_break, STOP_TOKENS
-# from .deepspeed import deepspeed_init, deepspeed_reinit, is_deepspeed_zero3_enabled
 from transformers import HfArgumentParser, TrainingArguments
 
 def run_train(args, model, datasets, exp_logger, detective):
   dataset, dev_dataset = datasets['train'], datasets['dev']
   train_dataloader = get_dataloader(args, dataset)
   total_steps = len(train_dataloader) // args.grad_accum_steps * args.n_epochs
-  deepspeed = None
-
-  # if args.deepspeed:
-  #     deepspeed_engine, optimizer, lr_scheduler = deepspeed_init(
-  #         self, num_training_steps=max_steps, resume_from_checkpoint=resume_from_checkpoint
-  #     )
-  #     model = deepspeed_engine.module
-  #     model_wrapped = deepspeed_engine
-  #     deepspeed = deepspeed_engine
-  #     optimizer = optimizer
-  #     lr_scheduler = lr_scheduler
 
   optimizer, scheduler = setup_optimization(args, model, total_steps)
+
+  hf_deepspeed_config = args.hf_deepspeed_config
+  hf_deepspeed_config.trainer_config_finalize(args, model, total_steps)
+  config = hf_deepspeed_config.config
+
+  if args.deepspeed:
+      deepspeed_engine, optimizer, _, lr_scheduler = deepspeed.initialize(
+                model=model,
+                model_parameters=list(filter(lambda p: p.requires_grad, model.parameters())),
+                config_params=config,
+                optimizer=optimizer,
+                lr_scheduler=lr_scheduler,)
+      model = deepspeed_engine
+      optimizer = optimizer
+      lr_scheduler = lr_scheduler
+
   exp_logger.update_optimization(optimizer, scheduler)
   
   if args.task == 'meta_learn':
@@ -50,22 +55,23 @@ def run_train(args, model, datasets, exp_logger, detective):
 
       # pdb.set_trace()
 
-      # if deepspeed:
-      #   kwargs = dict(device=self.args.device)
-      #   kwargs.update(dict(dtype=self.args.hf_deepspeed_config.dtype()))
-      #   return data.to(**kwargs)
+      if args.deepspeed:
+        kwargs = dict(device=args.device)
+        kwargs.update(dict(dtype=args.hf_deepspeed_config.dtype()))
+        inputs =  inputs.to(**kwargs)
+        targets = targets.to(**kwargs)
 
       outputs = model(**inputs, labels=targets)
       exp_logger.tr_loss += outputs.loss.item()
       loss = outputs.loss / args.grad_accum_steps
-      if deepspeed:
+      if args.deepspeed:
         loss = deepspeed.backward(loss)
       else:
         loss.backward()
 
       if (step + 1) % args.grad_accum_steps == 0:
         nn.utils.clip_grad_norm_(model.parameters(), 5.0)
-        if deepspeed:
+        if args.deepspeed:
           deepspeed.step()
         else:
           exp_logger.optimizer.step()  # backprop to update the weights
@@ -236,7 +242,7 @@ if __name__ == "__main__":
   # pdb.set_trace()
   datasets = check_support(training_args, datasets)
   model = load_model(training_args, ontology, tokenizer, save_path)
-  
+
   pdb.set_trace()
   # training_args = TrainingArguments(output_dir="test_trainer", evaluation_strategy="epoch")
   # Initialize our Trainer
