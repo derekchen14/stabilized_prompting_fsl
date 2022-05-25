@@ -87,7 +87,7 @@ def solicit_params():
                 help="Whether to run in parallel")
 
     # deepspeed
-    parser.add_argument("--local_rank", default=0, type=int,
+    parser.add_argument("--local_rank", default=-1, type=int,
                 help="local rank")
     parser.add_argument("--deepspeed", default="", type=str,
                 help="deepspeed configure file")
@@ -122,5 +122,10 @@ def solicit_params():
     parser.add_argument("--speed", default=True, type=bool, 
                 help="try for deepspeed.")
 
+    # # if args.deepspeed:
+    # import deepspeed
+    # parser = deepspeed.add_config_arguments(parser)
+
     args = parser.parse_args()
+
     return args

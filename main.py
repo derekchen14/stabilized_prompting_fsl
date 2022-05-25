@@ -29,6 +29,7 @@ def run_train(args, model, datasets, exp_logger, detective):
     hf_deepspeed_config = args.hf_deepspeed_config
     hf_deepspeed_config.trainer_config_finalize(args, model, total_steps)
     config = hf_deepspeed_config.config
+    deepspeed.init_distributed()
     deepspeed_engine, optimizer, _, scheduler = deepspeed.initialize(
               model=model,
               model_parameters=list(filter(lambda p: p.requires_grad, model.parameters())),
@@ -57,10 +58,13 @@ def run_train(args, model, datasets, exp_logger, detective):
 
       if args.deepspeed:
         kwargs = dict(device=args.device)
+        # pdb.set_trace()
         kwargs.update(dict(dtype=args.hf_deepspeed_config.dtype()))
-        inputs =  inputs.to(**kwargs)
-        targets = targets.to(**kwargs)
+        # inputs['input_ids'] =  inputs['input_ids'].to(**kwargs)
+        # inputs['attention_mask'] =  inputs['attention_mask'].to(**kwargs)
+        # targets = targets.to(**kwargs)
 
+      # pdb.set_trace()
       outputs = model(**inputs, labels=targets)
       exp_logger.tr_loss += outputs.loss.item()
       loss = outputs.loss / args.grad_accum_steps
@@ -203,6 +207,7 @@ if __name__ == "__main__":
   args = setup_gpus(args)
   args, save_path = check_directories(args)
   set_seed(args)
+
   if args.deepspeed:
     from transformers.deepspeed import HfTrainerDeepSpeedConfig
     training_args = TrainingArguments(output_dir=args.output_dir)
@@ -214,6 +219,7 @@ if __name__ == "__main__":
     args = training_args
     args.hf_deepspeed_config = HfTrainerDeepSpeedConfig(args.deepspeed)
     args.hf_deepspeed_config.trainer_config_process(args)
+
 
   reformat_data(args)
   raw_data = load_data(args)
@@ -231,13 +237,13 @@ if __name__ == "__main__":
 
 
 
-  # # # parser = HfArgumentParser(ourarugments, TrainingArguments)
-  # # # training_args = parser.parse_args_into_dataclasses()
+  # # parser = HfArgumentParser(ourarugments, TrainingArguments)
+  # # training_args = parser.parse_args_into_dataclasses()
 
-  # # # training_args = TrainingArguments(output_dir=args.output_dir, deepspeed=args.deepspeed, fp16=args.fp16, 
-  # # #           do_train=args.do_train, do_eval=args.do_eval, do_predict=args.do_eval, learning_rate=args.learning_rate, 
-  # # #           num_train_epochs=args.n_epochs, logging_steps=args.log_interval, save_strategy="epoch", seed=args.seed, 
-  # # #           eval_steps=args.eval_interval,)
+  # # training_args = TrainingArguments(output_dir=args.output_dir, deepspeed=args.deepspeed, fp16=args.fp16, 
+  # #           do_train=args.do_train, do_eval=args.do_eval, do_predict=args.do_eval, learning_rate=args.learning_rate, 
+  # #           num_train_epochs=args.n_epochs, logging_steps=args.log_interval, save_strategy="epoch", seed=args.seed, 
+  # #           eval_steps=args.eval_interval,)
 
   # training_args = TrainingArguments(output_dir=args.output_dir)
   # for arg in vars(args):
@@ -251,21 +257,21 @@ if __name__ == "__main__":
   # model = load_model(training_args, ontology, tokenizer, save_path)
 
   # # pdb.set_trace()
-  # # # training_args = TrainingArguments(output_dir="test_trainer", evaluation_strategy="epoch")
-  # # # Initialize our Trainer
-  # # trainer = DSTrainer(
-  # #     model=model,
-  # #     args=training_args,
-  # #     train_dataset=datasets["train"],
-  # #     eval_dataset=datasets["dev"],
-  # #     tokenizer=tokenizer,
-  # # )
+  # # training_args = TrainingArguments(output_dir="test_trainer", evaluation_strategy="epoch")
+  # # Initialize our Trainer
+  # trainer = DSTrainer(
+  #     model=model,
+  #     args=training_args,
+  #     train_dataset=datasets["train"],
+  #     eval_dataset=datasets["dev"],
+  #     tokenizer=tokenizer,
+  # )
 
 
-  # # if args.do_train:
-  # #   trainer.train(exp_logger, detective)
-  # # elif args.do_eval:
-  # #   trainer.predict(exp_logger, detective)
+  # if args.do_train:
+  #   trainer.train(exp_logger, detective)
+  # elif args.do_eval:
+  #   trainer.predict(exp_logger, detective)
 
 
 
