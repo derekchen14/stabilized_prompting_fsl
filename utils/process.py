@@ -140,10 +140,10 @@ def prepare_ontology(ontology):
 
   new_ont = {domain: list(slots) for domain, slots in temp_ont.items()}
 
-  for domain, slots in new_ont.items():
-    print(domain)
-    print(slots)
-  pdb.set_trace()
+  # for domain, slots in new_ont.items():
+  #   print(domain)
+  #   print(slots)
+  # pdb.set_trace()
   return domain_map, new_ont
 
 def build_sgd(args, data, ontology, split):
@@ -627,7 +627,7 @@ def prepare_examples(args, data, ontology, split):
   elif args.dataset.startswith('mwoz'):  # MultiWoz 2.1 or 2.2
     examples = build_mwoz(args, data, ontology, split)
   elif args.dataset == 'sgd':   # Schema Guided Dialogue
-    examples = build_sgd_speed(args, data, ontology, split) 
+    examples = build_sgd(args, data, ontology, split) 
   elif args.dataset == 'sgds':   # Schema Guided Dialogue
     examples = build_sgd_speed(args, data, ontology, split) 
   elif args.dataset == 'tt':    # TicketTalk / TaskMaster 3

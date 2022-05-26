@@ -95,6 +95,9 @@ def solicit_params():
                 help="number of gpu used")
     parser.add_argument("--fp16", action="store_true",
                 help="number of gpu used")
+    parser.add_argument("--fp16_backend", default='auto', type=str, 
+                choices=["auto", "amp", "apex"],
+                help="fp16")
     
     # Hyper-parameters for tuning
     parser.add_argument("--batch-size", default=12, type=int,

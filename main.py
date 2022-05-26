@@ -27,6 +27,7 @@ def run_train(args, model, datasets, exp_logger, detective):
 
   if args.deepspeed:
     hf_deepspeed_config = args.hf_deepspeed_config
+    # pdb.set_trace()
     hf_deepspeed_config.trainer_config_finalize(args, model, total_steps)
     config = hf_deepspeed_config.config
     deepspeed.init_distributed()
@@ -179,8 +180,12 @@ def run_eval(args, model, dataset, exp_logger):
     with no_grad():
       # defaults to greedy sampling, for param details see https://huggingface.co/docs/transformers/
       #        v4.15.0/en/main_classes/model#transformers.generation_utils.GenerationMixin.generate 
-      outputs = model.generate(**inputs, max_length=maxl, early_stopping=True,
-                          repetition_penalty=args.threshold, temperature=args.temperature)
+      if args.deepspeed:
+        outputs = model.module.generate(**inputs, max_length=maxl, early_stopping=True,
+                            repetition_penalty=args.threshold, temperature=args.temperature)
+      else:
+        outputs = model.generate(**inputs, max_length=maxl, early_stopping=True,
+                            repetition_penalty=args.threshold, temperature=args.temperature)
     output_strings = tokenizer.batch_decode(outputs.detach(), skip_special_tokens=False)
     all_outputs.extend(output_strings)
 
@@ -207,10 +212,12 @@ if __name__ == "__main__":
   args = setup_gpus(args)
   args, save_path = check_directories(args)
   set_seed(args)
-
+  # pdb.set_trace()
   if args.deepspeed:
     from transformers.deepspeed import HfTrainerDeepSpeedConfig
-    training_args = TrainingArguments(output_dir=args.output_dir)
+    training_args = TrainingArguments(output_dir=args.output_dir, fp16_backend=args.fp16_backend, 
+                                      learning_rate=args.learning_rate, do_train=args.do_train, do_eval=args.do_eval, 
+                                      save_strategy="epoch", seed=args.seed,)
     for arg in vars(args):
       try:
         setattr(training_args, arg, getattr(args, arg))
