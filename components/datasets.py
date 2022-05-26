@@ -163,19 +163,18 @@ class MetaLearnDataset(BaseDataset):
 
   def _filter_set(self, support_data):
     new_support = []
-    relevant_domains = ['hotel', 'rental', 'rideshare', 'event', 'travel', 'restaurant', 'train']
+    relevant_domains = ['hotel', 'rental', 'rideshare', 'event', 'travel', 'restaurant']
     if self.split == 'train':
       for example in support_data['train']:
-        if example.domain in relevant_domains:
+        if example['target']['domain'] in relevant_domains:
           new_support.append(example)
-      for example in support_data['test']:
-        if example.domain in relevant_domains:
-          new_support.append(example)
+      support_data['train'] = new_support
     elif self.split == 'dev':
       for example in support_data['dev']:
-        if example.domain in relevant_domains:
+        if example['target']['domain'] in relevant_domains:
           new_support.append(example)
-    return new_support
+      support_data['dev'] = new_support
+    return support_data
 
   def add_support(self, supports, left_out):
     """ replaces the query set data with the support set data for training """

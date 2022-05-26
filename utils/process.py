@@ -28,6 +28,30 @@ def check_cache(args):
     print(f'Creating new dataset for {args.dataset.upper()} from scratch ...')
     return cache_path, False
 
+def normalize_length(value):
+  parts = value.replace('|', ' ').split()
+  if len(parts) > 5:
+    if parts[0] == 'the':
+      value = ' '.join(parts[1:6])
+    else:
+      value = ' '.join(parts[:5])
+  return value
+
+def select_utterances(args, utt_so_far, target, split):
+  domain, slot, value = target['domain'], target['slot'], target['value']
+  domain, slot = standardize_format(domain, slot)
+  target['domain'], target['slot'] = domain, slot
+
+  use_target = True
+  lookback = -args.context_length
+  utterances = utt_so_far[lookback:]
+
+  if args.task == 'in_context' and value == '<none>':  # TODO: query result none value slot
+    use_target = False
+  elif split == 'train' and value == '<none>' and random.random() < 0.8:
+    use_target = False
+  return use_target, utterances, target
+
 def extract_label(targets, prior_values):
   # returns a list of (domain, slot, value) tuples when the domain is an active 
   swaps = {'not mentioned': '<none>', '': '<none>'}
@@ -68,43 +92,6 @@ def extract_label(targets, prior_values):
         labels.append((domain, slot.lower(), value))
   return labels
 
-def normalize_length(value):
-  parts = value.replace('|', ' ').split()
-  if len(parts) > 5:
-    if parts[0] == 'the':
-      value = ' '.join(parts[1:6])
-    else:
-      value = ' '.join(parts[:5])
-  return value
-
-def select_utterances(args, utt_so_far, target, split):
-  domain, slot, value = target['domain'], target['slot'], target['value']
-  domain, slot = standardize_format(domain, slot)
-  target['domain'], target['slot'] = domain, slot
-
-  use_target = True
-  lookback = -args.context_length
-  utterances = utt_so_far[lookback:]
-
-  if args.task == 'in_context' and value == '<none>':  # TODO: query result none value slot
-    use_target = False
-  elif split == 'train' and value == '<none>' and random.random() < 0.8:
-    use_target = False
-  return use_target, utterances, target
-
-  # if args.context_length < 0:
-  #   return utt_so_far, True
-  # if args.context_length % 2 == 0: # drop the agent utterances
-  #   lookback = -args.context_length - 1
-  #   utterances = [utt for utt in utt_so_far[lookback:] if utt.startswith('<customer>')]
-  # history = ' '.join(utterances)
-  # if value in history.lower() or value in ['<remove>', 'any']:
-  #   use_target = True
-  # elif num_in_history(value, history.lower()):
-  #   use_target = True
-  # elif value.lower() in ['yes', 'no'] and (slot in history or 'wifi' in history):
-  #   use_target = True  # to handle the internet and parking use cases
-
 def extract_sgd(frames, domain_map, ontology):
   labels = defaultdict(dict)
   for frame in frames:
@@ -114,8 +101,11 @@ def extract_sgd(frames, domain_map, ontology):
     if domain in ALL_SPLITS and 'state' in frame:
       for pslot in frame['state']['slot_values']:
         value = frame['state']['slot_values'][pslot][0]    # by default, select the first value
-        slot = ontology[service][pslot]
-        labels[domain][slot] = value
+        if value.lower() in GENERAL_TYPO:
+          value = GENERAL_TYPO[value.lower()]
+        if len(value) < 28:
+          slot = ontology[service][pslot]
+          labels[domain][slot] = value
   return labels
 
 def prepare_ontology(ontology):
@@ -139,11 +129,6 @@ def prepare_ontology(ontology):
         temp_ont[post_domain].add(slot)
 
   new_ont = {domain: list(slots) for domain, slots in temp_ont.items()}
-
-  # for domain, slots in new_ont.items():
-  #   print(domain)
-  #   print(slots)
-  # pdb.set_trace()
   return domain_map, new_ont
 
 def build_sgd(args, data, ontology, split):
@@ -180,12 +165,12 @@ def build_sgd(args, data, ontology, split):
             value = slot_vals.get(slot, "<none>")
             target = {'domain': domain, 'slot': slot, 'value': value.strip(), 'global_id': global_id}
             use_target, history, target = select_utterances(args, text_so_far, target, split)
+            
             if use_target:
               example = {'utterances':history, 'target':target, 'prev_state':prev_state, 'corpus':'sgd'}
               examples[convo_id][global_id].append(example)
             if value != '<none>':
               prior_values[f'{domain}-{slot}'] = value
-
   return examples
 
 
