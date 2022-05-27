@@ -8,6 +8,7 @@ from tqdm import tqdm as progress_bar
 from components.logger import ExperienceLogger
 from components.detector import ExemplarDetective
 from components.trainer import DSTrainer
+from tqdm import tqdm
 
 from utils.help import *
 from utils.process import process_data, get_dataloader
@@ -16,7 +17,11 @@ from utils.load import load_tokenizer, load_model, load_data, load_best_model, l
 from utils.evaluate import eval_quantify, eval_qualify, test_quantify, parse_output
 from assets.static_vars import device, debug_break, STOP_TOKENS
 from transformers import HfArgumentParser, TrainingArguments
+import megatron.mpu as mpu
+# import mpu
 
+# print(mpu.get_data_parallel_world_size())
+# pdb.set_trace()
 def run_train(args, model, datasets, exp_logger, detective):
   dataset, dev_dataset = datasets['train'], datasets['dev']
   train_dataloader = get_dataloader(args, dataset)
@@ -30,13 +35,19 @@ def run_train(args, model, datasets, exp_logger, detective):
     # pdb.set_trace()
     hf_deepspeed_config.trainer_config_finalize(args, model, total_steps)
     config = hf_deepspeed_config.config
+    # print(mpu.get_data_parallel_world_size())
+    # pdb.set_trace()
+
     deepspeed.init_distributed()
+    mpu.initialize_model_parallel()
+    # pdb.set_trace()
     deepspeed_engine, optimizer, _, scheduler = deepspeed.initialize(
               model=model,
               model_parameters=list(filter(lambda p: p.requires_grad, model.parameters())),
               config_params=config,
               optimizer=optimizer,
-              lr_scheduler=scheduler,)
+              lr_scheduler=scheduler,
+              mpu=mpu)
     model = deepspeed_engine
     optimizer = optimizer
     scheduler = scheduler
@@ -51,7 +62,7 @@ def run_train(args, model, datasets, exp_logger, detective):
     exp_logger.start_epoch(train_dataloader, args.percent)
     model.train()
 
-    for step, batch in enumerate(train_dataloader):
+    for step, batch in (enumerate(train_dataloader)):
       inputs, targets = dataset.collate(args, batch)
       review_inputs(args, inputs, targets, datasets['train'].tokenizer)
 
@@ -60,10 +71,10 @@ def run_train(args, model, datasets, exp_logger, detective):
       if args.deepspeed:
         kwargs = dict(device=args.device)
         # pdb.set_trace()
-        kwargs.update(dict(dtype=args.hf_deepspeed_config.dtype()))
-        # inputs['input_ids'] =  inputs['input_ids'].to(**kwargs)
-        # inputs['attention_mask'] =  inputs['attention_mask'].to(**kwargs)
-        # targets = targets.to(**kwargs)
+        # kwargs.update(dict(dtype=args.hf_deepspeed_config.dtype()))
+        inputs['input_ids'] =  inputs['input_ids'].to(**kwargs)
+        inputs['attention_mask'] =  inputs['attention_mask'].to(**kwargs)
+        targets = targets.to(**kwargs)
 
       # pdb.set_trace()
       outputs = model(**inputs, labels=targets)
@@ -215,8 +226,9 @@ if __name__ == "__main__":
   # pdb.set_trace()
   if args.deepspeed:
     from transformers.deepspeed import HfTrainerDeepSpeedConfig
-    training_args = TrainingArguments(output_dir=args.output_dir, fp16_backend=args.fp16_backend, 
+    training_args = TrainingArguments(output_dir=args.output_dir, fp16=args.fp16, fp16_backend=args.fp16_backend, 
                                       learning_rate=args.learning_rate, do_train=args.do_train, do_eval=args.do_eval, 
+                                      per_device_train_batch_size=args.batch_size, per_device_eval_batch_size=args.batch_size,
                                       save_strategy="epoch", seed=args.seed,)
     for arg in vars(args):
       try:
