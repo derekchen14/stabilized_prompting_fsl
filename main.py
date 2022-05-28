@@ -31,15 +31,20 @@ def run_train(args, model, datasets, exp_logger, detective):
 
 
   if args.deepspeed:
-    hf_deepspeed_config = args.hf_deepspeed_config
-    # pdb.set_trace()
-    hf_deepspeed_config.trainer_config_finalize(args, model, total_steps)
-    config = hf_deepspeed_config.config
-    # print(mpu.get_data_parallel_world_size())
-    # pdb.set_trace()
 
     deepspeed.init_distributed()
-    mpu.initialize_model_parallel()
+    mpu.initialize_model_parallel(tensor_model_parallel_size_=4)
+
+    args.per_device_train_batch_size = args.batch_size * mpu.get_data_parallel_world_size() / args.world_size
+    args.hf_deepspeed_config = HfTrainerDeepSpeedConfig(args.deepspeed)
+    args.hf_deepspeed_config.trainer_config_process(args)
+    hf_deepspeed_config = args.hf_deepspeed_config
+    hf_deepspeed_config.trainer_config_finalize(args, model, total_steps)
+    config = hf_deepspeed_config.config
+    # pdb.set_trace()
+    config['train_micro_batch_size_per_gpu'] = args.batch_size
+    # print(mpu.get_data_parallel_world_size())
+
     # pdb.set_trace()
     deepspeed_engine, optimizer, _, scheduler = deepspeed.initialize(
               model=model,
@@ -224,11 +229,12 @@ if __name__ == "__main__":
   args, save_path = check_directories(args)
   set_seed(args)
   # pdb.set_trace()
+
   if args.deepspeed:
+
     from transformers.deepspeed import HfTrainerDeepSpeedConfig
     training_args = TrainingArguments(output_dir=args.output_dir, fp16=args.fp16, fp16_backend=args.fp16_backend, 
-                                      learning_rate=args.learning_rate, do_train=args.do_train, do_eval=args.do_eval, 
-                                      per_device_train_batch_size=args.batch_size, per_device_eval_batch_size=args.batch_size,
+                                      learning_rate=args.learning_rate, do_train=args.do_train, do_eval=args.do_eval,
                                       save_strategy="epoch", seed=args.seed,)
     for arg in vars(args):
       try:
@@ -236,9 +242,6 @@ if __name__ == "__main__":
       except:
         pdb.set_trace()
     args = training_args
-    args.hf_deepspeed_config = HfTrainerDeepSpeedConfig(args.deepspeed)
-    args.hf_deepspeed_config.trainer_config_process(args)
-
 
   reformat_data(args)
   raw_data = load_data(args)
