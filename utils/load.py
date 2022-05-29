@@ -106,11 +106,8 @@ def load_model(args, ontology, tokenizer, load_dir, ckpt_name=''):
   ckpt_name = CHECKPOINTS[args.model][args.size] if len(ckpt_name) == 0 else ckpt_name
   if args.model == 'gpt':
     if args.size == 'large':
-      # model = GPTJForCausalLM.from_pretrained(ckpt_name,
-      #          revision="float16", torch_dtype=torch.float16, low_cpu_mem_usage=True)
       model = GPTJForCausalLM.from_pretrained(ckpt_name,
-               revision="float16", torch_dtype=torch.float16)
-      # model = GPTJForCausalLM.from_pretrained("EleutherAI/gpt-j-6B")
+                  revision="float16", torch_dtype=torch.float16)
     else:
       model = GPT2LMHeadModel.from_pretrained(ckpt_name)
     # use GPTJForCausalLM: https://huggingface.co/docs/transformers/model_doc/gptj
