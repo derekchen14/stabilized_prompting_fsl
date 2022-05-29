@@ -32,13 +32,13 @@ class BaseDataset(Dataset):
 
   def __len__(self):
     if self.args.trainer and self.split != 'test':
-      return len(self.data_trainer)
+      return len(self.data_trainer['input_ids'])
     else:
       return self.size
 
   def __getitem__(self, idx):
     if self.args.trainer and self.split != 'test':
-      return self.data_trainer[idx]
+      return {"input_ids":self.data_trainer["input_ids"][idx], "attention_mask":self.data_trainer["attention_mask"][idx]}
     else:
       return self.data[idx]
 
@@ -306,7 +306,7 @@ class FineTuneDataset(BaseDataset):
     """transforms a batch of examples into a features dict that can be fed into a GPT model"""
     dialogues, labels = [], []
     eos = self.tokenizer.eos_token
-    trainer_examples = []
+    # trainer_examples = []
 
     for example in examples:
       history = ' '.join(example['utterances'])
@@ -327,14 +327,15 @@ class FineTuneDataset(BaseDataset):
       dialogues.append(dialog)
       labels.append(target)
 
-      trainer_examples.append({'text':dialog, 'label':target['value']})
+      # trainer_examples.append({'text':dialog, 'label':target['value']})
 
-    if args.trainer:
-      # pdb.set_trace()
-      return trainer_examples
 
     inputs = self.tokenizer(dialogues, padding=True, max_length=max_length,
                               truncation=True, return_tensors='pt').to(device)
+    # pdb.set_trace()
+    if args.trainer:
+      # inputs_trainer = [{"input_ids": input_id} for input_id in inputs['input_ids']]
+      return inputs
 
     if self.split == 'train':
       return inputs, inputs['input_ids']

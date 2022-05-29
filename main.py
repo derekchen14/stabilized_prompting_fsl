@@ -270,20 +270,23 @@ if __name__ == "__main__":
   else:
     model = load_model(args, ontology, tokenizer, save_path)
     datasets = check_support(args, datasets)
+    # def tokenize_function(examples):
+    #   return tokenizer(examples["text"], padding=True, max_length=args.maximum_length,
+    #                           truncation=True, return_tensors='pt')
+    # train_data = map(tokenize_function, datasets['train'])
+    # dev_data = map(tokenize_function, datasets['dev'])
     training_args = TrainingArguments(output_dir=args.output_dir, fp16=args.fp16, 
               per_device_train_batch_size=1, gradient_accumulation_steps=4,
               do_train=args.do_train, do_predict=args.do_eval, learning_rate=args.learning_rate, 
               num_train_epochs=args.n_epochs, logging_steps=args.log_interval, 
               save_strategy="epoch", seed=args.seed, 
               eval_steps=args.eval_interval,)
-    # datasets["train"].collate()
-    # datasets["dev"].collate()
-    # Initialize our Trainer
+    # pdb.set_trace()
     trainer = Trainer(
         model=model,
         args=training_args,
-        train_dataset=datasets["train"],
-        eval_dataset=datasets["dev"],
+        train_dataset=datasets['train'],
+        eval_dataset=datasets['dev'],
         tokenizer=tokenizer,
     )
 
