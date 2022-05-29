@@ -67,12 +67,9 @@ def run_train(args, model, datasets, exp_logger, detective):
     exp_logger.start_epoch(train_dataloader, args.percent)
     model.train()
 
-    pdb.set_trace()
     for step, batch in (enumerate(train_dataloader)):
       inputs, targets = dataset.collate(args, batch)
       review_inputs(args, inputs, targets, datasets['train'].tokenizer)
-
-      # pdb.set_trace()
 
       if args.deepspeed:
         kwargs = dict(device=args.device)
@@ -90,6 +87,9 @@ def run_train(args, model, datasets, exp_logger, detective):
         loss = model.backward(loss)
       else:
         loss.backward()
+
+      if step % 24 == 0:
+        print('loss', loss)
 
       if (step + 1) % args.grad_accum_steps == 0:
         nn.utils.clip_grad_norm_(model.parameters(), 5.0)
