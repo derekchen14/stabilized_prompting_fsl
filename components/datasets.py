@@ -12,6 +12,7 @@ from utils.help import standardize_format
 
 class BaseDataset(Dataset):
   def __init__(self, args, examples, tokenizer, split):
+    self.args = args
     self.split = split
     self.shuffle = (split == 'train')
     self.data = self._unravel(examples, split)
@@ -26,11 +27,21 @@ class BaseDataset(Dataset):
     self.model_type = args.model
     self.detective = None
 
+    if self.args.trainer and self.split != 'test':
+      self.data_trainer = self.collate(self.args, self.data)
+
   def __len__(self):
-    return self.size
+    if self.args.trainer and self.split != 'test':
+      return len(self.data_trainer)
+    else:
+      return self.size
 
   def __getitem__(self, idx):
-    return self.data[idx]
+    if self.args.trainer and self.split != 'test':
+      return self.data_trainer[idx]
+    else:
+      return self.data[idx]
+
 
   def _unravel(self, examples, split):
     # examples are grouped by conversation and turn by default
@@ -295,11 +306,15 @@ class FineTuneDataset(BaseDataset):
     """transforms a batch of examples into a features dict that can be fed into a GPT model"""
     dialogues, labels = [], []
     eos = self.tokenizer.eos_token
+    trainer_examples = []
 
     for example in examples:
       history = ' '.join(example['utterances'])
       target = example['target']
       state_str = super().state_to_string(example['prev_state'])
+      # if type(target) == list:
+      #   pdb.set_trace()
+      # # # pdb.set_trace()
       prompt = find_prompt(args.prompt_style, target['domain'], target['slot'])
 
       if self.split == 'train':
@@ -311,8 +326,16 @@ class FineTuneDataset(BaseDataset):
       
       dialogues.append(dialog)
       labels.append(target)
+
+      trainer_examples.append({'text':dialog, 'label':target['value']})
+
+    if args.trainer:
+      # pdb.set_trace()
+      return trainer_examples
+
     inputs = self.tokenizer(dialogues, padding=True, max_length=max_length,
                               truncation=True, return_tensors='pt').to(device)
+
     if self.split == 'train':
       return inputs, inputs['input_ids']
     else:

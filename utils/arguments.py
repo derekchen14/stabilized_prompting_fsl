@@ -98,7 +98,11 @@ def solicit_params():
     parser.add_argument("--fp16_backend", default='auto', type=str, 
                 choices=["auto", "amp", "apex"],
                 help="fp16")
-    
+    # huggingface trainer
+    parser.add_argument("--trainer", action="store_true",
+                        help="use huggingface trainer")
+
+
     # Hyper-parameters for tuning
     parser.add_argument("--batch-size", default=12, type=int,
                 help="Batch size per GPU/CPU for training and evaluation.")

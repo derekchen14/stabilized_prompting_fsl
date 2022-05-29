@@ -7,7 +7,7 @@ from torch import nn, no_grad
 from tqdm import tqdm as progress_bar
 from components.logger import ExperienceLogger
 from components.detector import ExemplarDetective
-from components.trainer import DSTrainer
+# from components.trainer import DSTrainer
 from tqdm import tqdm
 
 from utils.help import *
@@ -17,6 +17,7 @@ from utils.load import load_tokenizer, load_model, load_data, load_best_model, l
 from utils.evaluate import eval_quantify, eval_qualify, test_quantify, parse_output
 from assets.static_vars import device, debug_break, STOP_TOKENS
 from transformers import HfArgumentParser, TrainingArguments
+from transformers import Trainer
 import megatron.mpu as mpu
 # import mpu
 
@@ -31,7 +32,6 @@ def run_train(args, model, datasets, exp_logger, detective):
 
 
   if args.deepspeed:
-
     deepspeed.init_distributed()
     mpu.initialize_model_parallel(tensor_model_parallel_size_=args.world_size)
     # args.batch_size = args.world_size
@@ -57,6 +57,13 @@ def run_train(args, model, datasets, exp_logger, detective):
     optimizer = optimizer
     scheduler = scheduler
 
+  # trainer = Trainer(
+  #     model=model,
+  #     args=training_args,
+  #     train_dataset=datasets['train'],
+  #     eval_dataset=datasets['dev'],
+  # )
+
   exp_logger.update_optimization(optimizer, scheduler)
   
   if args.task == 'meta_learn':
@@ -67,7 +74,7 @@ def run_train(args, model, datasets, exp_logger, detective):
     exp_logger.start_epoch(train_dataloader, args.percent)
     model.train()
 
-    pdb.set_trace()
+    # pdb.set_trace()
     for step, batch in (enumerate(train_dataloader)):
       inputs, targets = dataset.collate(args, batch)
       review_inputs(args, inputs, targets, datasets['train'].tokenizer)
@@ -251,13 +258,39 @@ if __name__ == "__main__":
   exp_logger = ExperienceLogger(args, ontology, save_path)
   detective = ExemplarDetective(args, datasets['train'])
 
-  if args.do_train:
+
+  if not args.trainer:
+    if args.do_train:
+      model = load_model(args, ontology, tokenizer, save_path)
+      datasets = check_support(args, datasets)
+      run_train(args, model, datasets, exp_logger, detective)
+    elif args.do_eval:
+      run_test(args, datasets['test'], exp_logger, detective)
+
+  else:
     model = load_model(args, ontology, tokenizer, save_path)
     datasets = check_support(args, datasets)
-    run_train(args, model, datasets, exp_logger, detective)
-  elif args.do_eval:
-    run_test(args, datasets['test'], exp_logger, detective)
+    training_args = TrainingArguments(output_dir=args.output_dir, fp16=args.fp16, 
+              per_device_train_batch_size=1, gradient_accumulation_steps=4,
+              do_train=args.do_train, do_predict=args.do_eval, learning_rate=args.learning_rate, 
+              num_train_epochs=args.n_epochs, logging_steps=args.log_interval, 
+              save_strategy="epoch", seed=args.seed, 
+              eval_steps=args.eval_interval,)
+    # datasets["train"].collate()
+    # datasets["dev"].collate()
+    # Initialize our Trainer
+    trainer = Trainer(
+        model=model,
+        args=training_args,
+        train_dataset=datasets["train"],
+        eval_dataset=datasets["dev"],
+        tokenizer=tokenizer,
+    )
 
+    if args.do_train:
+      trainer.train()
+    elif args.do_eval:
+      trainer.predict()
 
 
   # # parser = HfArgumentParser(ourarugments, TrainingArguments)
@@ -279,22 +312,7 @@ if __name__ == "__main__":
   # datasets = check_support(training_args, datasets)
   # model = load_model(training_args, ontology, tokenizer, save_path)
 
-  # # pdb.set_trace()
-  # # training_args = TrainingArguments(output_dir="test_trainer", evaluation_strategy="epoch")
-  # # Initialize our Trainer
-  # trainer = DSTrainer(
-  #     model=model,
-  #     args=training_args,
-  #     train_dataset=datasets["train"],
-  #     eval_dataset=datasets["dev"],
-  #     tokenizer=tokenizer,
-  # )
-
-
-  # if args.do_train:
-  #   trainer.train(exp_logger, detective)
-  # elif args.do_eval:
-  #   trainer.predict(exp_logger, detective)
+  # pdb.set_trace()
 
 
 
