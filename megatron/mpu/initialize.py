@@ -40,6 +40,7 @@ _PIPELINE_MODEL_PARALLEL_SPLIT_RANK = None
 
 # These values enable us to change the mpu sizes on the fly.
 _MPU_TENSOR_MODEL_PARALLEL_WORLD_SIZE = None
+_MPU_MODEL_PARALLEL_WORLD_SIZE = None
 _MPU_PIPELINE_MODEL_PARALLEL_WORLD_SIZE = None
 _MPU_TENSOR_MODEL_PARALLEL_RANK = None
 _MPU_PIPELINE_MODEL_PARALLEL_RANK = None
@@ -222,13 +223,6 @@ def model_parallel_is_initialized():
     return True
 
 
-def get_model_parallel_group():
-    """Get the model parallel group the caller rank belongs to."""
-    assert _MODEL_PARALLEL_GROUP is not None, \
-        'model parallel group is not initialized'
-    return _MODEL_PARALLEL_GROUP
-
-
 def get_tensor_model_parallel_group():
     """Get the tensor model parallel group the caller rank belongs to."""
     assert _TENSOR_MODEL_PARALLEL_GROUP is not None, \
@@ -319,6 +313,21 @@ def get_pipeline_model_parallel_rank():
         return _MPU_PIPELINE_MODEL_PARALLEL_RANK
     return torch.distributed.get_rank(group=get_pipeline_model_parallel_group())
 
+
+def get_model_parallel_group():
+    """Get the model parallel group the caller rank belongs to."""
+    return get_pipeline_model_parallel_group()
+
+
+def get_model_parallel_rank():
+    """Return my rank for the tensor model parallel group."""
+    return get_pipeline_model_parallel_rank()
+
+
+def get_model_parallel_world_size():
+    """Return world size for the model parallel group."""
+    return get_pipeline_model_parallel_world_size()
+    
 
 def get_num_layers(args, is_encoder_and_decoder_model):
     """Compute the number of transformer layers resident on the current rank."""

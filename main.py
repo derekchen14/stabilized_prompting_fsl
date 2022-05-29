@@ -33,8 +33,8 @@ def run_train(args, model, datasets, exp_logger, detective):
   if args.deepspeed:
 
     deepspeed.init_distributed()
-    mpu.initialize_model_parallel(tensor_model_parallel_size_=4)
-
+    mpu.initialize_model_parallel(tensor_model_parallel_size_=args.world_size)
+    # args.batch_size = args.world_size
     args.per_device_train_batch_size = args.batch_size * mpu.get_data_parallel_world_size() / args.world_size
     args.hf_deepspeed_config = HfTrainerDeepSpeedConfig(args.deepspeed)
     args.hf_deepspeed_config.trainer_config_process(args)
@@ -67,6 +67,7 @@ def run_train(args, model, datasets, exp_logger, detective):
     exp_logger.start_epoch(train_dataloader, args.percent)
     model.train()
 
+    pdb.set_trace()
     for step, batch in (enumerate(train_dataloader)):
       inputs, targets = dataset.collate(args, batch)
       review_inputs(args, inputs, targets, datasets['train'].tokenizer)
