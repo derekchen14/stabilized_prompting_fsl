@@ -7,7 +7,7 @@ from torch import nn, no_grad
 from tqdm import tqdm as progress_bar
 from components.logger import ExperienceLogger
 from components.detector import ExemplarDetective
-# from components.trainer import DSTrainer
+from components.trainer import DSTrainer
 from tqdm import tqdm
 
 from utils.help import *
@@ -20,7 +20,7 @@ from transformers import HfArgumentParser, TrainingArguments
 from transformers import Trainer
 import megatron.mpu as mpu
 # import mpu
-
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 # print(mpu.get_data_parallel_world_size())
 # pdb.set_trace()
 def run_train(args, model, datasets, exp_logger, detective):
@@ -88,6 +88,7 @@ def run_train(args, model, datasets, exp_logger, detective):
 
       # pdb.set_trace()
       outputs = model(**inputs, labels=targets)
+      pdb.set_trace()
       exp_logger.tr_loss += outputs.loss.item()
       loss = outputs.loss / args.grad_accum_steps
       if args.deepspeed:
@@ -277,14 +278,16 @@ if __name__ == "__main__":
       logits, labels = eval_pred
       predictions = np.argmax(logits, axis=-1)
       return metric.compute(predictions=predictions, references=labels)
+
     training_args = TrainingArguments(output_dir=args.output_dir, fp16=args.fp16, 
-              per_device_train_batch_size=1, gradient_accumulation_steps=4,
+              per_device_train_batch_size=4, gradient_accumulation_steps=1,
               do_train=args.do_train, do_predict=args.do_eval, learning_rate=args.learning_rate, 
-              num_train_epochs=args.n_epochs, logging_steps=args.log_interval, 
+              num_train_epochs=args.n_epochs, logging_steps=30, 
               save_strategy="epoch", seed=args.seed, 
               eval_steps=args.eval_interval,)
+
     # pdb.set_trace()
-    trainer = Trainer(
+    trainer = DSTrainer(
         model=model,
         args=training_args,
         train_dataset=datasets['train'],

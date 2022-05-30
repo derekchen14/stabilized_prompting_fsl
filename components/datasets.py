@@ -335,6 +335,10 @@ class FineTuneDataset(BaseDataset):
     # pdb.set_trace()
     if args.trainer:
       # inputs_trainer = [{"input_ids": input_id} for input_id in inputs['input_ids']]
+      if self.split == 'train':
+        inputs['labels'] = inputs['input_ids']
+      else:
+        inputs['labels'] = labels
       return inputs
 
     if self.split == 'train':

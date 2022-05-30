@@ -78,13 +78,18 @@ set -xue
 #       --learning-rate 3e-5  --maximum-len 512 --prompt-style naive \
 #       --verbose --prune-keep 2 --ignore-cache --parallel # quarter
 
-export CUDA_VISIBLE_DEVICES=4,5,6,7
+export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5
 
 
-python main.py --dataset dstc --task fine_tune --n-epochs 10 --do-train --do-save \
+python main.py --dataset sgd --task fine_tune --n-epochs 10 --do-train --do-save \
       --style dataset --model gpt --size small --num-shots full --batch-size 16 \
       --learning-rate 3e-5  --maximum-len 512 --prompt-style naive \
       --verbose --prune-keep 2 --fp16 --trainer --ignore-cache #--parallel  # quarter
+
+# python main.py --dataset dstc --task fine_tune --n-epochs 10 --do-train --do-save \
+#       --style dataset --model gpt --size small --num-shots full --batch-size 16 \
+#       --learning-rate 3e-5  --maximum-len 512 --prompt-style naive \
+#       --verbose --prune-keep 2 --fp16 --ignore-cache #--parallel  # quarter
 
 # # python main.py --dataset sgd --task fine_tune --n-epochs 10 --do-train --do-save \
 # #       --style dataset --model gpt --size small --num-shots full --batch-size 16 \
