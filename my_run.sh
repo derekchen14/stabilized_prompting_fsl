@@ -70,21 +70,28 @@ set -xue
 #       --model gpt --size large --num-shots full --maximum-length 512 --prompt-style none \
 #       --learning-rate 3e-5 --verbose --context-length 2 --batch-size 16 --ignore-cache --output-dir finetuned --parallel
 
-
-# # # # labm
-export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5
-python main.py --dataset gsim --task fine_tune --n-epochs 10 --do-train \
-      --style dataset --model gpt --size large --num-shots full --batch-size 4 \
-      --learning-rate 3e-5  --maximum-len 512 --prompt-style naive \
-      --verbose --prune-keep 2 --fp16 --trainer --parallel #--ignore-cache --parallel  # quarter
-
-# export CUDA_VISIBLE_DEVICES=6,7
-
-
-# python main.py --dataset gsim --task fine_tune --n-epochs 10 --do-train \
-#       --style dataset --model gpt --size small --num-shots full --batch-size 4 \
+# output_dir="/local2/data/qkun/stabilized_prompting_fsl/"
+# # # # # labm
+# export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5
+# python main.py --output-dir ${output_dir} \
+#       --dataset gsim --task fine_tune --n-epochs 10 --do-train \
+#       --style dataset --model gpt --size large --num-shots full --batch-size 2 \
 #       --learning-rate 3e-5  --maximum-len 512 --prompt-style naive \
-#       --verbose --prune-keep 2 --fp16 --trainer --parallel #--ignore-cache --parallel  # quarter
+#       --verbose --prune-keep 2 --fp16 --trainer --parallel --ignore-cache --parallel  # quarter
+
+output_dir='results'
+export CUDA_VISIBLE_DEVICES=0,5
+python main.py --output-dir ${output_dir} \
+      --dataset gsim --task fine_tune --n-epochs 10 --do-train \
+      --style dataset --model gpt --size large --num-shots full --batch-size 1 \
+      --learning-rate 3e-5  --maximum-len 512 --prompt-style naive \
+      --verbose --prune-keep 2 --fp16 --trainer # --parallel --ignore-cache # --parallel  # quarter
+
+# python main.py --output-dir ${output_dir} \
+#       --dataset mwoz --task fine_tune --n-epochs 10 --do-train \
+#       --style dataset --model gpt --size small --num-shots full --batch-size 16 \
+#       --learning-rate 3e-5  --maximum-len 512 --prompt-style naive \
+#       --verbose --prune-keep 2 --fp16 --trainer --ignore-cache --parallel  # quarter
 
 # python main.py --dataset dstc --task fine_tune --n-epochs 10 --do-train --do-save \
 #       --style dataset --model gpt --size small --num-shots full --batch-size 16 \

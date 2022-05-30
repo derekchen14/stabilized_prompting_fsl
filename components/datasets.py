@@ -29,12 +29,10 @@ class BaseDataset(Dataset):
 
     if self.args.trainer and self.split != 'test':
       self.data_trainer = self.collate(self.args, self.data)
+      self.size = len(self.data_trainer['input_ids'])
 
   def __len__(self):
-    if self.args.trainer and self.split != 'test':
-      return len(self.data_trainer['input_ids'])
-    else:
-      return self.size
+    return self.size
 
   def __getitem__(self, idx):
     if self.args.trainer and self.split != 'test':

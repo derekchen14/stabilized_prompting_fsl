@@ -270,8 +270,8 @@ if __name__ == "__main__":
     from transformers import DataCollatorForSeq2Seq
     data_collator = DataCollatorForSeq2Seq(tokenizer=tokenizer, model=model)
 
-    training_args = TrainingArguments(output_dir=args.output_dir, fp16=args.fp16, 
-              per_device_train_batch_size=4, gradient_accumulation_steps=1, 
+    training_args = TrainingArguments(output_dir=args.output_dir, fp16=args.fp16, #fp16_backend='apex',
+              per_device_train_batch_size=args.batch_size, gradient_accumulation_steps=1, 
               do_train=args.do_train, do_predict=args.do_eval, 
               learning_rate=args.learning_rate, weight_decay=args.weight_decay,
               num_train_epochs=args.n_epochs, logging_steps=100, logging_strategy='steps',

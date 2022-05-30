@@ -34,15 +34,15 @@ def setup_gpus(args):
 def check_directories(args):
   dataset_path = os.path.join(args.output_dir, args.dataset)
   save_path = os.path.join(dataset_path, args.task, f'{args.model}_{args.size}')
-  if not os.path.exists(dataset_path) and args.size != 'large':
+  if not os.path.exists(dataset_path):
     os.makedirs(dataset_path)
     print(f"Created {dataset_path} for {args.dataset} results")
-  if not os.path.exists(save_path) and args.size != 'large':
+  if not os.path.exists(save_path):
     os.makedirs(save_path)
     print(f"Created {save_path} directory")
   
   cache_path = os.path.join(args.input_dir, 'cache', args.dataset)
-  if not os.path.exists(cache_path) and args.size != 'large':
+  if not os.path.exists(cache_path):
     os.makedirs(cache_path)
     print(f"Created {cache_path} directory")
 
