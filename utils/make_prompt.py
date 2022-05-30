@@ -29,6 +29,8 @@ def question_style(domain, slot):
   return prompt
 
 def statement_style(domain, slot):
+  if domain in ['flight', 'music', 'movie', 'home', 'bus', 'medium', 'message', 'weather']:
+    return naive_style(domain, slot)
   try:
     desc = statement_descriptions[domain][slot]
   except(KeyError):
@@ -119,7 +121,7 @@ statement_descriptions = {
     "theatre name": "The name of the theater",
     "genre": "The genre of the movie",
     "screening": "The screening of the movie", 
-    "movie": "The name of the movie", 
+    "movie": "The name of the movie",
     "show date": "The date of the movie",
     "date": "The date of the movie",
     "location": "The location of the movie",
@@ -204,15 +206,15 @@ statement_descriptions = {
     "category": "The type of event",
     "date": "The date of the event",
     "name": "The name of the event",
-    "num_people": "The number of people joining the event",
+    "num people": "The number of people joining the event",
     "type": "The type of event"},
   "travel": {
     "location": "The location of travel",
-    "free_entry": "Whether the travel event has free entry",
+    "free entry": "Whether the travel event has free entry",
     "type": "The type of travel",
-    "good_for_kids": "Whether the travel event is good for kids",
+    "good for kids": "Whether the travel event is good for kids",
     "name": "The name for travel",
-    "phone_number": "The phone number for travel"},
+    "phone number": "The phone number for travel"},
   "manage account": {
     "customer name": "The customer's name for the account",
     "street address": "The street address of the account",

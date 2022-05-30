@@ -65,10 +65,10 @@
 # python main.py --dataset mwoz --task generate --style domain --do-interact --seed 30 \
 #       --model gpt --size medium --batch-size 7 --num-shots zero --threshold 1.4 \
 #       --temperature 1.2
-# >> Evaluation Mode
+# >> Evaluation Mode  # notice how prompt style matches the checkpoint
 python main.py --dataset mwoz --task meta_learn --do-eval --num-shots five --context-len 2  \
-      --model gpt --size small --maximum-len 1024 --batch-size 8 --prompt-style naive \
-      --eval-interval quarter --quantify --qualify --verbose
+      --model gpt --size small --maximum-len 1024 --batch-size 8 --left-out mwoz --verbose \
+      --prompt-style statement --quantify --checkpoint statement_lr1e-05_clen2_epoch7_acc883.pt
 # python main.py --dataset mwoz --task fine_tune --do-eval --context-len 2 --batch-size 16 \
 #       --model gpt --size small --maximum-len 512 --prompt-style naive --eval-interval quarter \
 #       --quantify --qualify --verbose  --checkpoint naive_epoch10_lr1e-05_clen2_acc522.pt
