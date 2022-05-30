@@ -21,6 +21,7 @@ from transformers import Trainer
 import megatron.mpu as mpu
 # import mpu
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
+os.environ["WANDB_DISABLED"] = "true"
 # print(mpu.get_data_parallel_world_size())
 # pdb.set_trace()
 def run_train(args, model, datasets, exp_logger, detective):
@@ -56,13 +57,6 @@ def run_train(args, model, datasets, exp_logger, detective):
     model = deepspeed_engine
     optimizer = optimizer
     scheduler = scheduler
-
-  # trainer = Trainer(
-  #     model=model,
-  #     args=training_args,
-  #     train_dataset=datasets['train'],
-  #     eval_dataset=datasets['dev'],
-  # )
 
   exp_logger.update_optimization(optimizer, scheduler)
   
@@ -259,32 +253,30 @@ if __name__ == "__main__":
   exp_logger = ExperienceLogger(args, ontology, save_path)
   detective = ExemplarDetective(args, datasets['train'])
 
+  if args.deepspeed:
+    training_args = TrainingArguments(output_dir=args.output_dir)
+    for arg in vars(args):
+      try:
+        setattr(training_args, arg, getattr(args, arg))
+      except:
+        pdb.set_trace()
+    datasets = check_support(training_args, datasets)
+    model = load_model(training_args, ontology, tokenizer, save_path)
 
-  if not args.trainer:
-    if args.do_train:
-      model = load_model(args, ontology, tokenizer, save_path)
-      datasets = check_support(args, datasets)
-      run_train(args, model, datasets, exp_logger, detective)
-    elif args.do_eval:
-      run_test(args, datasets['test'], exp_logger, detective)
-
-  else:
+  elif args.trainer:
     model = load_model(args, ontology, tokenizer, save_path)
     datasets = check_support(args, datasets)
-    import numpy as np
-    from datasets import load_metric
-    metric = load_metric("accuracy")
-    def compute_metrics(eval_pred):
-      logits, labels = eval_pred
-      predictions = np.argmax(logits, axis=-1)
-      return metric.compute(predictions=predictions, references=labels)
+
+    from transformers import DataCollatorForSeq2Seq
+    data_collator = DataCollatorForSeq2Seq(tokenizer=tokenizer, model=model)
 
     training_args = TrainingArguments(output_dir=args.output_dir, fp16=args.fp16, 
-              per_device_train_batch_size=4, gradient_accumulation_steps=1,
-              do_train=args.do_train, do_predict=args.do_eval, learning_rate=args.learning_rate, 
-              num_train_epochs=args.n_epochs, logging_steps=30, 
-              save_strategy="epoch", seed=args.seed, 
-              eval_steps=args.eval_interval,)
+              per_device_train_batch_size=4, gradient_accumulation_steps=1, 
+              do_train=args.do_train, do_predict=args.do_eval, 
+              learning_rate=args.learning_rate, weight_decay=args.weight_decay,
+              num_train_epochs=args.n_epochs, logging_steps=100, logging_strategy='steps',
+              evaluation_strategy="epoch", seed=args.seed, 
+              eval_steps=args.eval_interval, save_total_limit=args.prune_keep,)
 
     # pdb.set_trace()
     trainer = DSTrainer(
@@ -293,13 +285,21 @@ if __name__ == "__main__":
         train_dataset=datasets['train'],
         eval_dataset=datasets['dev'],
         tokenizer=tokenizer,
-        compute_metrics=compute_metrics,
+        data_collator=data_collator,
     )
 
     if args.do_train:
       trainer.train()
     elif args.do_eval:
       trainer.predict()
+
+  else:
+    if args.do_train:
+      model = load_model(args, ontology, tokenizer, save_path)
+      datasets = check_support(args, datasets)
+      run_train(args, model, datasets, exp_logger, detective)
+    elif args.do_eval:
+      run_test(args, datasets['test'], exp_logger, detective)
 
 
   # # parser = HfArgumentParser(ourarugments, TrainingArguments)
@@ -310,18 +310,6 @@ if __name__ == "__main__":
   # #           num_train_epochs=args.n_epochs, logging_steps=args.log_interval, save_strategy="epoch", seed=args.seed, 
   # #           eval_steps=args.eval_interval,)
 
-  # training_args = TrainingArguments(output_dir=args.output_dir)
-  # for arg in vars(args):
-  #   try:
-  #     setattr(training_args, arg, getattr(args, arg))
-  #   except:
-  #     pdb.set_trace()
-  # # print("*"*20)
-  # # pdb.set_trace()
-  # datasets = check_support(training_args, datasets)
-  # model = load_model(training_args, ontology, tokenizer, save_path)
-
-  # pdb.set_trace()
 
 
 

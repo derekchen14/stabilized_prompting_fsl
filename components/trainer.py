@@ -79,8 +79,9 @@ class DSTrainer(Trainer):
 
     Subclass and override for custom behavior.
     """
-    labels = inputs.get("labels")
+    labels = inputs.pop("labels")
+    # pdb.set_trace()
     # forward pass
-    outputs = model(**inputs, labels=inputs["input_ids"])
+    outputs = model(**inputs, labels=labels)
     loss = outputs["loss"] if isinstance(outputs, dict) else outputs[0]
     return (loss, outputs) if return_outputs else loss
