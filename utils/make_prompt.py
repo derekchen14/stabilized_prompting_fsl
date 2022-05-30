@@ -25,7 +25,7 @@ def schema_style(domain, slot):
 
 def question_style(domain, slot):
   desc = question_descriptions[domain][slot]
-  prompt = f"<sep> {desc}"
+  prompt = f"<sep> {desc}?"
   return prompt
 
 def statement_style(domain, slot):
@@ -402,40 +402,48 @@ is_categorical = {
 
 question_descriptions = {
   "restaurant": {
-    "area": "Which area of the restaurant is the user interested in?",
-    "people": "How many people is the restaurant booking for?",
-    "day": "What day is the restaurant booking for?",
-    "time": "When is time of the restaurant booking?",
-    "food": "What type of food is the user interested in?",
-    "name": "What is the name of the restaurant?",
-    "price range": "What is the price range of the restaurant?"},
+    "area": "Which area of the restaurant is the user interested in",
+    "people": "How many people is the restaurant booking for",
+    "day": "What day is the restaurant booking for",
+    "time": "When is time of the restaurant booking",
+    "food": "What type of food is the user interested in",
+    "name": "What is the name of the restaurant",
+    "price range": "What is the price range of the restaurant"},
   "taxi": {
-    "arrive by": "When is the arrive by time of the taxi?",
-    "destination": "Where is the destination of the taxi?",
-    "departure": "Where is the departure of the taxi?",
-    "leave at": "When is the leave at time of the taxi?"}, 
+    "arrive by": "When is the arrive by time of the taxi",
+    "destination": "Where is the destination of the taxi",
+    "departure": "Where is the departure of the taxi",
+    "leave at": "When is the leave at time of the taxi"}, 
   "train": {
-    "arrive by": "When is the arrive by time of the train?",
-    "people": "How many people is the train booking for?",
-    "day": "What day is the train booking for?",
-    "destination": "Where is the destination of the train?",
-    "departure": "Where is the departure of the train?",
-    "leave at": "When is the leave at time of the train?"},
+    "arrive by": "When is the arrive by time of the train",
+    "people": "How many people is the train booking for",
+    "day": "What day is the train booking for",
+    "destination": "Where is the destination of the train",
+    "departure": "Where is the departure of the train",
+    "leave at": "When is the leave at time of the train"},
   "hotel": {
-    "area": "Which area of the hotel is the user interested in?",
-    "day": "What is the start day of the hotel?",
-    "stay": "How long is the stay at the hotel?",
-    "people": "How many people is the hotel for?",
-    "internet": "Does the hotel offer internet?",
-    "name": "What is the name of the hotel?",
-    "parking": "Does the hotel offer parking?",
-    "price range": "What is the price range of the hotel?",
-    "stars": "How many stars does the hotel have?",
-    "type": "What type of hotel is the user interested in?"},
+    "area": "Which area of the hotel is the user interested in",
+    "day": "What is the start day of the hotel",
+    "stay": "How long is the stay at the hotel",
+    "people": "How many people is the hotel for",
+    "internet": "Does the hotel offer internet",
+    "name": "What is the name of the hotel",
+    "parking": "Does the hotel offer parking",
+    "price range": "What is the price range of the hotel",
+    "stars": "How many stars does the hotel have",
+    "type": "What type of hotel is the user interested in"},
   "attraction": {
-    "area": "Which area of the attraction is the user interested in?",
-    "name": "What is the name of the attraction?",
-    "type": "What type of attraction is the user interested in?"}
+    "area": "Which area of the attraction is the user interested in",
+    "name": "What is the name of the attraction",
+    "type": "What type of attraction is the user interested in"},
+  "rideshare": {
+    "duration": "How long is the duration of the ride",
+    "destination": "Where is the destination of the ride",
+    "wait time": "How long is the wait ime for the ride",
+    "fare": "How much is the rideshare fare",
+    "shared ride": "Is this a shared ride",
+    "type": "What is the type of ride",
+    "number of seats": "How many seats are for the ride"}
 }
 
 human_descriptions = {
