@@ -682,7 +682,7 @@ question_descriptions = {
     "company team": "Which company team is dealing with the website issue",
     "customer name": "What is the customer's name for the website issue",
     "shipping option": "What is the shipping method for the website issue",
-  }
+  },
 }
 
 human_descriptions = {
