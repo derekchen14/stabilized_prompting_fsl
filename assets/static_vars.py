@@ -19,7 +19,7 @@ DATASETS = {
     'gsim': 'Google Simulated Dialogue',
     'mwoz': 'MultiWoz 2.1',
     'sgd': 'Schema Guided Dialogue',
-    'tt': 'TicketTalk'
+#     'tt': 'TicketTalk'
 }
 
 CHECKPOINTS = {
