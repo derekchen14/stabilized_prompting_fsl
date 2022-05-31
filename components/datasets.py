@@ -294,7 +294,18 @@ class FineTuneDataset(BaseDataset):
 
     max_length = self.max_len - 12
     inputs = self.tokenizer(dialogues, padding='longest', max_length=max_length,
-                                truncation=True, return_tensors='pt').to(device)
+                                truncation=True, return_tensors='pt')
+
+    if args.trainer:
+      if self.split == 'train':
+        tokenized_labels = self.tokenizer(labels, padding_side='right',
+                                padding=True, return_tensors='pt')
+        inputs["labels"] = tokenized_labels['input_ids']
+      else:
+        inputs["labels"] = labels
+      return inputs
+
+    inputs = inputs.to(device)
     if self.split == 'train':
       targets = self.tokenizer(labels) # we do not want tensors
       target_tensor = self._pad_right(targets)
@@ -307,6 +318,8 @@ class FineTuneDataset(BaseDataset):
     dialogues, labels = [], []
     eos = self.tokenizer.eos_token
     # trainer_examples = []
+    if args.debug:
+      examples = examples[:1000]
 
     for example in examples:
       history = ' '.join(example['utterances'])
@@ -327,21 +340,19 @@ class FineTuneDataset(BaseDataset):
       dialogues.append(dialog)
       labels.append(target)
 
-      # trainer_examples.append({'text':dialog, 'label':target['value']})
-
-
     inputs = self.tokenizer(dialogues, padding=True, max_length=max_length,
                               truncation=True, return_tensors='pt')
-    # pdb.set_trace()
     if args.trainer:
-      # inputs_trainer = [{"input_ids": input_id} for input_id in inputs['input_ids']]
       if self.split == 'train':
         inputs["labels"] = inputs["input_ids"]
-        return inputs
       else:
         tokenized_labels = self.tokenizer([target['value'] for target in labels], 
-                                padding=True, max_length=128, truncation=True, return_tensors='pt')
-        inputs["labels"] = tokenized_labels['input_ids']
+                                padding=True,
+                                max_length=128, truncation=True, return_tensors='pt')
+        inputs["labels"] = tokenized_labels["input_ids"]
+        # targets = self.tokenizer([target['value'] for target in labels]) # we do not want tensors
+        # target_tensor = self._pad_right(targets)
+        # inputs["labels"] = target_tensor
       return inputs
 
     inputs = inputs.to(device)

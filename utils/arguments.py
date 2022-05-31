@@ -98,6 +98,8 @@ def solicit_params():
     parser.add_argument("--fp16_backend", default='auto', type=str, 
                 choices=["auto", "amp", "apex"],
                 help="fp16")
+    parser.add_argument("--speed", action="store_true",
+                help="try for deepspeed.")
     # huggingface trainer
     parser.add_argument("--trainer", action="store_true",
                         help="use huggingface trainer")
@@ -126,8 +128,6 @@ def solicit_params():
                 help="Linear warmup over warmup-steps.")
     parser.add_argument("--percent", default=1.0, type=float, 
                 help="Amount of train and dev data to use during training.")
-    parser.add_argument("--speed", default=True, type=bool, 
-                help="try for deepspeed.")
 
     # # if args.deepspeed:
     # import deepspeed

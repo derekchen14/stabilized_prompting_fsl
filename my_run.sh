@@ -70,44 +70,79 @@ set -xue
 #       --model gpt --size large --num-shots full --maximum-length 512 --prompt-style none \
 #       --learning-rate 3e-5 --verbose --context-length 2 --batch-size 16 --ignore-cache --output-dir finetuned --parallel
 
-# output_dir="/local2/data/qkun/stabilized_prompting_fsl/"
-# # # # # labm
-# export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5
+output_dir="/local2/data/qkun/stabilized_prompting_fsl/"
+# # # # # # 1labm
+export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5
+python main.py --output-dir ${output_dir} \
+      --dataset mwoz --task fine_tune --n-epochs 10 --do-train \
+      --style dataset --model gpt --size large --num-shots full --batch-size 2 --grad-accum-steps 16\
+      --learning-rate 3e-5  --maximum-len 512 --prompt-style naive \
+      --verbose --prune-keep 2 --fp16 --ignore-cache --parallel  # quarter
+
+# # export CUDA_VISIBLE_DEVICES=2,3
+# # python main.py --output-dir ${output_dir} \
+# #       --dataset gsim --task fine_tune --n-epochs 10 --do-train \
+# #       --style dataset --model gpt --size small --num-shots full --batch-size 16 \
+# #       --learning-rate 3e-5  --maximum-len 512 --prompt-style naive \
+# #       --verbose --prune-keep 2 --trainer --ignore-cache #--parallel  # quarter
+
+# export CUDA_VISIBLE_DEVICES=6
+# python main.py --output-dir ${output_dir} \
+#       --dataset dstc --task fine_tune --n-epochs 10 --do-train \
+#       --style dataset --model gpt --size small --num-shots full \
+#       --batch-size 16 --grad-accum-steps 1\
+#       --learning-rate 3e-5  --maximum-len 512 --prompt-style naive \
+#       --verbose --prune-keep 2 --trainer --ignore-cache --debug #--parallel  # quarter
+
+export CUDA_VISIBLE_DEVICES=7
+python main.py --output-dir ${output_dir} \
+      --dataset dstc --task fine_tune --n-epochs 10 --do-train \
+      --style dataset --model gpt --size small --num-shots full \
+      --batch-size 16 --grad-accum-steps 1\
+      --learning-rate 3e-5  --maximum-len 512 --prompt-style naive \
+      --verbose --prune-keep 2 --debug --ignore-cache #--parallel  # quarter
+
+# export CUDA_VISIBLE_DEVICES=6,7
+# export CUDA_LAUNCH_BLOCKING=1
 # python main.py --output-dir ${output_dir} \
 #       --dataset gsim --task fine_tune --n-epochs 10 --do-train \
-#       --style dataset --model gpt --size large --num-shots full --batch-size 2 \
+#       --style dataset --model gpt --size small --num-shots full \
+#       --batch-size 16 --grad-accum-steps 2\
 #       --learning-rate 3e-5  --maximum-len 512 --prompt-style naive \
-#       --verbose --prune-keep 2 --fp16 --trainer --parallel --ignore-cache --parallel  # quarter
+#       --verbose --prune-keep 2 --fp16 --trainer --parallel  # quarter
 
-output_dir='results'
-export CUDA_VISIBLE_DEVICES=0,5
-python main.py --output-dir ${output_dir} \
-      --dataset gsim --task fine_tune --n-epochs 10 --do-train \
-      --style dataset --model gpt --size large --num-shots full --batch-size 1 \
-      --learning-rate 3e-5  --maximum-len 512 --prompt-style naive \
-      --verbose --prune-keep 2 --fp16 --trainer # --parallel --ignore-cache # --parallel  # quarter
+# export CUDA_VISIBLE_DEVICES=6
+# deepspeed main.py --output-dir ${output_dir} \
+#       --dataset gsim --task fine_tune --n-epochs 10 --do-train \
+#       --style dataset --model gpt --size small --num-shots full --batch-size 16 \
+#       --learning-rate 3e-5  --maximum-len 512 --prompt-style naive \
+#       --verbose --prune-keep 2 --fp16 --trainer \
+#       --deepspeed ds_config.json
 
+
+# # # # # lab
+# output_dir='results'
+# export CUDA_VISIBLE_DEVICES=1,6
+# python main.py --output-dir ${output_dir} \
+#       --dataset gsim --task fine_tune --n-epochs 10 --do-train \
+#       --style dataset --model gpt --size large --num-shots full \
+#       --batch-size 1 --grad-accum-steps 1\
+#       --learning-rate 3e-5  --maximum-len 512 --prompt-style naive \
+#       --verbose --prune-keep 2 --fp16 --ignore-cache --parallel #--ignore-cache # --parallel  # quarter
+
+# export CUDA_VISIBLE_DEVICES=7
 # python main.py --output-dir ${output_dir} \
 #       --dataset mwoz --task fine_tune --n-epochs 10 --do-train \
 #       --style dataset --model gpt --size small --num-shots full --batch-size 16 \
 #       --learning-rate 3e-5  --maximum-len 512 --prompt-style naive \
-#       --verbose --prune-keep 2 --fp16 --trainer --ignore-cache --parallel  # quarter
+#       --verbose --prune-keep 2 --fp16 --trainer #--ignore-cache  # quarter
 
-# python main.py --dataset dstc --task fine_tune --n-epochs 10 --do-train --do-save \
-#       --style dataset --model gpt --size small --num-shots full --batch-size 16 \
-#       --learning-rate 3e-5  --maximum-len 512 --prompt-style naive \
-#       --verbose --prune-keep 2 --fp16 --ignore-cache #--parallel  # quarter
 
-# # python main.py --dataset sgd --task fine_tune --n-epochs 10 --do-train --do-save \
-# #       --style dataset --model gpt --size small --num-shots full --batch-size 16 \
-# #       --learning-rate 3e-5  --maximum-len 512 --prompt-style naive \
-# #       --verbose --prune-keep 2 # --parallel #--ignore-cache #--parallel  # quarter
 
-# export CUDA_VISIBLE_DEVICES=7
-# python main.py --dataset mwoz --task fine_tune --n-epochs 10 --do-train --do-save \
-#       --style dataset --model gpt --size small --num-shots full --batch-size 16 \
-#       --learning-rate 3e-5  --maximum-len 512 --prompt-style naive \
-#       --verbose --prune-keep 2 --ignore-cache # --parallel #--ignore-cache #--parallel  # quarter
+
+
+
+
 # export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5
 # python main.py \
 #       --dataset mwoz --task fine_tune --n-epochs 10 --do-train \

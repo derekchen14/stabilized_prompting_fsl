@@ -9,6 +9,7 @@ from components.logger import ExperienceLogger
 from components.detector import ExemplarDetective
 from components.trainer import DSTrainer
 from tqdm import tqdm
+from datetime import datetime
 
 from utils.help import *
 from utils.process import process_data, get_dataloader
@@ -19,6 +20,7 @@ from assets.static_vars import device, debug_break, STOP_TOKENS
 from transformers import HfArgumentParser, TrainingArguments
 from transformers import Trainer
 import megatron.mpu as mpu
+from torch.cuda.amp import autocast, GradScaler
 # import mpu
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 os.environ["WANDB_DISABLED"] = "true"
@@ -58,8 +60,10 @@ def run_train(args, model, datasets, exp_logger, detective):
     optimizer = optimizer
     scheduler = scheduler
 
+  if args.fp16:
+    scaler = GradScaler()
+
   exp_logger.update_optimization(optimizer, scheduler)
-  
   if args.task == 'meta_learn':
     dataset.add_detective(detective)
     dev_dataset.add_detective(detective)
@@ -69,8 +73,9 @@ def run_train(args, model, datasets, exp_logger, detective):
     model.train()
 
     for step, batch in (enumerate(train_dataloader)):
+      # pdb.set_trace()
       inputs, targets = dataset.collate(args, batch)
-      review_inputs(args, inputs, targets, datasets['train'].tokenizer)
+      # review_inputs(args, inputs, targets, datasets['train'].tokenizer)
 
       if args.deepspeed:
         kwargs = dict(device=args.device)
@@ -81,27 +86,48 @@ def run_train(args, model, datasets, exp_logger, detective):
         targets = targets.to(**kwargs)
 
       # pdb.set_trace()
-      outputs = model(**inputs, labels=targets)
-      pdb.set_trace()
-      exp_logger.tr_loss += outputs.loss.item()
-      loss = outputs.loss / args.grad_accum_steps
-      if args.deepspeed:
-        loss = model.backward(loss)
-      else:
-        loss.backward()
+      if args.fp16:
+        with autocast():
+          outputs = model(**inputs, labels=targets)
+          exp_logger.tr_loss += outputs.loss.item()
+          loss = outputs.loss / args.grad_accum_steps
+        scaler.scale(loss).backward()
 
-      if step % 24 == 0:
-        print('loss', loss)
-
-      if (step + 1) % args.grad_accum_steps == 0:
-        nn.utils.clip_grad_norm_(model.parameters(), 5.0)
-        if args.deepspeed:
-          model.step()
-        else:
-          exp_logger.optimizer.step()  # backprop to update the weights
+        if (step + 1) % args.grad_accum_steps == 0:
+          scaler.unscale_(optimizer)
+          torch.nn.utils.clip_grad_norm_(model.parameters(), 5.0)
+          scaler.step(optimizer)
           exp_logger.scheduler.step()  # Update learning rate schedule
-        model.zero_grad()
-        exp_logger.log_train(step)
+          scaler.update()
+          optimizer.zero_grad()
+          model.zero_grad()
+          exp_logger.log_train(step)
+
+      else:
+        outputs = model(**inputs, labels=targets)
+        exp_logger.tr_loss += outputs.loss.item()
+        loss = outputs.loss / args.grad_accum_steps
+
+        if args.deepspeed:
+          loss = model.backward(loss)
+        else:
+          loss.backward()
+
+
+        if (step + 1) % args.grad_accum_steps == 0:
+          nn.utils.clip_grad_norm_(model.parameters(), 5.0)
+          if args.deepspeed:
+            model.step()
+          else:
+            exp_logger.optimizer.step()  # backprop to update the weights
+            exp_logger.scheduler.step()  # Update learning rate schedule
+          model.zero_grad()
+          exp_logger.log_train(step)
+
+      if step % 100 == 0:
+        now = datetime.now()
+        dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
+        print('['+dt_string+']',' step:',step,'    loss', loss)
       if exp_logger.train_stop(args, step, debug_break): break
 
     if args.task == 'meta_learn' and args.do_leave:
@@ -205,6 +231,7 @@ def run_eval(args, model, dataset, exp_logger):
       else:
         outputs = model.generate(**inputs, max_length=maxl, early_stopping=True,
                             repetition_penalty=args.threshold, temperature=args.temperature)
+    pdb.set_trace()
     output_strings = tokenizer.batch_decode(outputs.detach(), skip_special_tokens=False)
     all_outputs.extend(output_strings)
 
@@ -223,17 +250,24 @@ def check_support(args, datasets):
 
 def compute_metrics(eval_pred):
     logits, labels = eval_pred
-    predictions = np.argmax(logits, axis=-1)
-    return metric.compute(predictions=predictions, references=labels)
+    prediction = logits.argmax(axis=-1)
+    all_outputs = tokenizer.batch_decode(prediction, skip_special_tokens=True)
+    all_targets = tokenizer.batch_decode(labels, skip_special_tokens=True)
+    results = eval_quantify(args, all_outputs, all_targets, exp_logger, tokenizer)
+    pdb.set_trace()
+    return results
 
 if __name__ == "__main__":
+  now = datetime.now()
+  dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
+  print("[date and time] is: ", dt_string) 
   args = solicit_params()
   args = setup_gpus(args)
   args, save_path = check_directories(args)
   set_seed(args)
   # pdb.set_trace()
 
-  if args.deepspeed:
+  if args.speed:
 
     from transformers.deepspeed import HfTrainerDeepSpeedConfig
     training_args = TrainingArguments(output_dir=args.output_dir, fp16=args.fp16, fp16_backend=args.fp16_backend, 
@@ -253,7 +287,7 @@ if __name__ == "__main__":
   exp_logger = ExperienceLogger(args, ontology, save_path)
   detective = ExemplarDetective(args, datasets['train'])
 
-  if args.deepspeed:
+  if args.speed:
     training_args = TrainingArguments(output_dir=args.output_dir)
     for arg in vars(args):
       try:
@@ -271,12 +305,17 @@ if __name__ == "__main__":
     data_collator = DataCollatorForSeq2Seq(tokenizer=tokenizer, model=model)
 
     training_args = TrainingArguments(output_dir=args.output_dir, fp16=args.fp16, #fp16_backend='apex',
-              per_device_train_batch_size=args.batch_size, gradient_accumulation_steps=1, 
+              per_device_train_batch_size=args.batch_size, 
+              per_device_eval_batch_size=2,
+              gradient_accumulation_steps=args.grad_accum_steps, 
               do_train=args.do_train, do_predict=args.do_eval, 
+              eval_accumulation_steps=100,
               learning_rate=args.learning_rate, weight_decay=args.weight_decay,
-              num_train_epochs=args.n_epochs, logging_steps=100, logging_strategy='steps',
-              evaluation_strategy="epoch", seed=args.seed, 
-              eval_steps=args.eval_interval, save_total_limit=args.prune_keep,)
+              num_train_epochs=args.n_epochs, seed=args.seed, 
+              logging_strategy='steps', logging_steps=10,
+              evaluation_strategy="epoch", eval_steps=args.eval_interval, 
+              save_strategy='epoch', save_total_limit=args.prune_keep,
+              deepspeed=args.deepspeed)
 
     # pdb.set_trace()
     trainer = DSTrainer(
@@ -286,6 +325,7 @@ if __name__ == "__main__":
         eval_dataset=datasets['dev'],
         tokenizer=tokenizer,
         data_collator=data_collator,
+        compute_metrics=compute_metrics,
     )
 
     if args.do_train:

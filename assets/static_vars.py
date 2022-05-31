@@ -29,7 +29,7 @@ CHECKPOINTS = {
         'large': 't5-11b' },
     'gpt': {
         'small': 'gpt2',
-        'medium': 'gpt2-large',
+        'medium': 'gpt2-xl',
         'large': 'EleutherAI/gpt-j-6B'},
     'bart': {
         'small': 'facebook/bart-base',
@@ -49,9 +49,7 @@ GENERAL_TYPO = {
     "cen":"centre", "east side":"east", "east area":"east", "west part of town":"west", "ce":"centre",
     "town center":"centre", "centre of cambridge":"centre", "city center":"centre", "the south":"south",
     "scentre":"centre", "town centre":"centre", "in town":"centre", "north part of town":"north",
-    "centre of town":"centre", "cb30aq": "none",
-    # cities
-    "philly": "philadelphia", "avis california": "davis california", 
+    "centre of town":"centre", "cb30aq": "none", "avis california": "davis california", 
     # price
     "mode":"moderate", "moderate -ly": "moderate", "mo":"moderate", "moderately priced": "moderate",
     "inexpensive": "cheap", 
@@ -63,7 +61,7 @@ GENERAL_TYPO = {
     # parking
     "free parking":"free",
     # internet
-    "free internet":"yes", "y":"yes", "true": "yes", "false": "no", "none": "no",
+    "free internet":"yes", "y":"yes", "True": "yes", "False": "no",
     # star
     "4 star":"4", "4 stars":"4", "0 star rarting":"<none>", "3 .":"3", "hree": "three", "wo": "two",
     # others
