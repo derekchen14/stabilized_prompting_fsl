@@ -71,20 +71,20 @@ set -xue
 #       --learning-rate 3e-5 --verbose --context-length 2 --batch-size 16 --ignore-cache --output-dir finetuned --parallel
 
 output_dir="/local2/data/qkun/stabilized_prompting_fsl/"
-# # # # # # 1labm
-export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5
+
+# # # # # # # 1labm
+export CUDA_VISIBLE_DEVICES=0,1,2,3
 python main.py --output-dir ${output_dir} \
       --dataset mwoz --task fine_tune --n-epochs 10 --do-train \
-      --style dataset --model gpt --size large --num-shots full --batch-size 2 --grad-accum-steps 16\
-      --learning-rate 3e-5  --maximum-len 512 --prompt-style naive \
+      --style dataset --model t5 --size large --num-shots full --batch-size 8 --grad-accum-steps 16\
+      --learning-rate 3e-2  --maximum-len 512 --prompt-style naive \
       --verbose --prune-keep 2 --fp16 --ignore-cache --parallel  # quarter
-
-# # export CUDA_VISIBLE_DEVICES=2,3
-# # python main.py --output-dir ${output_dir} \
-# #       --dataset gsim --task fine_tune --n-epochs 10 --do-train \
-# #       --style dataset --model gpt --size small --num-shots full --batch-size 16 \
-# #       --learning-rate 3e-5  --maximum-len 512 --prompt-style naive \
-# #       --verbose --prune-keep 2 --trainer --ignore-cache #--parallel  # quarter
+# # # export CUDA_VISIBLE_DEVICES=2,3
+# # # python main.py --output-dir ${output_dir} \
+# # #       --dataset gsim --task fine_tune --n-epochs 10 --do-train \
+# # #       --style dataset --model gpt --size small --num-shots full --batch-size 16 \
+# # #       --learning-rate 3e-5  --maximum-len 512 --prompt-style naive \
+# # #       --verbose --prune-keep 2 --trainer --ignore-cache #--parallel  # quarter
 
 # export CUDA_VISIBLE_DEVICES=6
 # python main.py --output-dir ${output_dir} \
@@ -92,15 +92,27 @@ python main.py --output-dir ${output_dir} \
 #       --style dataset --model gpt --size small --num-shots full \
 #       --batch-size 16 --grad-accum-steps 1\
 #       --learning-rate 3e-5  --maximum-len 512 --prompt-style naive \
-#       --verbose --prune-keep 2 --trainer --ignore-cache --debug #--parallel  # quarter
+#       --verbose --prune-keep 2 --trainer --ignore-cache #--parallel  # quarter
 
-export CUDA_VISIBLE_DEVICES=7
+# export CUDA_VISIBLE_DEVICES=7
+# python main.py --output-dir ${output_dir} \
+#       --dataset mwoz --task fine_tune --n-epochs 10 --do-train \
+#       --style dataset --model t5 --size small --num-shots full \
+#       --batch-size 16 --grad-accum-steps 1\
+#       --learning-rate 3e-5  --maximum-len 512 --prompt-style naive \
+#       --verbose --prune-keep 2 --ignore-cache #--parallel  # quarter
+
+export CUDA_VISIBLE_DEVICES=5,6
 python main.py --output-dir ${output_dir} \
-      --dataset dstc --task fine_tune --n-epochs 10 --do-train \
+      --dataset mwoz --task fine_tune --n-epochs 10 --do-train \
       --style dataset --model gpt --size small --num-shots full \
       --batch-size 16 --grad-accum-steps 1\
       --learning-rate 3e-5  --maximum-len 512 --prompt-style naive \
-      --verbose --prune-keep 2 --debug --ignore-cache #--parallel  # quarter
+      --verbose --prune-keep 2 --ignore-cache --parallel  # quarter
+
+
+
+
 
 # export CUDA_VISIBLE_DEVICES=6,7
 # export CUDA_LAUNCH_BLOCKING=1
@@ -124,18 +136,18 @@ python main.py --output-dir ${output_dir} \
 # output_dir='results'
 # export CUDA_VISIBLE_DEVICES=1,6
 # python main.py --output-dir ${output_dir} \
-#       --dataset gsim --task fine_tune --n-epochs 10 --do-train \
-#       --style dataset --model gpt --size large --num-shots full \
-#       --batch-size 1 --grad-accum-steps 1\
-#       --learning-rate 3e-5  --maximum-len 512 --prompt-style naive \
-#       --verbose --prune-keep 2 --fp16 --ignore-cache --parallel #--ignore-cache # --parallel  # quarter
-
-# export CUDA_VISIBLE_DEVICES=7
-# python main.py --output-dir ${output_dir} \
 #       --dataset mwoz --task fine_tune --n-epochs 10 --do-train \
-#       --style dataset --model gpt --size small --num-shots full --batch-size 16 \
+#       --style dataset --model gpt --size medium --num-shots full \
+#       --batch-size 4 --grad-accum-steps 8\
 #       --learning-rate 3e-5  --maximum-len 512 --prompt-style naive \
-#       --verbose --prune-keep 2 --fp16 --trainer #--ignore-cache  # quarter
+#       --verbose --prune-keep 2 --fp16 --trainer --ignore-cache  --parallel #--ignore-cache # --parallel  # quarter
+
+# # export CUDA_VISIBLE_DEVICES=7
+# # python main.py --output-dir ${output_dir} \
+# #       --dataset mwoz --task fine_tune --n-epochs 10 --do-train \
+# #       --style dataset --model gpt --size small --num-shots full --batch-size 16 \
+# #       --learning-rate 3e-5  --maximum-len 512 --prompt-style naive \
+# #       --verbose --prune-keep 2 --fp16 --trainer #--ignore-cache  # quarter
 
 
 

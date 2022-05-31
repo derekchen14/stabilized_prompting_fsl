@@ -126,16 +126,33 @@ def load_model(args, ontology, tokenizer, load_dir, ckpt_name=''):
     model.resize_token_embeddings(len(tokenizer))  # transformer_check
 
   if args.parallel:
-    device_map = {
-        0: [0, 1, 2,],
-        1: [3, 4, 5, 6, 7,],
-        2: [8, 9, 10, 11, 12, ],
-        3: [13, 14, 15, 16, 17, ],
-        4: [18, 19, 20, 21, 22, ],
-        5: [23, 24, 25, 26, 27,],
-    }
-    model.parallelize(device_map)
-    # model.parallelize()  # other notes at bottom of file
+    if args.size == 'large':
+      if args.model == 't5':
+        device_map = {
+            0: [0, 1, 2],
+            1: [3, 4, 5, 6, 7, 8, 9],
+            2: [10, 11, 12, 13, 14, 15, 16],
+            3: [17, 18, 19, 20, 21, 22, 23],
+        }
+      elif torch.cuda.device_count() == 6:
+        device_map = {
+            0: [0, 1, 2,],
+            1: [3, 4, 5, 6, 7,],
+            2: [8, 9, 10, 11, 12, ],
+            3: [13, 14, 15, 16, 17, ],
+            4: [18, 19, 20, 21, 22, ],
+            5: [23, 24, 25, 26, 27,],
+        }
+      elif torch.cuda.device_count() == 2:
+        device_map = {
+            0: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, ],
+            1: [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27,],
+        }
+      elif torch.cuda.device_count() <= 1:
+        return model.to(device)
+      model.parallelize(device_map)
+    else:
+      model.parallelize()  # other notes at bottom of file
   else:
     model.to(device)
   return model

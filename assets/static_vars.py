@@ -26,7 +26,7 @@ CHECKPOINTS = {
     't5': {
         'small': 't5-small', 
         'medium': 't5-base',
-        'large': 't5-11b' },
+        'large': 't5-3b' },
     'gpt': {
         'small': 'gpt2',
         'medium': 'gpt2-xl',

@@ -15,7 +15,7 @@ from utils.help import *
 from utils.process import process_data, get_dataloader
 from utils.arguments import solicit_params
 from utils.load import load_tokenizer, load_model, load_data, load_best_model, load_support
-from utils.evaluate import eval_quantify, eval_qualify, test_quantify, parse_output
+from utils.evaluate import eval_quantify, eval_qualify, test_quantify, parse_output, normalize_text
 from assets.static_vars import device, debug_break, STOP_TOKENS
 from transformers import HfArgumentParser, TrainingArguments
 from transformers import Trainer
@@ -94,12 +94,12 @@ def run_train(args, model, datasets, exp_logger, detective):
         scaler.scale(loss).backward()
 
         if (step + 1) % args.grad_accum_steps == 0:
-          scaler.unscale_(optimizer)
+          scaler.unscale_(exp_logger.optimizer)
           torch.nn.utils.clip_grad_norm_(model.parameters(), 5.0)
-          scaler.step(optimizer)
+          scaler.step(exp_logger.optimizer)
           exp_logger.scheduler.step()  # Update learning rate schedule
           scaler.update()
-          optimizer.zero_grad()
+          exp_logger.optimizer.zero_grad()
           model.zero_grad()
           exp_logger.log_train(step)
 
@@ -108,11 +108,13 @@ def run_train(args, model, datasets, exp_logger, detective):
         exp_logger.tr_loss += outputs.loss.item()
         loss = outputs.loss / args.grad_accum_steps
 
+        # pdb.set_trace()
+        # grad_params = torch.autograd.grad(outputs=loss,inputs=model.parameters(),create_graph=True)
+
         if args.deepspeed:
           loss = model.backward(loss)
         else:
           loss.backward()
-
 
         if (step + 1) % args.grad_accum_steps == 0:
           nn.utils.clip_grad_norm_(model.parameters(), 5.0)
@@ -124,7 +126,8 @@ def run_train(args, model, datasets, exp_logger, detective):
           model.zero_grad()
           exp_logger.log_train(step)
 
-      if step % 100 == 0:
+      log_interval = 100 if args.parallel else 1000
+      if step % log_interval == 0:
         now = datetime.now()
         dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
         print('['+dt_string+']',' step:',step,'    loss', loss)
@@ -231,7 +234,7 @@ def run_eval(args, model, dataset, exp_logger):
       else:
         outputs = model.generate(**inputs, max_length=maxl, early_stopping=True,
                             repetition_penalty=args.threshold, temperature=args.temperature)
-    pdb.set_trace()
+    # pdb.set_trace()
     output_strings = tokenizer.batch_decode(outputs.detach(), skip_special_tokens=False)
     all_outputs.extend(output_strings)
 
@@ -248,13 +251,26 @@ def check_support(args, datasets):
     datasets['dev'].add_support(supports, args.left_out)
   return datasets
 
+def compute_acc(args, all_outputs, all_targets, tokenizer):
+  assert len(all_outputs) == len(all_targets), 'prediction and target sequences should have same length'
+  for idx in range(len(all_outputs)):
+    pred, target = all_outputs[idx], all_targets[idx]
+    parsed_pred = parse_output(args, all_outputs)
+
+    clean_pred = GENERAL_TYPO[parsed_pred] if parsed_pred in GENERAL_TYPO else parsed_pred
+    clean_target = normalize_text(target)
+        
+    if pred_val.startswith(target_val):
+      acc += 1.0 / len(all_outputs)
+  return {"acc":acc}
+
+
 def compute_metrics(eval_pred):
     logits, labels = eval_pred
     prediction = logits.argmax(axis=-1)
-    all_outputs = tokenizer.batch_decode(prediction, skip_special_tokens=True)
+    all_outputs = tokenizer.batch_decode(prediction, skip_special_tokens=False)
     all_targets = tokenizer.batch_decode(labels, skip_special_tokens=True)
-    results = eval_quantify(args, all_outputs, all_targets, exp_logger, tokenizer)
-    pdb.set_trace()
+    results = compute_acc(args, all_outputs, all_targets, tokenizer)
     return results
 
 if __name__ == "__main__":
@@ -312,7 +328,7 @@ if __name__ == "__main__":
               eval_accumulation_steps=100,
               learning_rate=args.learning_rate, weight_decay=args.weight_decay,
               num_train_epochs=args.n_epochs, seed=args.seed, 
-              logging_strategy='steps', logging_steps=10,
+              logging_strategy='steps', logging_steps=1000,
               evaluation_strategy="epoch", eval_steps=args.eval_interval, 
               save_strategy='epoch', save_total_limit=args.prune_keep,
               deepspeed=args.deepspeed)
