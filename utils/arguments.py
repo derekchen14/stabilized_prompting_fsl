@@ -1,12 +1,8 @@
 import argparse
 import sys, os
-from transformers import HfArgumentParser, TrainingArguments
 
 
 def solicit_params():
-    # training_args = TrainingArguments(output_dir="test_trainer")
-    # parser_hf = HfArgumentParser(training_args, add_help=False)
-    # parser = argparse.ArgumentParser(parents=[parser_hf], conflict_handler='resolve')
     parser = argparse.ArgumentParser()
 
     # Required parameters
@@ -14,8 +10,8 @@ def solicit_params():
                 help="The input training data file (a text file).")
     parser.add_argument("--output-dir", default='results', type=str,
                 help="Output directory where the model predictions and checkpoints are written.")
-    parser.add_argument("--dataset", default='sgd', type=str, 
-                choices=['abcd', 'dstc', 'gsim', 'mwoz', 'sgd', 'tt','sgds'],
+    parser.add_argument("--dataset", default='mwoz', type=str, 
+                choices=['abcd', 'dstc', 'gsim', 'mwoz', 'sgd', 'tt'],
                 help="which dataset to choose from out of all possible options")
     parser.add_argument("--task", default='fine_tune', type=str,
                 choices=['in_context', 'meta_learn', 'fine_tune', 'reptile'],
@@ -113,10 +109,5 @@ def solicit_params():
     parser.add_argument("--percent", default=1.0, type=float, 
                 help="Amount of train and dev data to use during training.")
 
-    # # if args.deepspeed:
-    # import deepspeed
-    # parser = deepspeed.add_config_arguments(parser)
-
     args = parser.parse_args()
-
     return args

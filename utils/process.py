@@ -173,7 +173,6 @@ def build_sgd(args, data, ontology, split):
               prior_values[f'{domain}-{slot}'] = value
   return examples
 
-
 def build_mwoz(args, data, ontology, split):
   # written for MultiWoz v2.0, 2.1 and 2.3
   examples = {}
@@ -595,9 +594,6 @@ def process_data(args, raw_data, tokenizer):
       elif args.task == 'in_context':
         datasets[split] = InContextDataset(args, examples, tokenizer, split)
       elif args.task == 'fine_tune':
-        # if args.speed:
-        #   datasets[split] = examples
-        # else:
         datasets[split] = FineTuneDataset(args, examples, tokenizer, split)
       print(f"Running with {len(datasets[split])} {split} examples")
     pkl.dump(datasets, open(cache_results, 'wb'))

@@ -19,15 +19,15 @@ def set_seed(args):
   random.seed(args.seed)
   np.random.seed(args.seed)
   torch.manual_seed(args.seed)
-  if args.num_gpus > 0:
+  if args.n_gpu > 0:
     torch.cuda.manual_seed_all(args.seed)
 
 def setup_gpus(args):
-  num_gpus = 0  # set the default to 0
+  n_gpu = 0  # set the default to 0
   if torch.cuda.is_available():
-    num_gpus = torch.cuda.device_count()
-  args.num_gpus = num_gpus
-  if num_gpus > 0:   # this is not an 'else' statement and cannot be combined
+    n_gpu = torch.cuda.device_count()
+  args.n_gpu = n_gpu
+  if n_gpu > 0:   # this is not an 'else' statement and cannot be combined
     torch.backends.cudnn.benchmark = False
     torch.backends.cudnn.deterministic = True
   return args
