@@ -66,7 +66,10 @@ def load_tokenizer(args):
   token_ckpt = CHECKPOINTS[args.model][args.size]
 
   if args.model == 't5':
-    tokenizer = T5Tokenizer.from_pretrained(token_ckpt, truncation_side='left')
+    if args.bf16:
+      tokenizer = T5Tokenizer.from_pretrained(token_ckpt, truncation_side='left', pad_to_multiple_of=8)
+    else:
+      tokenizer = T5Tokenizer.from_pretrained(token_ckpt, truncation_side='left')
     special['sep_token'] = '<sep>'
   elif args.model == 'gpt':
     tokenizer = AutoTokenizer.from_pretrained(token_ckpt, truncation_side='left')
@@ -106,11 +109,7 @@ def load_model(args, ontology, tokenizer, load_dir, ckpt_name=''):
   ckpt_name = CHECKPOINTS[args.model][args.size] if len(ckpt_name) == 0 else ckpt_name
   if args.model == 'gpt':
     if args.size == 'large':
-      # model = GPTJForCausalLM.from_pretrained(ckpt_name,
-      #          revision="float16", torch_dtype=torch.float16, low_cpu_mem_usage=True)
-      model = GPTJForCausalLM.from_pretrained(ckpt_name,
-               revision="float16", torch_dtype=torch.float16)
-      # model = GPTJForCausalLM.from_pretrained("EleutherAI/gpt-j-6B")
+      model = GPTJForCausalLM.from_pretrained(ckpt_name)
     else:
       model = GPT2LMHeadModel.from_pretrained(ckpt_name)
     # use GPTJForCausalLM: https://huggingface.co/docs/transformers/model_doc/gptj
@@ -175,14 +174,3 @@ def load_best_model(args, exp_logger, tokenizer):
   # model.load_state_dict(checkpoint)
   model = load_model(args, exp_logger.ontology, tokenizer, load_dir, ckpt_path)
   return model
-
-"""
-    device_map = {
-        0: [0, 1, 2, 3],
-        1: [4, 5, 6, 7, 8, 9],
-        2: [10, 11, 12, 13, 14, 15,],
-        3: [16, 17, 18, 19, 20, 21,],
-        4: [22, 23, 24, 25, 26, 27,],
-    }
-    model.parallelize(device_map)
-"""

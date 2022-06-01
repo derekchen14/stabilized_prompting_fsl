@@ -10,6 +10,7 @@ import math
 import pandas as pd
 import numpy as np
 import time as tm
+from datetime import datetime
 from collections import defaultdict
 from utils.help import model_match
 
@@ -163,22 +164,25 @@ class ExperienceLogger:
 
   def log_train(self, step, train_metric=''):
     self.global_step += 1
+    now = datetime.now()
+    dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
+    time_report = f'[{dt_string}]'
+
+    current_loss = (self.tr_loss - self.logging_loss) / self.log_interval
+    self.logging_loss = self.tr_loss
+    step_report = f'[{step+1}/{self.num_steps}] '
+    loss_report = 'Mean_loss: %.5f, ' % current_loss
+    metric_report = f'{self.metric}: {train_metric}'
+    lr_report = f"adjusted lr:{self.scheduler.get_lr()[0]}"
 
     if self.global_step < 100 and self.global_step % 10 == 0:
-      print(self.global_step)
-    if self.global_step < 1000 and self.global_step % 100 == 0:
-      if self.log_interval <= 500:
-        print(self.global_step)
+      print(time_report,self.global_step, step_report,lr_report,loss_report)
+    if self.global_step < 1000 and self.global_step % 100 == 0 and self.log_interval <= 500:
+      print(time_report,self.global_step, step_report,lr_report, loss_report)
 
-    if self.global_step % self.log_interval == 0:
-      current_loss = (self.tr_loss - self.logging_loss) / self.log_interval
-      self.logging_loss = self.tr_loss
-
-      step_report = f'[{step+1}/{self.num_steps}] '
-      loss_report = 'Mean_loss: %.3f, ' % current_loss
-      metric_report = f'{self.metric}: {train_metric}'
+    elif self.global_step % self.log_interval == 0:
       # print(step_report + loss_report + metric_report)
-      print(step_report + loss_report)
+      print(time_report,self.global_step, step_report,lr_report,loss_report)
 
   def save_best_model(self, model, tokenizer, prune_keep):
     if self.do_save and self.best_score[self.metric] > 0.1:

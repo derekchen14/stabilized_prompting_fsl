@@ -113,7 +113,6 @@ statement_descriptions = {
     "outdoor seating": "Whether the restaurant has outdoor seating",
     "alcohol": "Whether the restaurant allows alcohol",
     "phone number": "The phone number of the restaurant",
-    "rating": "The rating of the restaurant",
     "restaurant name": "The name of the restaurant",
     "name": "The name of the restaurant"},
   "movie": {

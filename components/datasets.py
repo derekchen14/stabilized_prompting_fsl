@@ -12,6 +12,7 @@ from utils.help import standardize_format
 
 class BaseDataset(Dataset):
   def __init__(self, args, examples, tokenizer, split):
+    self.args = args
     self.split = split
     self.shuffle = (split == 'train')
     self.data = self._unravel(examples, split)
@@ -26,11 +27,13 @@ class BaseDataset(Dataset):
     self.model_type = args.model
     self.detective = None
 
+
   def __len__(self):
     return self.size
 
   def __getitem__(self, idx):
     return self.data[idx]
+
 
   def _unravel(self, examples, split):
     # examples are grouped by conversation and turn by default
@@ -48,13 +51,13 @@ class BaseDataset(Dataset):
   def _pad_right(self, targets):
     max_vec_len = max([len(vector) for vector in targets.input_ids])
     assert(max_vec_len < 24)
-    if max_vec_len > 12:
-      max_vec_len = 13
+    if max_vec_len > 16:
+      max_vec_len = 17
 
     padded = []
     for vector in targets.input_ids:
-      if len(vector) > 12:
-        vector = vector[:13]
+      if len(vector) > 16:
+        vector = vector[:17]
       else:
         diff = max_vec_len - len(vector)
         for i in range(diff):
@@ -70,7 +73,7 @@ class BaseDataset(Dataset):
     eos = self.tokenizer.eos_token
     
     model_input_length = 2048 if args.size == 'large' else 1024
-    max_allowed = model_input_length - 12
+    max_allowed = model_input_length - 16
 
     self.detective.reset()
     contexts = []
@@ -152,7 +155,7 @@ class InContextDataset(BaseDataset):
       dialogues.append(dialog)
       labels.append(target)
 
-    inputs = self.tokenizer(contexts, dialogues, padding=True, max_length=self.max_len - 12,
+    inputs = self.tokenizer(contexts, dialogues, padding=True, max_length=self.max_len - 16,
                               truncation='only_first', return_tensors='pt').to(device) 
     return inputs, labels
 
@@ -215,7 +218,7 @@ class MetaLearnDataset(BaseDataset):
         target['history'] = history
         labels.append(target)
       
-    max_len = self.max_len - 12
+    max_len = self.max_len - 16
     inputs = self.tokenizer(contexts, dialogues, padding=True, max_length=max_len,
                                 truncation='only_first', return_tensors='pt').to(device)
     if self.split == 'train':
@@ -281,9 +284,10 @@ class FineTuneDataset(BaseDataset):
         target['history'] = history
         labels.append(target)
 
-    max_length = self.max_len - 12
+    max_length = self.max_len - 16
     inputs = self.tokenizer(dialogues, padding='longest', max_length=max_length,
-                                truncation=True, return_tensors='pt').to(device)
+                              truncation=True, pad_to_multiple_of=8, return_tensors='pt').to(device)
+
     if self.split == 'train':
       targets = self.tokenizer(labels) # we do not want tensors
       target_tensor = self._pad_right(targets)
@@ -311,8 +315,10 @@ class FineTuneDataset(BaseDataset):
       
       dialogues.append(dialog)
       labels.append(target)
+
     inputs = self.tokenizer(dialogues, padding=True, max_length=max_length,
                               truncation=True, return_tensors='pt').to(device)
+
     if self.split == 'train':
       return inputs, inputs['input_ids']
     else:
