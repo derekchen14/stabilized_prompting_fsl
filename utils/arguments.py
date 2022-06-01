@@ -85,24 +85,8 @@ def solicit_params():
                 help="Number of models to keep around after pruning, by default does not prune")
     parser.add_argument("--parallel", action="store_true",
                 help="Whether to run in parallel")
-
-    # deepspeed
-    parser.add_argument("--local_rank", default=-1, type=int,
-                help="local rank")
-    parser.add_argument("--deepspeed", default="", type=str,
-                help="deepspeed configure file")
-    parser.add_argument("--num_gpus", default=1, type=int,
-                help="number of gpu used")
     parser.add_argument("--fp16", action="store_true",
                 help="number of gpu used")
-    parser.add_argument("--fp16_backend", default='auto', type=str, 
-                choices=["auto", "amp", "apex"],
-                help="fp16")
-    parser.add_argument("--speed", action="store_true",
-                help="try for deepspeed.")
-    # huggingface trainer
-    parser.add_argument("--trainer", action="store_true",
-                        help="use huggingface trainer")
 
 
     # Hyper-parameters for tuning

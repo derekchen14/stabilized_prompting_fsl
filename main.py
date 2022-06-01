@@ -1,7 +1,6 @@
 import os, sys, pdb
 import numpy as np
 import random
-import deepspeed
 
 from torch import nn, no_grad
 from tqdm import tqdm as progress_bar
@@ -15,50 +14,15 @@ from utils.help import *
 from utils.process import process_data, get_dataloader
 from utils.arguments import solicit_params
 from utils.load import load_tokenizer, load_model, load_data, load_best_model, load_support
-from utils.evaluate import eval_quantify, eval_qualify, test_quantify, parse_output, normalize_text
+from utils.evaluate import eval_quantify, eval_qualify, test_quantify, parse_output
 from assets.static_vars import device, debug_break, STOP_TOKENS
-from transformers import HfArgumentParser, TrainingArguments
-from transformers import Trainer
-import megatron.mpu as mpu
 from torch.cuda.amp import autocast, GradScaler
-# import mpu
-os.environ["TOKENIZERS_PARALLELISM"] = "false"
-os.environ["WANDB_DISABLED"] = "true"
-# print(mpu.get_data_parallel_world_size())
-# pdb.set_trace()
+
 def run_train(args, model, datasets, exp_logger, detective):
   dataset, dev_dataset = datasets['train'], datasets['dev']
   train_dataloader = get_dataloader(args, dataset)
   total_steps = len(train_dataloader) // args.grad_accum_steps * args.n_epochs
-
   optimizer, scheduler = setup_optimization(args, model, total_steps)
-
-
-  if args.deepspeed:
-    deepspeed.init_distributed()
-    mpu.initialize_model_parallel(tensor_model_parallel_size_=args.world_size)
-    # args.batch_size = args.world_size
-    args.per_device_train_batch_size = args.batch_size * mpu.get_data_parallel_world_size() / args.world_size
-    args.hf_deepspeed_config = HfTrainerDeepSpeedConfig(args.deepspeed)
-    args.hf_deepspeed_config.trainer_config_process(args)
-    hf_deepspeed_config = args.hf_deepspeed_config
-    hf_deepspeed_config.trainer_config_finalize(args, model, total_steps)
-    config = hf_deepspeed_config.config
-    # pdb.set_trace()
-    config['train_micro_batch_size_per_gpu'] = args.batch_size
-    # print(mpu.get_data_parallel_world_size())
-
-    # pdb.set_trace()
-    deepspeed_engine, optimizer, _, scheduler = deepspeed.initialize(
-              model=model,
-              model_parameters=list(filter(lambda p: p.requires_grad, model.parameters())),
-              config_params=config,
-              optimizer=optimizer,
-              lr_scheduler=scheduler,
-              mpu=mpu)
-    model = deepspeed_engine
-    optimizer = optimizer
-    scheduler = scheduler
 
   if args.fp16:
     scaler = GradScaler()
@@ -76,14 +40,6 @@ def run_train(args, model, datasets, exp_logger, detective):
       # pdb.set_trace()
       inputs, targets = dataset.collate(args, batch)
       # review_inputs(args, inputs, targets, datasets['train'].tokenizer)
-
-      if args.deepspeed:
-        kwargs = dict(device=args.device)
-        # pdb.set_trace()
-        # kwargs.update(dict(dtype=args.hf_deepspeed_config.dtype()))
-        inputs['input_ids'] =  inputs['input_ids'].to(**kwargs)
-        inputs['attention_mask'] =  inputs['attention_mask'].to(**kwargs)
-        targets = targets.to(**kwargs)
 
       # pdb.set_trace()
       if args.fp16:
@@ -107,32 +63,15 @@ def run_train(args, model, datasets, exp_logger, detective):
         outputs = model(**inputs, labels=targets)
         exp_logger.tr_loss += outputs.loss.item()
         loss = outputs.loss / args.grad_accum_steps
-
-        # pdb.set_trace()
-        # grad_params = torch.autograd.grad(outputs=loss,inputs=model.parameters(),create_graph=True)
-
-        if args.deepspeed:
-          loss = model.backward(loss)
-        else:
-          loss.backward()
+        loss.backward()
 
         if (step + 1) % args.grad_accum_steps == 0:
           nn.utils.clip_grad_norm_(model.parameters(), 5.0)
-          if args.deepspeed:
-            model.step()
-          else:
-            exp_logger.optimizer.step()  # backprop to update the weights
-            exp_logger.scheduler.step()  # Update learning rate schedule
+          exp_logger.optimizer.step()  # backprop to update the weights
+          exp_logger.scheduler.step()  # Update learning rate schedule
           model.zero_grad()
           exp_logger.log_train(step)
 
-      log_interval = 100 if args.parallel else 1000
-      if step % log_interval == 0:
-        now = datetime.now()
-        dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
-        print('['+dt_string+']',' step:',step,'    loss', loss)
-        # print('['+dt_string+']',' step:',step,'    loss', (exp_logger.tr_loss - exp_logger.logging_loss) / log_interval)
-        # exp_logger.logging_loss = exp_logger.tr_loss
       if exp_logger.train_stop(args, step, debug_break): break
 
     if args.task == 'meta_learn' and args.do_leave:
@@ -236,7 +175,6 @@ def run_eval(args, model, dataset, exp_logger):
       else:
         outputs = model.generate(**inputs, max_length=maxl, early_stopping=True,
                             repetition_penalty=args.threshold, temperature=args.temperature)
-    # pdb.set_trace()
     output_strings = tokenizer.batch_decode(outputs.detach(), skip_special_tokens=False)
     all_outputs.extend(output_strings)
 
@@ -253,27 +191,6 @@ def check_support(args, datasets):
     datasets['dev'].add_support(supports, args.left_out)
   return datasets
 
-def compute_acc(args, all_outputs, all_targets, tokenizer):
-  assert len(all_outputs) == len(all_targets), 'prediction and target sequences should have same length'
-  for idx in range(len(all_outputs)):
-    pred, target = all_outputs[idx], all_targets[idx]
-    parsed_pred = parse_output(args, all_outputs)
-
-    clean_pred = GENERAL_TYPO[parsed_pred] if parsed_pred in GENERAL_TYPO else parsed_pred
-    clean_target = normalize_text(target)
-        
-    if pred_val.startswith(target_val):
-      acc += 1.0 / len(all_outputs)
-  return {"acc":acc}
-
-
-def compute_metrics(eval_pred):
-    logits, labels = eval_pred
-    prediction = logits.argmax(axis=-1)
-    all_outputs = tokenizer.batch_decode(prediction, skip_special_tokens=False)
-    all_targets = tokenizer.batch_decode(labels, skip_special_tokens=True)
-    results = compute_acc(args, all_outputs, all_targets, tokenizer)
-    return results
 
 if __name__ == "__main__":
   now = datetime.now()
@@ -283,20 +200,6 @@ if __name__ == "__main__":
   args = setup_gpus(args)
   args, save_path = check_directories(args)
   set_seed(args)
-  # pdb.set_trace()
-
-  if args.speed:
-
-    from transformers.deepspeed import HfTrainerDeepSpeedConfig
-    training_args = TrainingArguments(output_dir=args.output_dir, fp16=args.fp16, fp16_backend=args.fp16_backend, 
-                                      learning_rate=args.learning_rate, do_train=args.do_train, do_eval=args.do_eval,
-                                      save_strategy="epoch", seed=args.seed,)
-    for arg in vars(args):
-      try:
-        setattr(training_args, arg, getattr(args, arg))
-      except:
-        pdb.set_trace()
-    args = training_args
 
   reformat_data(args)
   raw_data = load_data(args)
@@ -305,81 +208,10 @@ if __name__ == "__main__":
   exp_logger = ExperienceLogger(args, ontology, save_path)
   detective = ExemplarDetective(args, datasets['train'])
 
-  if args.speed:
-    training_args = TrainingArguments(output_dir=args.output_dir)
-    for arg in vars(args):
-      try:
-        setattr(training_args, arg, getattr(args, arg))
-      except:
-        pdb.set_trace()
-    datasets = check_support(training_args, datasets)
-    model = load_model(training_args, ontology, tokenizer, save_path)
-
-  elif args.trainer:
+  if args.do_train:
     model = load_model(args, ontology, tokenizer, save_path)
     datasets = check_support(args, datasets)
-
-    from transformers import DataCollatorForSeq2Seq
-    data_collator = DataCollatorForSeq2Seq(tokenizer=tokenizer, model=model)
-
-    training_args = TrainingArguments(output_dir=args.output_dir, fp16=args.fp16, #fp16_backend='apex',
-              per_device_train_batch_size=args.batch_size, 
-              per_device_eval_batch_size=2,
-              gradient_accumulation_steps=args.grad_accum_steps, 
-              do_train=args.do_train, do_predict=args.do_eval, 
-              eval_accumulation_steps=100,
-              learning_rate=args.learning_rate, weight_decay=args.weight_decay,
-              num_train_epochs=args.n_epochs, seed=args.seed, 
-              logging_strategy='steps', logging_steps=1000,
-              evaluation_strategy="epoch", eval_steps=args.eval_interval, 
-              save_strategy='epoch', save_total_limit=args.prune_keep,
-              deepspeed=args.deepspeed)
-
-    # pdb.set_trace()
-    trainer = DSTrainer(
-        model=model,
-        args=training_args,
-        train_dataset=datasets['train'],
-        eval_dataset=datasets['dev'],
-        tokenizer=tokenizer,
-        data_collator=data_collator,
-        compute_metrics=compute_metrics,
-    )
-
-    if args.do_train:
-      trainer.train()
-    elif args.do_eval:
-      trainer.predict()
-
-  else:
-    if args.do_train:
-      model = load_model(args, ontology, tokenizer, save_path)
-      datasets = check_support(args, datasets)
-      run_train(args, model, datasets, exp_logger, detective)
-    elif args.do_eval:
-      run_test(args, datasets['test'], exp_logger, detective)
-
-
-  # # parser = HfArgumentParser(ourarugments, TrainingArguments)
-  # # training_args = parser.parse_args_into_dataclasses()
-
-  # # training_args = TrainingArguments(output_dir=args.output_dir, deepspeed=args.deepspeed, fp16=args.fp16, 
-  # #           do_train=args.do_train, do_eval=args.do_eval, do_predict=args.do_eval, learning_rate=args.learning_rate, 
-  # #           num_train_epochs=args.n_epochs, logging_steps=args.log_interval, save_strategy="epoch", seed=args.seed, 
-  # #           eval_steps=args.eval_interval,)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    run_train(args, model, datasets, exp_logger, detective)
+  elif args.do_eval:
+    run_test(args, datasets['test'], exp_logger, detective)
 

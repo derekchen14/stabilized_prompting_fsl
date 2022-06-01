@@ -109,12 +109,7 @@ def load_model(args, ontology, tokenizer, load_dir, ckpt_name=''):
   ckpt_name = CHECKPOINTS[args.model][args.size] if len(ckpt_name) == 0 else ckpt_name
   if args.model == 'gpt':
     if args.size == 'large':
-      # model = GPTJForCausalLM.from_pretrained(ckpt_name,
-      #          revision="float16", torch_dtype=torch.float16, low_cpu_mem_usage=True)
-      # model = GPTJForCausalLM.from_pretrained(ckpt_name,
-      #          revision="float16", torch_dtype=torch.float16)
       model = GPTJForCausalLM.from_pretrained(ckpt_name)
-      # model = GPTJForCausalLM.from_pretrained("EleutherAI/gpt-j-6B")
     else:
       model = GPT2LMHeadModel.from_pretrained(ckpt_name)
     # use GPTJForCausalLM: https://huggingface.co/docs/transformers/model_doc/gptj
@@ -129,34 +124,7 @@ def load_model(args, ontology, tokenizer, load_dir, ckpt_name=''):
     model.resize_token_embeddings(len(tokenizer))  # transformer_check
 
   if args.parallel:
-    if args.size == 'large':
-      if args.model == 't5':
-        # device_map = {
-        #     0: [0, 1, 2, 3, 4, 5],
-        #     1: [6, 7, 8, 9, 10, 11],
-        #     2: [12, 13, 14, 15, 16, 17],
-        #     3: [18, 19, 20, 21, 22, 23],
-        # }
-        device_map = None
-      elif torch.cuda.device_count() == 6:
-        device_map = {
-            0: [0, 1, 2,],
-            1: [3, 4, 5, 6, 7,],
-            2: [8, 9, 10, 11, 12, ],
-            3: [13, 14, 15, 16, 17, ],
-            4: [18, 19, 20, 21, 22, ],
-            5: [23, 24, 25, 26, 27,],
-        }
-      elif torch.cuda.device_count() == 2:
-        device_map = {
-            0: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, ],
-            1: [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27,],
-        }
-      elif torch.cuda.device_count() <= 1:
-        device_map = None
-      model.parallelize(device_map)
-    else:
-      model.parallelize()  # other notes at bottom of file
+    model.parallelize()  # other notes at bottom of file
   else:
     model.to(device)
   return model
@@ -206,14 +174,3 @@ def load_best_model(args, exp_logger, tokenizer):
   # model.load_state_dict(checkpoint)
   model = load_model(args, exp_logger.ontology, tokenizer, load_dir, ckpt_path)
   return model
-
-"""
-    device_map = {
-        0: [0, 1, 2, 3],
-        1: [4, 5, 6, 7, 8, 9],
-        2: [10, 11, 12, 13, 14, 15,],
-        3: [16, 17, 18, 19, 20, 21,],
-        4: [22, 23, 24, 25, 26, 27,],
-    }
-    model.parallelize(device_map)
-"""
