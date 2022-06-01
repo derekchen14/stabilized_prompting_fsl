@@ -57,6 +57,7 @@ def check_directories(args):
   if args.percent < 0.1 or args.percent > 1.0:
     raise IndexError("Data percentage must be between 10% and 100% \
       If you want to run even faster, consider using debug mode instead.")
+  assert args.bf16 == args.parallel
   return args, save_path
 
 def setup_optimization(args, model, total_steps):

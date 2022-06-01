@@ -23,8 +23,8 @@ def run_train(args, model, datasets, exp_logger, detective):
 
   if args.bf16:
     scaler = GradScaler()
-
   exp_logger.update_optimization(optimizer, scheduler)
+
   if args.task == 'meta_learn':
     dataset.add_detective(detective)
     dev_dataset.add_detective(detective)
@@ -33,7 +33,7 @@ def run_train(args, model, datasets, exp_logger, detective):
     exp_logger.start_epoch(train_dataloader, args.percent)
     model.train()
 
-    for step, batch in (enumerate(train_dataloader)):
+    for step, batch in enumerate(train_dataloader):
       inputs, targets = dataset.collate(args, batch)
       review_inputs(args, inputs, targets, datasets['train'].tokenizer)
       if args.bf16:
@@ -64,7 +64,6 @@ def run_train(args, model, datasets, exp_logger, detective):
           exp_logger.optimizer.step()  # backprop to update the weights
           exp_logger.scheduler.step()  # Update learning rate schedule
           model.zero_grad()
-
           exp_logger.log_train(step)
 
       if exp_logger.train_stop(args, step, debug_break): break
@@ -181,7 +180,6 @@ def check_support(args, datasets):
     datasets['train'].add_support(supports, args.left_out)
     datasets['dev'].add_support(supports, args.left_out)
   return datasets
-
 
 if __name__ == "__main__":
   args = solicit_params()
