@@ -66,7 +66,7 @@ def load_tokenizer(args):
   token_ckpt = CHECKPOINTS[args.model][args.size]
 
   if args.model == 't5':
-    if args.fp16:
+    if args.bf16:
       tokenizer = T5Tokenizer.from_pretrained(token_ckpt, truncation_side='left', pad_to_multiple_of=8)
     else:
       tokenizer = T5Tokenizer.from_pretrained(token_ckpt, truncation_side='left')

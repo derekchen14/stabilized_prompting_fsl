@@ -171,7 +171,7 @@ class ExperienceLogger:
     current_loss = (self.tr_loss - self.logging_loss) / self.log_interval
     self.logging_loss = self.tr_loss
     step_report = f'[{step+1}/{self.num_steps}] '
-    loss_report = 'Mean_loss: %.3f, ' % current_loss
+    loss_report = 'Mean_loss: %.5f, ' % current_loss
     metric_report = f'{self.metric}: {train_metric}'
     lr_report = f"adjusted lr:{self.scheduler.get_lr()[0]}"
 

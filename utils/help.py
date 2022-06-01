@@ -72,7 +72,6 @@ def setup_optimization(args, model, total_steps):
 
   # optimizer = torch.optim.AdamW(optimizer_grouped_parameters, lr=args.learning_rate)
   optimizer = ada_optim.Adafactor(optimizer_grouped_parameters, lr=args.learning_rate)
-  # optimizer = torch.optim.SGD(optimizer_grouped_parameters, lr=args.learning_rate)
   scheduler = get_scheduler('cosine', optimizer, num_warmup_steps=warmup, num_training_steps=total_steps)
   return optimizer, scheduler
 

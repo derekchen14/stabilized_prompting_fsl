@@ -21,7 +21,7 @@ def run_train(args, model, datasets, exp_logger, detective):
   total_steps = len(train_dataloader) // args.grad_accum_steps * args.n_epochs
   optimizer, scheduler = setup_optimization(args, model, total_steps)
 
-  if args.fp16:
+  if args.bf16:
     scaler = GradScaler()
 
   exp_logger.update_optimization(optimizer, scheduler)
@@ -39,7 +39,7 @@ def run_train(args, model, datasets, exp_logger, detective):
       # review_inputs(args, inputs, targets, datasets['train'].tokenizer)
 
       # pdb.set_trace()
-      if args.fp16:
+      if args.bf16:
         with autocast(dtype=torch.bfloat16):
           outputs = model(**inputs, labels=targets)
           exp_logger.tr_loss += outputs.loss.item()
@@ -67,6 +67,7 @@ def run_train(args, model, datasets, exp_logger, detective):
           exp_logger.optimizer.step()  # backprop to update the weights
           exp_logger.scheduler.step()  # Update learning rate schedule
           model.zero_grad()
+
           exp_logger.log_train(step)
 
       if exp_logger.train_stop(args, step, debug_break): break

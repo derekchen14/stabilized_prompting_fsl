@@ -167,9 +167,6 @@ def calculate_jga(results, final_preds, verbose):
             turn_correct = False
             errors[f"{pred_val}-{target_val}"] += 1
           possible += 1
-        else:
-          # TODO
-          pass
 
       if turn_correct:
         joint_correct += 1
