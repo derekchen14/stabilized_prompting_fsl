@@ -27,20 +27,12 @@ class BaseDataset(Dataset):
     self.model_type = args.model
     self.detective = None
 
-    if self.args.trainer and self.split != 'test':
-      self.data_trainer = self.collate(self.args, self.data)
-      self.size = len(self.data_trainer['input_ids'])
 
   def __len__(self):
     return self.size
 
   def __getitem__(self, idx):
-    if self.args.trainer and self.split != 'test':
-      return {"input_ids":self.data_trainer["input_ids"][idx], 
-              "attention_mask":self.data_trainer["attention_mask"][idx],
-              "labels":self.data_trainer["labels"][idx]}
-    else:
-      return self.data[idx]
+    return self.data[idx]
 
 
   def _unravel(self, examples, split):
@@ -294,18 +286,8 @@ class FineTuneDataset(BaseDataset):
 
     max_length = self.max_len - 16
     inputs = self.tokenizer(dialogues, padding='longest', max_length=max_length,
-                              truncation=True, pad_to_multiple_of=8, return_tensors='pt')
+                              truncation=True, pad_to_multiple_of=8, return_tensors='pt').to(device)
 
-    if args.trainer:
-      if self.split == 'train':
-        tokenized_labels = self.tokenizer(labels, padding_side='right',
-                                padding=True, return_tensors='pt')
-        inputs["labels"] = tokenized_labels['input_ids']
-      else:
-        inputs["labels"] = labels
-      return inputs
-
-    inputs = inputs.to(device)
     if self.split == 'train':
       targets = self.tokenizer(labels) # we do not want tensors
       target_tensor = self._pad_right(targets)
@@ -317,17 +299,11 @@ class FineTuneDataset(BaseDataset):
     """transforms a batch of examples into a features dict that can be fed into a GPT model"""
     dialogues, labels = [], []
     eos = self.tokenizer.eos_token
-    # trainer_examples = []
-    if args.debug:
-      examples = examples[:1000]
 
     for example in examples:
       history = ' '.join(example['utterances'])
       target = example['target']
       state_str = super().state_to_string(example['prev_state'])
-      # if type(target) == list:
-      #   pdb.set_trace()
-      # # # pdb.set_trace()
       prompt = find_prompt(args.prompt_style, target['domain'], target['slot'])
 
       if self.split == 'train':
@@ -341,21 +317,8 @@ class FineTuneDataset(BaseDataset):
       labels.append(target)
 
     inputs = self.tokenizer(dialogues, padding=True, max_length=max_length,
-                              truncation=True, return_tensors='pt')
-    if args.trainer:
-      if self.split == 'train':
-        inputs["labels"] = inputs["input_ids"]
-      else:
-        tokenized_labels = self.tokenizer([target['value'] for target in labels], 
-                                padding=True,
-                                max_length=128, truncation=True, return_tensors='pt')
-        inputs["labels"] = tokenized_labels["input_ids"]
-        # targets = self.tokenizer([target['value'] for target in labels]) # we do not want tensors
-        # target_tensor = self._pad_right(targets)
-        # inputs["labels"] = target_tensor
-      return inputs
+                              truncation=True, return_tensors='pt').to(device)
 
-    inputs = inputs.to(device)
     if self.split == 'train':
       return inputs, inputs['input_ids']
     else:

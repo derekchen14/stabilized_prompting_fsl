@@ -6,9 +6,6 @@ from torch import nn, no_grad
 from tqdm import tqdm as progress_bar
 from components.logger import ExperienceLogger
 from components.detector import ExemplarDetective
-from components.trainer import DSTrainer
-from tqdm import tqdm
-from datetime import datetime
 
 from utils.help import *
 from utils.process import process_data, get_dataloader
@@ -169,12 +166,8 @@ def run_eval(args, model, dataset, exp_logger):
     with no_grad():
       # defaults to greedy sampling, for param details see https://huggingface.co/docs/transformers/
       #        v4.15.0/en/main_classes/model#transformers.generation_utils.GenerationMixin.generate 
-      if args.deepspeed:
-        outputs = model.module.generate(**inputs, max_length=maxl, early_stopping=True,
-                            repetition_penalty=args.threshold, temperature=args.temperature)
-      else:
-        outputs = model.generate(**inputs, max_length=maxl, early_stopping=True,
-                            repetition_penalty=args.threshold, temperature=args.temperature)
+      outputs = model.generate(**inputs, max_length=maxl, early_stopping=True,
+                          repetition_penalty=args.threshold, temperature=args.temperature)
     output_strings = tokenizer.batch_decode(outputs.detach(), skip_special_tokens=False)
     all_outputs.extend(output_strings)
 
@@ -193,9 +186,6 @@ def check_support(args, datasets):
 
 
 if __name__ == "__main__":
-  now = datetime.now()
-  dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
-  print("[date and time] is: ", dt_string) 
   args = solicit_params()
   args = setup_gpus(args)
   args, save_path = check_directories(args)
