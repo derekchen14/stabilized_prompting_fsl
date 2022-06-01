@@ -13,6 +13,7 @@ from assets.static_vars import device, SLOT_MAPPING
 from copy import deepcopy
 from transformers import get_scheduler
 from utils.reformat import *
+import torch_optimizer as ada_optim
 
 def set_seed(args):
   random.seed(args.seed)
@@ -69,7 +70,9 @@ def setup_optimization(args, model, total_steps):
   ]
   warmup = int(total_steps * 0.2)
 
-  optimizer = torch.optim.AdamW(optimizer_grouped_parameters, lr=args.learning_rate)
+  # optimizer = torch.optim.AdamW(optimizer_grouped_parameters, lr=args.learning_rate)
+  optimizer = ada_optim.adafactor(optimizer_grouped_parameters, lr=args.learning_rate)
+  # optimizer = torch.optim.SGD(optimizer_grouped_parameters, lr=args.learning_rate)
   scheduler = get_scheduler('cosine', optimizer, num_warmup_steps=warmup, num_training_steps=total_steps)
   return optimizer, scheduler
 
