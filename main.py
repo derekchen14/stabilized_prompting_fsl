@@ -131,6 +131,8 @@ def run_train(args, model, datasets, exp_logger, detective):
         now = datetime.now()
         dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
         print('['+dt_string+']',' step:',step,'    loss', loss)
+        # print('['+dt_string+']',' step:',step,'    loss', (exp_logger.tr_loss - exp_logger.logging_loss) / log_interval)
+        # exp_logger.logging_loss = exp_logger.tr_loss
       if exp_logger.train_stop(args, step, debug_break): break
 
     if args.task == 'meta_learn' and args.do_leave:

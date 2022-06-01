@@ -66,7 +66,10 @@ def load_tokenizer(args):
   token_ckpt = CHECKPOINTS[args.model][args.size]
 
   if args.model == 't5':
-    tokenizer = T5Tokenizer.from_pretrained(token_ckpt, truncation_side='left')
+    if args.fp16:
+      tokenizer = T5Tokenizer.from_pretrained(token_ckpt, truncation_side='left', pad_to_multiple_of=8)
+    else:
+      tokenizer = T5Tokenizer.from_pretrained(token_ckpt, truncation_side='left')
     special['sep_token'] = '<sep>'
   elif args.model == 'gpt':
     tokenizer = AutoTokenizer.from_pretrained(token_ckpt, truncation_side='left')
@@ -128,12 +131,13 @@ def load_model(args, ontology, tokenizer, load_dir, ckpt_name=''):
   if args.parallel:
     if args.size == 'large':
       if args.model == 't5':
-        device_map = {
-            0: [0, 1, 2],
-            1: [3, 4, 5, 6, 7, 8, 9],
-            2: [10, 11, 12, 13, 14, 15, 16],
-            3: [17, 18, 19, 20, 21, 22, 23],
-        }
+        # device_map = {
+        #     0: [0, 1, 2, 3, 4, 5],
+        #     1: [6, 7, 8, 9, 10, 11],
+        #     2: [12, 13, 14, 15, 16, 17],
+        #     3: [18, 19, 20, 21, 22, 23],
+        # }
+        device_map = None
       elif torch.cuda.device_count() == 6:
         device_map = {
             0: [0, 1, 2,],
@@ -149,7 +153,7 @@ def load_model(args, ontology, tokenizer, load_dir, ckpt_name=''):
             1: [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27,],
         }
       elif torch.cuda.device_count() <= 1:
-        return model.to(device)
+        device_map = None
       model.parallelize(device_map)
     else:
       model.parallelize()  # other notes at bottom of file

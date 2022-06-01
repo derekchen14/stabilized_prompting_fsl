@@ -73,12 +73,12 @@ set -xue
 output_dir="/local2/data/qkun/stabilized_prompting_fsl/"
 
 # # # # # # # 1labm
-export CUDA_VISIBLE_DEVICES=0,1,2,3
-python main.py --output-dir ${output_dir} \
-      --dataset mwoz --task fine_tune --n-epochs 10 --do-train \
-      --style dataset --model t5 --size large --num-shots full --batch-size 8 --grad-accum-steps 16\
-      --learning-rate 3e-2  --maximum-len 512 --prompt-style naive \
-      --verbose --prune-keep 2 --fp16 --ignore-cache --parallel  # quarter
+# export CUDA_VISIBLE_DEVICES=0,1,2,3
+# python main.py --output-dir ${output_dir} \
+#       --dataset mwoz --task fine_tune --n-epochs 10 --do-train \
+#       --style dataset --model t5 --size large --num-shots full --batch-size 16 --grad-accum-steps 8\
+#       --learning-rate 3e-2  --maximum-len 512 --prompt-style naive \
+#       --verbose --prune-keep 2 --fp16 --ignore-cache --parallel  # quarter
 # # # export CUDA_VISIBLE_DEVICES=2,3
 # # # python main.py --output-dir ${output_dir} \
 # # #       --dataset gsim --task fine_tune --n-epochs 10 --do-train \
@@ -102,16 +102,22 @@ python main.py --output-dir ${output_dir} \
 #       --learning-rate 3e-5  --maximum-len 512 --prompt-style naive \
 #       --verbose --prune-keep 2 --ignore-cache #--parallel  # quarter
 
-export CUDA_VISIBLE_DEVICES=5,6
+# export CUDA_VISIBLE_DEVICES=5,6
+# python main.py --output-dir ${output_dir} \
+#       --dataset mwoz --task fine_tune --n-epochs 10 --do-train \
+#       --style dataset --model gpt --size small --num-shots full \
+#       --batch-size 16 --grad-accum-steps 1\
+#       --learning-rate 3e-5  --maximum-len 512 --prompt-style naive \
+#       --verbose --prune-keep 2 --ignore-cache --parallel  # quarter
+
+
+
+export CUDA_VISIBLE_DEVICES=4,5,6,7
 python main.py --output-dir ${output_dir} \
       --dataset mwoz --task fine_tune --n-epochs 10 --do-train \
-      --style dataset --model gpt --size small --num-shots full \
-      --batch-size 16 --grad-accum-steps 1\
-      --learning-rate 3e-5  --maximum-len 512 --prompt-style naive \
+      --style dataset --model t5 --size large --num-shots full --batch-size 4 --grad-accum-steps 16\
+      --learning-rate 3e-2  --maximum-len 512 --prompt-style naive \
       --verbose --prune-keep 2 --ignore-cache --parallel  # quarter
-
-
-
 
 
 # export CUDA_VISIBLE_DEVICES=6,7
