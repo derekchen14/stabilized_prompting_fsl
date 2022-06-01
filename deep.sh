@@ -8,6 +8,7 @@ set -xue
 
 python main.py \
       --dataset mwoz --task fine_tune --n-epochs 10 --do-train \
-      --style dataset --model t5 --size large --num-shots full --batch-size 16 --grad-accum-steps 16\
-      --learning-rate 3e-2  --maximum-len 512 --prompt-style naive \
-      --verbose --prune-keep 2 --fp16 --ignore-cache --parallel
+      --style dataset --model t5 --size large --num-shots full --batch-size 2 --grad-accum-steps 16 \
+      --learning-rate 1e-2  --maximum-len 512 --prompt-style naive \
+      --verbose --prune-keep 2 --fp16 --parallel
+# --ignore-cache

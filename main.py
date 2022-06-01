@@ -87,7 +87,7 @@ def run_train(args, model, datasets, exp_logger, detective):
 
       # pdb.set_trace()
       if args.fp16:
-        with autocast():
+        with autocast(dtype=torch.bfloat16):
           outputs = model(**inputs, labels=targets)
           exp_logger.tr_loss += outputs.loss.item()
           loss = outputs.loss / args.grad_accum_steps
