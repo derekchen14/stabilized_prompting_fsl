@@ -34,11 +34,8 @@ def run_train(args, model, datasets, exp_logger, detective):
     model.train()
 
     for step, batch in (enumerate(train_dataloader)):
-      # pdb.set_trace()
       inputs, targets = dataset.collate(args, batch)
-      # review_inputs(args, inputs, targets, datasets['train'].tokenizer)
-
-      # pdb.set_trace()
+      review_inputs(args, inputs, targets, datasets['train'].tokenizer)
       if args.bf16:
         with autocast(dtype=torch.bfloat16):
           outputs = model(**inputs, labels=targets)
@@ -205,4 +202,3 @@ if __name__ == "__main__":
     run_train(args, model, datasets, exp_logger, detective)
   elif args.do_eval:
     run_test(args, datasets['test'], exp_logger, detective)
-
