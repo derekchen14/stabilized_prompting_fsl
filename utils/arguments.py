@@ -81,8 +81,6 @@ def solicit_params():
                 help="Number of models to keep around after pruning, by default does not prune")
     parser.add_argument("--parallel", action="store_true",
                 help="Whether to run in parallel")
-    parser.add_argument("--bf16", action="store_true",
-                help="Whether to use bf16 to speed up or not")
 
     # Hyper-parameters for tuning
     parser.add_argument("--batch-size", default=12, type=int,

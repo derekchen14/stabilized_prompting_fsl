@@ -66,17 +66,11 @@ def load_tokenizer(args):
   token_ckpt = CHECKPOINTS[args.model][args.size]
 
   if args.model == 't5':
-    if args.bf16:
-      tokenizer = T5Tokenizer.from_pretrained(token_ckpt, truncation_side='left', pad_to_multiple_of=8)
-    else:
-      tokenizer = T5Tokenizer.from_pretrained(token_ckpt, truncation_side='left')
-    special['sep_token'] = '<sep>'
+    tokenizer = T5Tokenizer.from_pretrained(token_ckpt, truncation_side='left', pad_to_multiple_of=8)
   elif args.model == 'gpt':
     tokenizer = AutoTokenizer.from_pretrained(token_ckpt, truncation_side='left')
-    special['sep_token'] = '<sep>'
   elif args.model == 'bart':
     tokenizer = BartTokenizer.from_pretrained(token_ckpt, truncation_side='left')
-    special['sep_token'] = '<sep>'
 
   if args.do_train or args.num_shots == 'percent':
     # in-context does not add special tokens since it cannot be trained to deal with them

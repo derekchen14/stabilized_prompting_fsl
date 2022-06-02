@@ -162,27 +162,21 @@ class ExperienceLogger:
       return True
     return False
 
-  def log_train(self, step, train_metric=''):
+  def log_train(self, step, scheduler):
     self.global_step += 1
-    now = datetime.now()
-    dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
-    time_report = f'[{dt_string}]'
+    now = datetime.now().strftime("%d-%H:%M:%S")
 
-    current_loss = (self.tr_loss - self.logging_loss) / self.log_interval
+    step_report = f'{step}/{self.num_steps}'
+    adjusted_lr = round(scheduler.get_last_lr()[0], 6)
+    lr_report = f"Learning rate: {adjusted_lr}"
+    current_loss = 10000 * ((self.tr_loss - self.logging_loss) / self.log_interval)
+    loss_report = 'Mean loss: %.5f' % current_loss
     self.logging_loss = self.tr_loss
-    step_report = f'[{step+1}/{self.num_steps}] '
-    loss_report = 'Mean_loss: %.5f, ' % current_loss
-    metric_report = f'{self.metric}: {train_metric}'
-    lr_report = f"adjusted lr:{self.scheduler.get_lr()[0]}"
 
     if self.global_step < 100 and self.global_step % 10 == 0:
-      print(time_report,self.global_step, step_report,lr_report,loss_report)
-    if self.global_step < 1000 and self.global_step % 100 == 0 and self.log_interval <= 500:
-      print(time_report,self.global_step, step_report,lr_report, loss_report)
-
-    elif self.global_step % self.log_interval == 0:
-      # print(step_report + loss_report + metric_report)
-      print(time_report,self.global_step, step_report,lr_report,loss_report)
+      print(self.global_step)
+    if step % self.log_interval == 0 and step > 1:
+      print(f"[{now}] Steps: {step_report}, {lr_report}, {loss_report}")
 
   def save_best_model(self, model, tokenizer, prune_keep):
     if self.do_save and self.best_score[self.metric] > 0.1:

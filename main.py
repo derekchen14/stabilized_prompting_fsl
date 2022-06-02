@@ -20,11 +20,8 @@ def run_train(args, model, datasets, exp_logger, detective):
   train_dataloader = get_dataloader(args, dataset)
   total_steps = len(train_dataloader) // args.grad_accum_steps * args.n_epochs
   optimizer, scheduler = setup_optimization(args, model, total_steps)
-
-  if args.bf16:
-    scaler = GradScaler()
-  exp_logger.update_optimization(optimizer, scheduler)
-
+  scaler = GradScaler()
+  
   if args.task == 'meta_learn':
     dataset.add_detective(detective)
     dev_dataset.add_detective(detective)
@@ -36,36 +33,21 @@ def run_train(args, model, datasets, exp_logger, detective):
     for step, batch in enumerate(train_dataloader):
       inputs, targets = dataset.collate(args, batch)
       review_inputs(args, inputs, targets, datasets['train'].tokenizer)
-      if args.bf16:
-        with autocast(dtype=torch.bfloat16):
-          outputs = model(**inputs, labels=targets)
-          exp_logger.tr_loss += outputs.loss.item()
-          loss = outputs.loss / args.grad_accum_steps
-        scaler.scale(loss).backward()
-
-        if (step + 1) % args.grad_accum_steps == 0:
-          scaler.unscale_(exp_logger.optimizer)
-          torch.nn.utils.clip_grad_norm_(model.parameters(), 5.0)
-          scaler.step(exp_logger.optimizer)
-          exp_logger.scheduler.step()  # Update learning rate schedule
-          scaler.update()
-          exp_logger.optimizer.zero_grad()
-          model.zero_grad()
-          exp_logger.log_train(step)
-
-      else:
+      with autocast(dtype=torch.bfloat16):
         outputs = model(**inputs, labels=targets)
         exp_logger.tr_loss += outputs.loss.item()
         loss = outputs.loss / args.grad_accum_steps
-        loss.backward()
+      scaler.scale(loss).backward()
 
-        if (step + 1) % args.grad_accum_steps == 0:
-          nn.utils.clip_grad_norm_(model.parameters(), 5.0)
-          exp_logger.optimizer.step()  # backprop to update the weights
-          exp_logger.scheduler.step()  # Update learning rate schedule
-          model.zero_grad()
-          exp_logger.log_train(step)
-
+      if (step + 1) % args.grad_accum_steps == 0:
+        # scaler.unscale_(optimizer)  resizes in preparation for gradient clipping
+        # torch.nn.utils.clip_grad_norm_(model.parameters(), 5.0)
+        scaler.step(optimizer)  
+        scaler.update()
+        scheduler.step()  # Update learning rate schedule
+        model.zero_grad()
+      
+      exp_logger.log_train(step, scheduler)
       if exp_logger.train_stop(args, step, debug_break): break
 
     if args.task == 'meta_learn' and args.do_leave:
