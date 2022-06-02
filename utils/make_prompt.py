@@ -120,7 +120,7 @@ schema_slots = {
     "departure": "departure location of the train",
     "arrive by": "what time you want the train to arrive at your destination station by",
     "people": "number of people booking for train",
-    "leave at": "when you want to arrive at your destination by train"
+    "leave at": "when you want to arrive at your destination by train",
     "trip protection": "whether the train offers trip protection",
     "arrival": "what time the train is supposed to arrive",
     "price": "the price budget of the train ticket",
