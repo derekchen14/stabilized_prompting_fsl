@@ -137,7 +137,7 @@ class InContextDataset(BaseDataset):
     text = text.replace('<pad>', '[PAD]')
     return text
 
-  def collate_lm(self, args, examples):
+  def collate(self, args, examples):
     """ train and dev splits should not occur since you do not need gradient based training """
     assert(self.split not in ['train', 'dev'])
     contexts, dialogues, labels = [], [], []
@@ -153,11 +153,14 @@ class InContextDataset(BaseDataset):
 
       contexts.append(additional_context)
       dialogues.append(dialog)
+      
+      target['history'] = history
       labels.append(target)
 
-    inputs = self.tokenizer(contexts, dialogues, padding=True, max_length=self.max_len - 16,
+    inputs = self.tokenizer(contexts, dialogues, padding=True, max_length=512,
                               truncation='only_first', return_tensors='pt').to(device) 
     return inputs, labels
+
 
 class MetaLearnDataset(BaseDataset):
 
@@ -217,14 +220,22 @@ class MetaLearnDataset(BaseDataset):
       else:
         target['history'] = history
         labels.append(target)
-      
-    max_len = self.max_len - 16
-    inputs = self.tokenizer(contexts, dialogues, padding=True, max_length=max_len,
-                                truncation='only_first', return_tensors='pt').to(device)
+     
+    """ max length is hardcoded to 512, which is the max allowed
+    there is no need to subtract 12 or 16 since we do not need to save any space for the target value
+    instead the sequence of target is taken care of by the decoder """
+    inputs = self.tokenizer(contexts, dialogues, padding=True, max_length=512,
+                              truncation='only_first', pad_to_multiple_of=8, return_tensors='pt').to(device)
     if self.split == 'train':
-      targets = self.tokenizer(labels)
-      target_tensor = self._pad_right(targets)
-      return inputs, target_tensor
+      # targets = self.tokenizer(labels)
+      # target_tensor = self._pad_right(targets)
+      # return inputs, target_tensor
+      target_encoding = self.tokenizer(labels, padding='longest', max_length=32, truncation=True)
+      labels = target_encoding.input_ids
+      targets = torch.tensor(labels)
+      targets[targets == tokenizer.pad_token_id] = -100
+
+      return inputs, targets
     else:
       return inputs, labels
 
@@ -284,8 +295,7 @@ class FineTuneDataset(BaseDataset):
         target['history'] = history
         labels.append(target)
 
-    max_length = self.max_len - 16
-    inputs = self.tokenizer(dialogues, padding='longest', max_length=max_length,
+    inputs = self.tokenizer(dialogues, padding='longest', max_length=512,
                               truncation=True, pad_to_multiple_of=8, return_tensors='pt').to(device)
 
     if self.split == 'train':
