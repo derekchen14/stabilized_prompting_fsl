@@ -134,7 +134,7 @@ class InContextDataset(BaseDataset):
     text = text.replace('<label>', 'answer:')
     text = text.replace('<sep>', ';')
     text = text.replace('<remove>', 'none')
-    text = text.replace('<pad>', '[PAD]')
+    # text = text.replace('<pad>', '[PAD]')
     return text
 
   def collate(self, args, examples):
@@ -149,7 +149,7 @@ class InContextDataset(BaseDataset):
       prompt = find_prompt(args.prompt_style, target['domain'], target['slot'])
 
       additional_context = self.remove_special(self.select_context(args, example, history))
-      dialog = self.remove_special(f"{state_str}{history} {prompt}")
+      dialog = self.remove_special(f"{state_str}{history} {prompt} <extra_id_0>")
 
       contexts.append(additional_context)
       dialogues.append(dialog)

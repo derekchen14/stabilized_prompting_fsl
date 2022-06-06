@@ -66,7 +66,8 @@ def load_tokenizer(args):
   token_ckpt = CHECKPOINTS[args.model][args.size]
 
   if args.model == 't5':
-    tokenizer = T5Tokenizer.from_pretrained(token_ckpt, truncation_side='left', pad_to_multiple_of=8)
+    tokenizer = T5Tokenizer.from_pretrained(token_ckpt, truncation_side='left',
+                                      pad_to_multiple_of=8, model_max_length=512)
   elif args.model == 'gpt':
     tokenizer = AutoTokenizer.from_pretrained(token_ckpt, truncation_side='left')
   elif args.model == 'bart':
@@ -76,8 +77,8 @@ def load_tokenizer(args):
     # in-context does not add special tokens since it cannot be trained to deal with them
     print(f"Adding special tokens {special}")
     tokenizer.add_special_tokens(special)
-  elif args.task == 'in_context':
-    tokenizer.add_special_tokens({'pad_token': '[PAD]'})
+  # elif args.task == 'in_context' and args.model == 'gpt':
+  #   tokenizer.add_special_tokens({'pad_token': '[PAD]'})
   else:
     tokenizer.add_special_tokens(special)
 
@@ -92,8 +93,8 @@ def load_sent_transformer(args, embed_method='mpnet', for_train=False):
     ckpt_name = f'lr3e-5_k{args.kappa}_{args.finetune}.pt'   # alternatively TSDAE or GPL
     ckpt_path = os.path.join(args.output_dir, 'sbert', ckpt_name)
   
-  model = SentenceTransformer(ckpt_path)
-  return model.to(device)
+  model = SentenceTransformer(ckpt_path, device=device)
+  return model
 
 def load_model(args, ontology, tokenizer, load_dir, ckpt_name=''):
   print(f"Setting up {args.size} {args.model} model for {args.num_shots} shot learning")
