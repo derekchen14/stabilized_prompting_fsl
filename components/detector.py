@@ -36,7 +36,7 @@ class ExemplarDetective(object):
   def check_embed_cache(self, args, data, corpus, embed_method='mpnet'):
     cache_file = f'{embed_method}_{corpus}_{args.num_shots}_embeddings.pkl'
     cache_path = os.path.join(args.input_dir, 'cache', args.dataset, cache_file)
-    self.embed_model = load_sent_transformer(args, embed_method)
+    self.embed_model = load_sent_transformer(args, embed_method, for_train=True)
 
     if os.path.exists(cache_path) and not args.ignore_cache:
       self.candidates[corpus] = pkl.load( open( cache_path, 'rb' ) )
