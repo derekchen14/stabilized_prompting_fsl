@@ -39,7 +39,7 @@ class ExperienceLogger:
     self.epoch = 1   # epoch count
     self.num_epochs = args.n_epochs
 
-    self.best_score = { 'epoch': 1 }
+    self.best_score = { 'epoch': 1, 'chunk': 1 }
     self.metric = 'jga'
     self.best_score[self.metric] = 0
     self.do_save = args.do_save
@@ -49,6 +49,9 @@ class ExperienceLogger:
     self.logging_loss = 0.0
     self.tr_loss = 0.0
     self.eval_loss = 0.0
+
+    self.start_time_chunk = None
+    self.chunk_num = 0
 
   def log_info(self, text):
     self.logger.info(text)
@@ -81,20 +84,45 @@ class ExperienceLogger:
 
     return self.early_stop(met)
 
+  def start_chunk(self):
+    self.logger.info(f"Starting chunk {self.chunk_num}")
+    self.start_time_chunk = tm.time()
+
+  def end_chunk(self):
+    self.chunk_num += 1
+    self.end_time_chunk = tm.time()
+
+    if self.start_time_chunk is None:
+      raw_diff = self.end_time_chunk - self.start_time
+    else:
+      raw_diff = self.end_time_chunk - self.start_time_chunk
+    minute_diff = round(raw_diff / 60.0, 3)
+
+    met = round(self.best_score[self.metric] * 100, 2)
+    self.logger.info(f"Best chunk is {self.best_score['chunk']} with {met}% accuracy")
+    self.logger.info(f"Current chunk took {minute_diff} min")
+
+    return self.early_stop(met)
+
+
   def early_stop(self, metric):
     below_threshold = False
     
     if self.epoch > 3 and self.args.debug:
       below_threshold = True
 
+    patience = 10 if self.args.checkpoint_interval > 0 else 4
     self.past_metrics.append(metric)
-    if len(self.past_metrics) >= 4:
-      trail = self.past_metrics[-4:]
+    if len(self.past_metrics) >= patience:
+      trail = self.past_metrics[-1*patience:]
       if all(x == trail[0] for x in trail):
         below_threshold = True
 
     if below_threshold:
-      self.logger.info(f"Ran out of patience, early stopped at epoch {self.epoch}")
+      if self.args.checkpoint_interval > 0:
+        self.logger.info(f"Ran out of patience, early stopped at chunk {self.chunk_num}")
+      else:
+        self.logger.info(f"Ran out of patience, early stopped at epoch {self.epoch}")
     return below_threshold
 
   def start_eval(self, num_batches, eval_interval):
