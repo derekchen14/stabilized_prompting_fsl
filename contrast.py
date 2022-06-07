@@ -129,21 +129,41 @@ def compute_scores(args, samples):
     if it is a negative pair, then the score should be low (ie. close to 0.0)
   """
   num_samples = len(samples)
+  distribution = Counter()
+  pair_ids = set()
   all_pairs = []
   for i in progress_bar(range(num_samples), total=num_samples, desc='Computing scores'):
-    for j in range(num_samples - 1):
-      s_i = samples[i]
-      s_j = samples[j]
+    s_i = samples[i]
+    candidates = random.sample(samples, 200)
+    for s_j in candidates:
+      if s_i['gid'] == s_j['gid']: continue
+      
+      joint_id = create_joint_id(s_i, s_j)
+      if joint_id in pair_ids:
+        continue
+      else:
+        pair_ids.add(joint_id)
+
       if args.loss_function == 'cosine':
         sim_score = domain_slot_sim(s_i, s_j)
       elif args.loss_function == 'contrast':
         sim_score = 1 if s_i['dsv'][1] == s_j['dsv'][1] else 0
       elif args.loss_function == 'custom':
         sim_score = encode_as_bits(s_i, s_j)
-        
+      
+      distribution[sim_score] += 1
       pair = InputExample(texts=[s_i['history'], s_j['history']], label=sim_score)
       all_pairs.append(pair)
+
+    if random.random() < 0.01:
+      print(distribution)
   return all_pairs
+
+def create_joint_id(a, b):
+  small = min(a['gid'], b['gid'])
+  large = max(a['gid'], b['gid'])
+  joint_id = small + '-' + large
+  return joint_id
 
 def domain_slot_sim(a, b):
   domain_a, slot_a, value_a = a['dsv']
