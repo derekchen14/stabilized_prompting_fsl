@@ -58,9 +58,9 @@ def run_train(args, model, datasets, exp_logger, detective):
         if eval_res[exp_logger.metric] >= exp_logger.best_score[exp_logger.metric]:
           exp_logger.best_score = eval_res
           exp_logger.save_best_model(model, tokenizer, args.prune_keep)
-        early_stop = exp_logger.end_clump()
+        early_stop = exp_logger.end_chunk()
         if early_stop: break
-        exp_logger.start_clump()
+        exp_logger.start_chunk()
 
     if args.task == 'meta_learn':
       if args.do_leave:

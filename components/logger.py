@@ -39,7 +39,7 @@ class ExperienceLogger:
     self.epoch = 1   # epoch count
     self.num_epochs = args.n_epochs
 
-    self.best_score = { 'epoch': 1, 'clump': 1 }
+    self.best_score = { 'epoch': 1, 'chunk': 1 }
     self.metric = 'jga'
     self.best_score[self.metric] = 0
     self.do_save = args.do_save
@@ -50,8 +50,8 @@ class ExperienceLogger:
     self.tr_loss = 0.0
     self.eval_loss = 0.0
 
-    self.start_time_clump = None
-    self.clump_num = 0
+    self.start_time_chunk = None
+    self.chunk_num = 0
 
   def log_info(self, text):
     self.logger.info(text)
@@ -84,23 +84,23 @@ class ExperienceLogger:
 
     return self.early_stop(met)
 
-  def start_clump(self):
-    self.logger.info(f"Starting clump {self.clump_num}")
-    self.start_time_clump = tm.time()
+  def start_chunk(self):
+    self.logger.info(f"Starting chunk {self.chunk_num}")
+    self.start_time_chunk = tm.time()
 
-  def end_clump(self):
-    self.clump_num += 1
-    self.end_time_clump = tm.time()
+  def end_chunk(self):
+    self.chunk_num += 1
+    self.end_time_chunk = tm.time()
 
-    if self.start_time_clump is None:
-      raw_diff = self.end_time_clump - self.start_time
+    if self.start_time_chunk is None:
+      raw_diff = self.end_time_chunk - self.start_time
     else:
-      raw_diff = self.end_time_clump - self.start_time_clump
+      raw_diff = self.end_time_chunk - self.start_time_chunk
     minute_diff = round(raw_diff / 60.0, 3)
 
     met = round(self.best_score[self.metric] * 100, 2)
-    self.logger.info(f"Best clump is {self.best_score['clump']} with {met}% accuracy")
-    self.logger.info(f"Current clump took {minute_diff} min")
+    self.logger.info(f"Best chunk is {self.best_score['chunk']} with {met}% accuracy")
+    self.logger.info(f"Current chunk took {minute_diff} min")
 
     return self.early_stop(met)
 
@@ -119,7 +119,7 @@ class ExperienceLogger:
 
     if below_threshold:
       if self.args.checkpoint_interval > 0:
-        self.logger.info(f"Ran out of patience, early stopped at clump {self.clump_num}")
+        self.logger.info(f"Ran out of patience, early stopped at chunk {self.chunk_num}")
       else:
         self.logger.info(f"Ran out of patience, early stopped at epoch {self.epoch}")
     return below_threshold
