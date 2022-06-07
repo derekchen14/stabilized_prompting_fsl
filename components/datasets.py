@@ -80,7 +80,7 @@ class BaseDataset(Dataset):
       exemplar = self.detective.search(example)
       ctx_domain, ctx_slot, ctx_label = exemplar['dsv']
       ctx_prompt = find_prompt(args.prompt_style, ctx_domain, ctx_slot)
-      state_str = self.__class__.state_to_string(exemplar['prev_state'])
+      state_str = self.__class__.state_to_string(exemplar['prev_state'], ctx_domain, ctx_slot)
       context = f"{state_str}{exemplar['history']} {ctx_prompt} {ctx_label}{eos}"
       contexts.append(context)
 
@@ -97,8 +97,13 @@ class BaseDataset(Dataset):
     print(f"Using {detective.search_method} distance to search ...")
 
   @staticmethod
-  def state_to_string(prev_state):
+  def state_to_string(prev_state, domain=None, slot=None):
     """ Transform the dialog state (dict) into a string to be used for context """
+    if domain is not None:
+      # remove irrelavant previous slots to save more space
+      dom_slot = f'{domain}-{slot}'
+      prev_state = {dom_slot: prev_state.get(dom_slot, '<none>')}
+
     prev_state_string = ''
     for dom_slot in prev_state:
       domain, slot = dom_slot.split("-")
@@ -142,10 +147,11 @@ class InContextDataset(BaseDataset):
     contexts, dialogues, labels = [], [], []
 
     for example in examples:
-      state_str = super().state_to_string(example['prev_state'])
-      history = ' '.join(example['utterances'])
       target = example['target']
       prompt = find_prompt(args.prompt_style, target['domain'], target['slot'])
+
+      state_str = super().state_to_string(example['prev_state'], target['domain'], target['slot'])
+      history = ' '.join(example['utterances'])
 
       additional_context = self.remove_special(self.select_context(args, example, history))
       dialog = self.remove_special(f"{state_str}{history} {prompt} <extra_id_0>")
@@ -202,11 +208,11 @@ class MetaLearnDataset(BaseDataset):
     contexts, dialogues, labels = [], [], []
 
     for example in examples:
-      state_str = super().state_to_string(example['prev_state'])
       history = ' '.join(example['utterances'])
       target = example['target']
       prompt = find_prompt(args.prompt_style, target['domain'], target['slot'])
-
+      state_str = super().state_to_string(example['prev_state'], target['domain'], target['slot'])
+      
       additional_context = self.select_context(args, example, history)
       dialog = f"{state_str}{history} {prompt}"
 
@@ -241,10 +247,10 @@ class MetaLearnDataset(BaseDataset):
     eos = self.tokenizer.eos_token
 
     for example in examples:
-      state_str = super().state_to_string(example['prev_state'])
       history = ' '.join(example['utterances'])
       target = example['target']
       prompt = find_prompt(args.prompt_style, target['domain'], target['slot'])
+      state_str = super().state_to_string(example['prev_state'], target['domain'], target['slot'])
 
       if self.split == 'train':
         additional_context = self.select_context(args, example, history)
