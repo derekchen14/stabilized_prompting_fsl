@@ -40,8 +40,6 @@ def run_train(args, model, datasets, exp_logger, detective):
       scaler.scale(loss).backward()
 
       if (step + 1) % args.grad_accum_steps == 0:
-        # scaler.unscale_(optimizer)  resizes in preparation for gradient clipping
-        # torch.nn.utils.clip_grad_norm_(model.parameters(), 5.0)
         scaler.step(optimizer)  
         scaler.update()
         scheduler.step()  # Update learning rate schedule

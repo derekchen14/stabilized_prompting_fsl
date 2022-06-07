@@ -5,6 +5,7 @@ import math
 
 from torch.utils.data import DataLoader
 from torch import nn
+from collections import Counter
 
 from utils.help import *
 from utils.arguments import solicit_params
@@ -48,11 +49,11 @@ class DomainSlotValueLoss(nn.Module):
     return self.loss_fct(output, labels.view(-1))
 
 def fit_model(args, model, dataloader, evaluator):
-  if args.sbert_loss == 'cosine':
+  if args.loss_function == 'cosine':
     loss_function = losses.CosineSimilarityLoss(model=model)
-  elif args.sbert_loss == 'contrast':
+  elif args.loss_function == 'contrast':
     loss_function = losses.ContrastiveLoss(model=model)
-  elif args.sbert_loss == 'custom':
+  elif args.loss_function == 'custom':
     loss_function = DomainSlotValueLoss(model=model)
 
   warm_steps = math.ceil(len(dataloader) * args.n_epochs * 0.1) # 10% of train data for warm-up
@@ -93,16 +94,12 @@ def mine_for_samples(args):
 
   # Look for positive and negative example pairs to be used as training data based on similarity
   all_pairs = compute_scores(args, samples)
-  all_pairs.sort(key=lambda exp: exp.label)
-  selected_pairs = all_pairs[:args.kappa] + all_pairs[-args.kappa:]
-  
-  size = len(all_pairs)
-  start = int(0.3 * size)
-  stop = int(0.6 * size)
-
-  temp_dev = all_pairs[start:stop]
-  print('train', len(selected_pairs), 'dev', len(temp_dev))
-  return selected_pairs, temp_dev
+  # all_pairs.sort(key=lambda exp: exp.label)
+  divide = int(len(all_pairs) * 0.8)
+  selected_pairs = all_pairs[:divide]
+  dev_pairs = all_pairs[divide:]
+  print('train size', len(selected_pairs), 'dev size', len(dev_pairs))
+  return selected_pairs, dev_pairs
 
 def find_positives_negatives(samples):
   num_samples = len(samples)
@@ -129,12 +126,11 @@ def compute_scores(args, samples):
     if it is a negative pair, then the score should be low (ie. close to 0.0)
   """
   num_samples = len(samples)
-  distribution = Counter()
   pair_ids = set()
   all_pairs = []
   for i in progress_bar(range(num_samples), total=num_samples, desc='Computing scores'):
     s_i = samples[i]
-    candidates = random.sample(samples, 200)
+    candidates = random.sample(samples, args.kappa)
     for s_j in candidates:
       if s_i['gid'] == s_j['gid']: continue
       
@@ -151,12 +147,11 @@ def compute_scores(args, samples):
       elif args.loss_function == 'custom':
         sim_score = encode_as_bits(s_i, s_j)
       
-      distribution[sim_score] += 1
+      if sim_score == 0 and random.random() > 0.4:
+        continue  # only keep a portion of negatives to keep things balanced
       pair = InputExample(texts=[s_i['history'], s_j['history']], label=sim_score)
       all_pairs.append(pair)
 
-    if random.random() < 0.01:
-      print(distribution)
   return all_pairs
 
 def create_joint_id(a, b):
@@ -212,8 +207,8 @@ if __name__ == "__main__":
   model = load_sent_transformer(args, for_train=True)
   model = add_special_tokens(model)
 
-  train_samples = mine_for_samples(args)
+  train_samples, dev_samples = mine_for_samples(args)
   dataloader = DataLoader(train_samples, shuffle=True, batch_size=args.batch_size)
-  dev_samples = mine_for_samples(args, split='dev')
+  # dev_samples = mine_for_samples(args, split='dev')
   evaluator = build_evaluator(args, dev_samples)
   fit_model(args, model, dataloader, evaluator)
