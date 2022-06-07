@@ -201,3 +201,16 @@ class ExemplarDetective(object):
   def euclidean(self, example, exemplars):
     differences = example - exemplars
     self.distances = np.sqrt(np.sum((differences) ** 2, axis=1))
+
+
+  """
+  histories, embed_strings = [], []
+  for exp in samples:
+    state_str = BaseDataset.state_to_string(exp['prev_state'])
+    history = ' '.join(exp['utterances'])
+    domain = exp['target']['domain']
+    embed_str = f"{state_str}{history} {domain}"
+    histories.append(history)
+    embed_strings.append(embed_str)
+  embeddings = self.embed_model.encode(embed_strings)
+  """
