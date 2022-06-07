@@ -24,6 +24,8 @@ def schema_style(domain, slot):
   return prompt
 
 def question_style(domain, slot):
+  if domain in ['flight', 'music', 'movie', 'home', 'bus', 'medium', 'message', 'weather']:
+    return naive_style(domain, slot)
   desc = question_descriptions[domain][slot]
   prompt = f"<sep> {desc}?"
   return prompt

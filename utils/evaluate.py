@@ -21,12 +21,15 @@ def parse_output(args, generated_string):
 
   if args.model in ['bart', 't5']:  
     if args.task in ['in_context', 'meta_learn']:
-      # [13:] is to truncate the "<extra_id_0>" token.
-      pred_string = generated_string[13:]
       ending_tokens.extend(['.', ',', ';', '[PAD]'])
-    else:
+    pred_string = generated_string
+    if pred_string.startswith('<pad> '):
       # [:6] is to truncate the "<pad>" token.
-      pred_string = generated_string[6:]
+      pred_string = pred_string[6:]
+    if pred_string.startswith('<extra_id_0> '):
+      # [13:] is to truncate the "<extra_id_0>" token.
+      pred_string = pred_string[13:]
+
   elif args.model == 'gpt':
     if args.task in ['in_context', 'meta_learn']:
       generated_string = drop_exemplars(generated_string)

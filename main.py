@@ -76,7 +76,6 @@ def run_test(args, dataset, exp_logger, detective):
   for conversation in progress_bar(dataset.data, total=len(dataset)):
     for global_id, turn in conversation.items():
       # turn is a list of examples
-
       batches = batchify(args, turn, global_id, prior_pred_state)
       for batch in batches:
         inputs, target_dict = dataset.collate(args, batch)
@@ -87,7 +86,6 @@ def run_test(args, dataset, exp_logger, detective):
           maxl = 2048 if args.size == 'large' else 1024
         else:
           maxl = inputs['input_ids'].shape[1] + 12
-
         with no_grad():
           outputs = model.generate(**inputs, max_length=maxl, repetition_penalty=args.threshold,
                                               early_stopping=True, temperature=args.temperature, 
@@ -103,7 +101,7 @@ def run_test(args, dataset, exp_logger, detective):
       dataset.detective.report(args.verbose, args.task)
   
   if args.do_save:
-    output_name = f'{args.prompt_style}_lr{args.learning_rate}_clen{args.context_length}.json'
+    output_name = f'{args.prompt_style}_{args.num_shots}.json'
     json.dump(results, open(os.path.join(save_path, output_name), 'w'), indent=2)
 
 def run_leftout(args, model, dataset, exp_logger):
