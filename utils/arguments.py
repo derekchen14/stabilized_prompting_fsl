@@ -47,10 +47,12 @@ def solicit_params():
 
     # SBERT Retriever params
     parser.add_argument("--search", default="oracle", type=str, help="find similar examples for context",  
-                choices=["oracle", "euclidean", "mahalanobis", "cosine"])
+                choices=["oracle", "cosine", "euclidean", "mahalanobis"])
+    parser.add_argument("--sbert-loss", default="contrast", type=str,
+                choices=["contrast", "cosine", "custom"], help="loss function for fine-tuning")
     parser.add_argument("--finetune", default="frozen", type=str, 
                 help="fine-tuning method on detective for training sbert model")
-    parser.add_argument("--kappa", default=10, type=int, 
+    parser.add_argument("--kappa", default=1000, type=int, 
                 help="Number of examples to use as negatives during constrastive training")
 
     # Key settings
@@ -73,6 +75,8 @@ def solicit_params():
     parser.add_argument("--eval-interval", default='whole', type=str, 
                 choices=['tenth', 'quarter', 'half', 'whole'],
                 help="Ratio of dev data to process before printing out a score")
+    parser.add_argument("--checkpoint-interval", default=-1, type=int, 
+                help="The number of update steps to save a checkpoint for meta-learning")
     parser.add_argument("--qualify", action='store_true',
                 help="Whether to include joint accuracy scores during evaluation")
     parser.add_argument("--quantify", action='store_true',
