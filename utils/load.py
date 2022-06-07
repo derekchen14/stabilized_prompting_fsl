@@ -50,7 +50,6 @@ def load_support(args):
       support_file = f'{args.model}_fine_tune_{args.prompt_style}_lookback{ctx_len}.pkl'
       support_path = os.path.join(args.input_dir, 'cache', corpus, support_file)
       if os.path.exists(support_path):
-        print(support_path)
         sdata = pkl.load( open( support_path, 'rb' ) )        
       else:
         raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), support_path)
