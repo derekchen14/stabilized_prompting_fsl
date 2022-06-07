@@ -227,15 +227,9 @@ class MetaLearnDataset(BaseDataset):
     inputs = self.tokenizer(contexts, dialogues, padding=True, max_length=512,
                               truncation='only_first', pad_to_multiple_of=8, return_tensors='pt').to(device)
     if self.split == 'train':
-      # targets = self.tokenizer(labels)
-      # target_tensor = self._pad_right(targets)
-      # return inputs, target_tensor
-      target_encoding = self.tokenizer(labels, padding='longest', max_length=32, truncation=True)
-      labels = target_encoding.input_ids
-      targets = torch.tensor(labels)
-      targets[targets == tokenizer.pad_token_id] = -100
-
-      return inputs, targets
+      targets = self.tokenizer(labels)
+      target_tensor = self._pad_right(targets)
+      return inputs, target_tensor
     else:
       return inputs, labels
 

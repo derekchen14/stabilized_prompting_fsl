@@ -82,19 +82,27 @@ def add_special_tokens(model):
   tokens = ["<agent>", "<customer>", "<label>", "<none>", "<remove>", "<sep>", "<pad>"]
   word_embedding_model.tokenizer.add_tokens(tokens, special_tokens=True)
   word_embedding_model.auto_model.resize_token_embeddings(len(word_embedding_model.tokenizer))
+  print("Model loaded")
   return model
 
 def mine_for_samples(args):
   # Load raw dialogue data from cache
-  cache_file = f'mpnet_{args.style}_none_lookback3_embeddings.pkl'
+  cache_file = f'mpnet_mwoz_{args.num_shots}_embeddings.pkl'
   cache_path = os.path.join(args.input_dir, 'cache', args.dataset, cache_file)  
   samples = pkl.load( open( cache_path, 'rb' ) )
 
   # Look for positive and negative example pairs to be used as training data based on similarity
-  all_pairs = compute_scores(args, samples):
+  all_pairs = compute_scores(args, samples)
   all_pairs.sort(key=lambda exp: exp.label)
   selected_pairs = all_pairs[:args.kappa] + all_pairs[-args.kappa:]
-  return selected_pairs
+  
+  size = len(all_pairs)
+  start = int(0.3 * size)
+  stop = int(0.6 * size)
+
+  temp_dev = all_pairs[start:stop]
+  print('train', len(selected_pairs), 'dev', len(temp_dev))
+  return selected_pairs, temp_dev
 
 def find_positives_negatives(samples):
   num_samples = len(samples)
@@ -122,15 +130,15 @@ def compute_scores(args, samples):
   """
   num_samples = len(samples)
   all_pairs = []
-  for i in range(num_samples):
+  for i in progress_bar(range(num_samples), total=num_samples, desc='Computing scores'):
     for j in range(num_samples - 1):
       s_i = samples[i]
       s_j = samples[j]
-      if args.sbert_loss == 'cosine':
+      if args.contrast_loss == 'cosine':
         sim_score = domain_slot_sim(s_i, s_j)
-      elif args.sbert_loss == 'contrast':
+      elif args.contrast_loss == 'contrast':
         sim_score = 1 if s_i['dsv'][1] == s_j['dsv'][1] else 0
-      elif args.sbert_loss == 'custom':
+      elif args.contrast_loss == 'custom':
         sim_score = encode_as_bits(s_i, s_j)
         
       pair = InputExample(texts=[s_i['history'], s_j['history']], label=sim_score)
@@ -171,7 +179,7 @@ def state_change_sim(a, b):
 def run_test(model, datasets):
   test_samples = datasets['test']
   test_evaluator = EmbeddingSimilarityEvaluator.from_input_examples(test_samples, name='sts-test')
-  ckpt_name = f'lr{args.learning_rate}_k{args.kappa}_{args.finetune}.pt'
+  ckpt_name = f'lr{args.learning_rate}_k{args.kappa}_{args.contrast_loss}.pt'
   ckpt_path = os.path.join(args.output_dir, 'sbert', ckpt_name)
   test_evaluator(model, output_path=ckpt_path)
 

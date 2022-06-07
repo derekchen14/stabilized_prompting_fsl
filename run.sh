@@ -5,14 +5,16 @@ set -xue
 # python main.py --dataset mwoz --task fine_tune --style dataset --do-train --do-save \
 #       --model t5 --size small --num-shots full --maximum-len 512 --prompt-style naive \
 #       --prune-keep 3 --log-interval 1200 --context-len 2 --batch-size 12 --n-epochs 7 \
-#       --learning-rate 3e-5 --qualify --grad-accum-steps 4 --percent 0.8 --eval-interval half # --verbose
+#      --learning-rate 3e-5 --qualify --grad-accum-steps 4 --percent 0.8 --eval-interval half # --verbose
 # python main.py --dataset sgd --task fine_tune --n-epochs 7 --do-train --debug \
 #       --style dataset --model gpt --size small --num-shots full --batch-size 9 \
 #       --learning-rate 1e-4  --maximum-len 512 --prompt-style naive # --ignore-cache
-python main.py --dataset dstc --task fine_tune --n-epochs 7 --do-train --do-save \
-      --style dataset --model t5 --size small --num-shots full --batch-size 12 \
-      --learning-rate 2e-5  --maximum-len 512 --prompt-style schema \
-      --log-interval 600 --prune-keep 2  --grad-accum-steps 1
+
+# python main.py --dataset mwoz --task fine_tune --n-epochs 7 --do-train \
+#      --style dataset --model t5 --size large --num-shots full --batch-size 12 \
+#      --learning-rate 1e-3  --maximum-len 512 --prompt-style schema \
+#      --log-interval 1800 --prune-keep 2  --grad-accum-steps 10 --parallel
+
 # python main.py --dataset abcd --task fine_tune --n-epochs 7 --do-train --do-save --verbose \
 #       --model t5 --size small --num-shots full --batch-size 4 --context-len 2 --qualify \
 #       --learning-rate 1e-5  --maximum-len 512 --prompt-style naive --seed 12 \
@@ -22,8 +24,8 @@ python main.py --dataset dstc --task fine_tune --n-epochs 7 --do-train --do-save
 #       --learning-rate 1e-4  --maximum-len 512 --prompt-style naive --ignore-cache
 
 # Finetune the Sentence Transformers model from SBERT
-# python contrast.py --learning-rate 3e-5 --kappa 10 --finetune icdst --num-shots five \
-#       --batch-size 32 --n-epochs 7 --seed 21 --log-interval 900
+python contrast.py --learning-rate 3e-5 --kappa 10 --finetune frozen --num-shots five \
+      --batch-size 32 --n-epochs 7 --seed 21 --log-interval 900  # icdst
 
 # Leveraging Slot Descriptions for Zero-Shot Cross-Domain DST (domain held out for testing)
 # python main.py --dataset mwoz --task fine_tune --n-epochs 7 --do-train --debug \
