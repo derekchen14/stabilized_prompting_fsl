@@ -48,10 +48,8 @@ def solicit_params():
     # SBERT Retriever params
     parser.add_argument("--search", default="oracle", type=str, help="find similar examples for context",  
                 choices=["oracle", "cosine", "euclidean", "mahalanobis"])
-    parser.add_argument("--sbert-loss", default="contrast", type=str,
+    parser.add_argument("--loss-function", default="contrast", type=str,
                 choices=["contrast", "cosine", "custom"], help="loss function for fine-tuning")
-    parser.add_argument("--finetune", default="frozen", type=str, 
-                help="fine-tuning method on detective for training sbert model")
     parser.add_argument("--kappa", default=1000, type=int, 
                 help="Number of examples to use as negatives during constrastive training")
 

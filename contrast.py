@@ -56,7 +56,7 @@ def fit_model(args, model, dataloader, evaluator):
     loss_function = DomainSlotValueLoss(model=model)
 
   warm_steps = math.ceil(len(dataloader) * args.n_epochs * 0.1) # 10% of train data for warm-up
-  ckpt_name = f'lr{args.learning_rate}_k{args.kappa}_{args.finetune}.pt'
+  ckpt_name = f'lr{args.learning_rate}_k{args.kappa}_{args.loss_function}.pt'
   ckpt_path = os.path.join(args.output_dir, 'sbert', ckpt_name)
 
   model.fit(train_objectives=[(dataloader, loss_function)],
@@ -134,11 +134,11 @@ def compute_scores(args, samples):
     for j in range(num_samples - 1):
       s_i = samples[i]
       s_j = samples[j]
-      if args.contrast_loss == 'cosine':
+      if args.loss_function == 'cosine':
         sim_score = domain_slot_sim(s_i, s_j)
-      elif args.contrast_loss == 'contrast':
+      elif args.loss_function == 'contrast':
         sim_score = 1 if s_i['dsv'][1] == s_j['dsv'][1] else 0
-      elif args.contrast_loss == 'custom':
+      elif args.loss_function == 'custom':
         sim_score = encode_as_bits(s_i, s_j)
         
       pair = InputExample(texts=[s_i['history'], s_j['history']], label=sim_score)
@@ -179,7 +179,7 @@ def state_change_sim(a, b):
 def run_test(model, datasets):
   test_samples = datasets['test']
   test_evaluator = EmbeddingSimilarityEvaluator.from_input_examples(test_samples, name='sts-test')
-  ckpt_name = f'lr{args.learning_rate}_k{args.kappa}_{args.contrast_loss}.pt'
+  ckpt_name = f'lr{args.learning_rate}_k{args.kappa}_{args.loss_function}.pt'
   ckpt_path = os.path.join(args.output_dir, 'sbert', ckpt_name)
   test_evaluator(model, output_path=ckpt_path)
 
