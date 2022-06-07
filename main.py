@@ -32,7 +32,7 @@ def run_train(args, model, datasets, exp_logger, detective):
 
     for step, batch in enumerate(train_dataloader):
       inputs, targets = dataset.collate(args, batch)
-      # review_inputs(args, inputs, targets, datasets['train'].tokenizer)
+      review_inputs(args, inputs, targets, datasets['train'].tokenizer)
       with autocast(dtype=torch.bfloat16):
         outputs = model(**inputs, labels=targets)
         exp_logger.tr_loss += outputs.loss.item()
@@ -50,10 +50,11 @@ def run_train(args, model, datasets, exp_logger, detective):
       exp_logger.log_train(step, scheduler)
       if exp_logger.train_stop(args, step, debug_break): break
 
-      if args.task == 'meta_learn' and \
-         args.checkpoint_interval > 0 and \
-         (step-args.checkpoint_start) % args.checkpoint_interval == 0 and \
-         (step > args.checkpoint_start or epoch_count > 0) :
+      use_checkpoint = args.checkpoint_interval > 0               # use checkpoint_interval for validation
+      at_checkpoint = step % args.checkpoint_interval == 0        # step on where for validation
+      skip_first_five = exp_logger.chunk_num > 5                  # skip the first five checkpoint
+      
+      if use_checkpoint and at_checkpoint and skip_first_five:
         eval_res = run_eval(args, model, dev_dataset, exp_logger)
         if eval_res[exp_logger.metric] >= exp_logger.best_score[exp_logger.metric]:
           exp_logger.best_score = eval_res
@@ -122,8 +123,6 @@ def run_test(args, dataset, exp_logger, detective):
 
 def run_leftout(args, model, dataset, exp_logger):
   tokenizer = dataset.tokenizer
-  if args.task == "meta_learn" and args.checkpoint_interval > 0:
-    dataset.leftout = random.sample(dataset.leftout, len(dataset.leftout)//4)
   bs, num_exp = args.batch_size, len(dataset.leftout)
   description = f"Evaluating {args.left_out}"
   all_outputs, all_targets = [], []
