@@ -85,7 +85,6 @@ class BaseDataset(Dataset):
       exemplar['prev_state'] = {dom_slot: exemplar['prev_state'].get(dom_slot, '<none>')}
       state_str = self.__class__.state_to_string(exemplar['prev_state'])
       context = f"{state_str}{exemplar['history']} {ctx_prompt} {ctx_label}{eos}"
-      # pdb.set_trace()
       contexts.append(context)
 
       tokenized_context = self.tokenizer(context)
@@ -151,10 +150,6 @@ class InContextDataset(BaseDataset):
       prompt = find_prompt(args.prompt_style, domain, slot)
 
       # filter out irrelavant previous slots to save more space
-      """
-      TODO: change example['prev_state'] mgiht affect detective.search() in select_context()
-            need to be verified.
-      """
       dom_slot = f'{domain}-{slot}'
       example['prev_state'] = {dom_slot: example['prev_state'].get(dom_slot, '<none>')}
 
