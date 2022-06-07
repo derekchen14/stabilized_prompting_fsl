@@ -50,6 +50,7 @@ def load_support(args):
       support_file = f'{args.model}_fine_tune_{args.prompt_style}_lookback{ctx_len}.pkl'
       support_path = os.path.join(args.input_dir, 'cache', corpus, support_file)
       if os.path.exists(support_path):
+        print(support_path)
         sdata = pkl.load( open( support_path, 'rb' ) )        
       else:
         raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), support_path)
@@ -85,7 +86,7 @@ def load_tokenizer(args):
   tokenizer.padding_side = 'left'
   return tokenizer
 
-def load_sent_transformer(args, embed_method='mpnet', for_train=False):
+def load_sent_transformer(args, embed_method='mpnet', for_train=True):
   if for_train:  # use the default model without fine-tune
     ckpt_name = 'all-mpnet-base-v2' if embed_method == 'mpnet' else 'all-distilroberta-v1'
     ckpt_path = f'sentence-transformers/{ckpt_name}'

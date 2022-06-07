@@ -32,7 +32,7 @@ def run_train(args, model, datasets, exp_logger, detective):
 
     for step, batch in enumerate(train_dataloader):
       inputs, targets = dataset.collate(args, batch)
-      review_inputs(args, inputs, targets, datasets['train'].tokenizer)
+      # review_inputs(args, inputs, targets, datasets['train'].tokenizer)
       with autocast(dtype=torch.bfloat16):
         outputs = model(**inputs, labels=targets)
         exp_logger.tr_loss += outputs.loss.item()
@@ -50,14 +50,30 @@ def run_train(args, model, datasets, exp_logger, detective):
       exp_logger.log_train(step, scheduler)
       if exp_logger.train_stop(args, step, debug_break): break
 
-    if args.task == 'meta_learn' and args.do_leave:
-      run_leftout(args, model, dev_dataset, exp_logger)
-    eval_res = run_eval(args, model, dev_dataset, exp_logger)
-    if eval_res[exp_logger.metric] >= exp_logger.best_score[exp_logger.metric]:
-      exp_logger.best_score = eval_res
-      exp_logger.save_best_model(model, tokenizer, args.prune_keep)
-    early_stop = exp_logger.end_epoch()
-    if early_stop: break
+      if args.task == 'meta_learn' and \
+         args.checkpoint_interval > 0 and \
+         (step-args.checkpoint_start) % args.checkpoint_interval == 0 and \
+         (step > args.checkpoint_start or epoch_count > 0) :
+        eval_res = run_eval(args, model, dev_dataset, exp_logger)
+        if eval_res[exp_logger.metric] >= exp_logger.best_score[exp_logger.metric]:
+          exp_logger.best_score = eval_res
+          exp_logger.save_best_model(model, tokenizer, args.prune_keep)
+        early_stop = exp_logger.end_clump()
+        if early_stop: break
+        exp_logger.start_clump()
+
+    if args.task == 'meta_learn':
+      if args.do_leave:
+        run_leftout(args, model, dev_dataset, exp_logger)
+      exp_logger.end_epoch()
+    else:
+      # only do epoch validation for non-meta training
+      eval_res = run_eval(args, model, dev_dataset, exp_logger)
+      if eval_res[exp_logger.metric] >= exp_logger.best_score[exp_logger.metric]:
+        exp_logger.best_score = eval_res
+        exp_logger.save_best_model(model, tokenizer, args.prune_keep)
+      early_stop = exp_logger.end_epoch()
+      if early_stop: break
 
   return model
 
@@ -106,6 +122,8 @@ def run_test(args, dataset, exp_logger, detective):
 
 def run_leftout(args, model, dataset, exp_logger):
   tokenizer = dataset.tokenizer
+  if args.task == "meta_learn" and args.checkpoint_interval > 0:
+    dataset.leftout = random.sample(dataset.leftout, len(dataset.leftout)//4)
   bs, num_exp = args.batch_size, len(dataset.leftout)
   description = f"Evaluating {args.left_out}"
   all_outputs, all_targets = [], []
@@ -129,6 +147,8 @@ def run_leftout(args, model, dataset, exp_logger):
 
 def run_eval(args, model, dataset, exp_logger):
   tokenizer = dataset.tokenizer
+  if args.task == "meta_learn" and args.checkpoint_interval > 0:
+    dataset.data = random.sample(dataset.data, len(dataset)//4)
   dataloader = get_dataloader(args, dataset, 'dev')
   num_batches = debug_break if args.debug else len(dataloader)
   exp_logger.start_eval(num_batches, args.eval_interval)
