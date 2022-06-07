@@ -50,14 +50,31 @@ def run_train(args, model, datasets, exp_logger, detective):
       exp_logger.log_train(step, scheduler)
       if exp_logger.train_stop(args, step, debug_break): break
 
-    if args.task == 'meta_learn' and args.do_leave:
-      run_leftout(args, model, dev_dataset, exp_logger)
-    eval_res = run_eval(args, model, dev_dataset, exp_logger)
-    if eval_res[exp_logger.metric] >= exp_logger.best_score[exp_logger.metric]:
-      exp_logger.best_score = eval_res
-      exp_logger.save_best_model(model, tokenizer, args.prune_keep)
-    early_stop = exp_logger.end_epoch()
-    if early_stop: break
+      use_checkpoint = args.checkpoint_interval > 0               # use checkpoint_interval for validation
+      at_checkpoint = step % args.checkpoint_interval == 0        # step on where for validation
+      skip_first_five = exp_logger.chunk_num > 5                  # skip the first five checkpoint
+      
+      if use_checkpoint and at_checkpoint and skip_first_five:
+        eval_res = run_eval(args, model, dev_dataset, exp_logger)
+        if eval_res[exp_logger.metric] >= exp_logger.best_score[exp_logger.metric]:
+          exp_logger.best_score = eval_res
+          exp_logger.save_best_model(model, tokenizer, args.prune_keep)
+        early_stop = exp_logger.end_chunk()
+        if early_stop: break
+        exp_logger.start_chunk()
+
+    if args.task == 'meta_learn':
+      if args.do_leave:
+        run_leftout(args, model, dev_dataset, exp_logger)
+      exp_logger.end_epoch()
+    else:
+      # only do epoch validation for non-meta training
+      eval_res = run_eval(args, model, dev_dataset, exp_logger)
+      if eval_res[exp_logger.metric] >= exp_logger.best_score[exp_logger.metric]:
+        exp_logger.best_score = eval_res
+        exp_logger.save_best_model(model, tokenizer, args.prune_keep)
+      early_stop = exp_logger.end_epoch()
+      if early_stop: break
 
   return model
 
@@ -129,6 +146,8 @@ def run_leftout(args, model, dataset, exp_logger):
 
 def run_eval(args, model, dataset, exp_logger):
   tokenizer = dataset.tokenizer
+  if args.task == "meta_learn" and args.checkpoint_interval > 0:
+    dataset.data = random.sample(dataset.data, len(dataset)//4)
   dataloader = get_dataloader(args, dataset, 'dev')
   num_batches = debug_break if args.debug else len(dataloader)
   exp_logger.start_eval(num_batches, args.eval_interval)
