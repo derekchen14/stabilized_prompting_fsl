@@ -2,6 +2,7 @@ import os, pdb, sys
 import json
 import numpy as np
 import random
+import re
 
 def display_errors(wrongs):
   samples = np.random.choice(wrongs, 5, replace=False)
@@ -28,12 +29,12 @@ def grade_predictions(results):
       else:
         true_neg += 1    # predicted negative, got it correct
 
-  calculate_acc(false_pos, false_neg, results)
+  calculate_acc(true_pos, true_neg, results)
   score = calculate_f1(true_pos, false_pos, true_neg, false_neg)
   display_errors(wrongs)
 
-def calculate_acc(false_pos, false_neg, results):
-  accuracy = (false_pos + false_neg) / len(results)
+def calculate_acc(true_pos, true_neg, results):
+  accuracy = (true_pos + true_neg) / len(results)
   acc = round(accuracy * 100, 2)
   print(f"Accuracy: {acc}%")
 
@@ -57,9 +58,10 @@ def predict_saliency(annotations):
       speaker, previous, current = exp['speaker'], exp['previous'], exp['current']
       score = 0.5
 
-      for number in [' 1 ', ' 2 ', ' 3 ', ' 4 ', ' 5 ']:
-        if number in current:
-          score += 0.3
+      if re.search(r"\s\d\s", current):  # digit surrounded by whitespace
+        score += 0.3
+      if re.search(r"\d\d:\d\d", current):  # HH:MM time
+        score += 0.2
 
       for phrase in ['reference', 'postcode', 'thank', 'anything else', 'phone number']:
         if phrase in current.lower():

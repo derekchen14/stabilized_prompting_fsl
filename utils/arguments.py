@@ -52,6 +52,8 @@ def solicit_params():
                 choices=["contrast", "cosine", "custom"], help="loss function for fine-tuning")
     parser.add_argument("--kappa", default=1000, type=int, 
                 help="Number of examples to use as negatives during constrastive training")
+    parser.add_argument("--filter", action="store_true",
+                help="Filter out non-salient utterances as predicted by logistic regression")
 
     # Key settings
     parser.add_argument("--ignore-cache", action="store_true",
