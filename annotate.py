@@ -7,7 +7,7 @@ def save_results(results, convo_id, version=1):
   save_path = os.path.join('results', 'annotations', f"saliency_v{version}.json")
   json.dump(results, open(save_path, 'w'), indent=4)
   size = len(results[convo_id])
-  print(f"Saved {size} more annotations.")
+  print(f"Saved {size} more annotations for a total of {len(results)} conversations")
 
 def create_prior():
   prior_path = os.path.join('results', 'annotations', "saliency_v1.json")
