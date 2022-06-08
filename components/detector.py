@@ -144,8 +144,8 @@ class ExemplarDetective(object):
         self.euclidean(exp_embed, cand_embeds)
       elif self.search_method == 'mahalanobis':
         self.mahalanobis(exp_embed, cand_embeds)
-      # we can never fit more than 60 in-context examples, so we can stop sorting there
-      nearest_indexes = np.argpartition(self.distances, 60)[:60]
+      # we can never fit more than 64 in-context examples, so we can stop sorting there
+      nearest_indexes = np.argpartition(self.distances, 64)[:64]
       
       for near_id in nearest_indexes:
         exemplar = self.candidates[corpus][near_id]

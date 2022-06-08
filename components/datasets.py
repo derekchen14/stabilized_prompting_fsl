@@ -71,7 +71,7 @@ class BaseDataset(Dataset):
     current_size = len(bpe_tokens['input_ids'])
     eos = self.tokenizer.eos_token
     
-    model_input_length = 2048 if args.size == 'large' else 1024
+    model_input_length = 512 if args.model == 't5' else 1024
     max_allowed = model_input_length - 16
 
     self.detective.reset()
@@ -226,7 +226,7 @@ class MetaLearnDataset(BaseDataset):
         labels.append(target)
      
     """ max length is hardcoded to 512, which is the max allowed
-    there is no need to subtract 12 or 16 since we do not need to save any space for the target value
+    there is no need to subtract 16 since we do not need to save any space for the target value
     instead the sequence of target is taken care of by the decoder """
     inputs = self.tokenizer(contexts, dialogues, padding=True, max_length=512,
                               truncation='only_first', pad_to_multiple_of=8, return_tensors='pt').to(device)
@@ -259,7 +259,7 @@ class MetaLearnDataset(BaseDataset):
       elif self.split in ['dev', 'test']:
         additional_context = self.select_context(args, example, history)
         dialog = f"{state_str}{history} {prompt}"
-        max_len = self.max_len - 12
+        max_len = self.max_len - 16
 
       contexts.append(additional_context)
       dialogues.append(dialog)
@@ -319,7 +319,7 @@ class FineTuneDataset(BaseDataset):
         max_length = self.max_len
       elif self.split in ['dev', 'test']:
         dialog = f"{state_str}{history} {prompt}"
-        max_length = self.max_len - 12
+        max_length = self.max_len - 16
       
       dialogues.append(dialog)
       labels.append(target)

@@ -102,9 +102,9 @@ def run_test(args, dataset, exp_logger, detective):
         all_targets[global_id].extend(target_dict) #  all the target labels for this turn 
 
         if args.task == 'in_context':
-          maxl = 2048 if args.size == 'large' else 1024
+          maxl = 512 if args.model == 't5' else 1024
         else:
-          maxl = inputs['input_ids'].shape[1] + 12
+          maxl = inputs['input_ids'].shape[1] + 16
         with no_grad():
           outputs = model.generate(**inputs, max_length=maxl, repetition_penalty=args.threshold,
                                               early_stopping=True, temperature=args.temperature, 
@@ -135,7 +135,7 @@ def run_leftout(args, model, dataset, exp_logger):
     inputs, target_dict = dataset.collate(args, batch)
     all_targets.extend(target_dict)   # notice this is "extend", not "append"
     
-    maxl = inputs['input_ids'].shape[1] + 12
+    maxl = inputs['input_ids'].shape[1] + 16
     with no_grad():
       outputs = model.generate(**inputs, max_length=maxl, early_stopping=True,
                           repetition_penalty=args.threshold, temperature=args.temperature)
@@ -160,7 +160,7 @@ def run_eval(args, model, dataset, exp_logger):
     inputs, target_dict = dataset.collate(args, batch)
     all_targets.extend(target_dict)   # notice this is "extend", not "append"
 
-    maxl = inputs['input_ids'].shape[1] + 12
+    maxl = inputs['input_ids'].shape[1] + 16
     with no_grad():
       # defaults to greedy sampling, for param details see https://huggingface.co/docs/transformers/
       #        v4.15.0/en/main_classes/model#transformers.generation_utils.GenerationMixin.generate 
