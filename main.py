@@ -31,6 +31,8 @@ def run_train(args, model, datasets, exp_logger, detective):
     model.train()
 
     for step, batch in enumerate(train_dataloader):
+      # start chunk here
+      exp_logger.start_chunk(args, step)
       inputs, targets = dataset.collate(args, batch)
       review_inputs(args, inputs, targets, datasets['train'].tokenizer)
       with autocast(dtype=torch.bfloat16):
@@ -52,14 +54,16 @@ def run_train(args, model, datasets, exp_logger, detective):
       at_checkpoint = step % args.checkpoint_interval == 0        # step on where for validation
       skip_first_five = exp_logger.chunk_num > 5                  # skip the first five checkpoint
       
-      if use_checkpoint and at_checkpoint and skip_first_five:
-        eval_res = run_eval(args, model, dev_dataset, exp_logger)
-        if eval_res[exp_logger.metric] >= exp_logger.best_score[exp_logger.metric]:
-          exp_logger.best_score = eval_res
-          exp_logger.save_best_model(model, tokenizer, args.prune_keep)
-        early_stop = exp_logger.end_chunk()
-        if early_stop: break
-        exp_logger.start_chunk()
+      if use_checkpoint and at_checkpoint:
+        if skip_first_five:
+          eval_res = run_eval(args, model, dev_dataset, exp_logger)
+          if eval_res[exp_logger.metric] >= exp_logger.best_score[exp_logger.metric]:
+            exp_logger.best_score = eval_res
+            exp_logger.save_best_model(model, tokenizer, args.prune_keep)
+          early_stop = exp_logger.end_chunk()
+          if early_stop: break
+        else:
+          exp_logger.end_chunk()
 
     if args.task == 'meta_learn':
       if args.do_leave:

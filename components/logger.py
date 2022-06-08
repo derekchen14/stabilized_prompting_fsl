@@ -84,9 +84,10 @@ class ExperienceLogger:
 
     return self.early_stop(met)
 
-  def start_chunk(self):
-    self.logger.info(f"Starting chunk {self.chunk_num}")
-    self.start_time_chunk = tm.time()
+  def start_chunk(self, args, step):
+    if args.checkpoint_interval > 0  and step % args.checkpoint_interval == 0 :
+      self.logger.info(f"Starting chunk {self.chunk_num}")
+      self.start_time_chunk = tm.time()
 
   def end_chunk(self):
     self.chunk_num += 1
