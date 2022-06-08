@@ -4,8 +4,16 @@ import numpy as np
 import random
 import re
 
-def display_errors(wrongs):
-  samples = np.random.choice(wrongs, 5, replace=False)
+def display_errors(wrongs, sample_size=5):
+  if len(wrongs) == 0:
+    print("No more false negatives!")
+    sys.exit()
+  elif len(wrongs) < sample_size:
+    print(wrongs)
+    print("These are all the mistakes left")
+    sys.exit()
+
+  samples = np.random.choice(wrongs, sample_size, replace=False)
   for sample in samples:
     print(sample['speaker'], sample['current'])
     print(sample['label'], sample['score'], sample['prediction'])
