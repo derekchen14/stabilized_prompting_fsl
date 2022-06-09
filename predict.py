@@ -57,9 +57,12 @@ def predict_saliency(annotations):
       if many_capital_letters(current):
         score += 0.1
 
-      for phrase in ['reference', 'postcode', 'thank', 'anything else', 'phone number']:
+      for phrase in ['reference', 'postcode', 'thank', ' else', 'phone number', 
+                        'booking', 'contact number']:
         if phrase in current.lower():
           score -= 0.2
+      if re.search(r"(\d|[A-Z]){7,}", current):  # reference number of at least 6 characters
+        score -= 0.2
       if speaker == 'agent':
         if len(current) < 20:
           score -= 0.1
@@ -92,11 +95,11 @@ def grade_predictions(results):
         true_pos += 1   # predicted positive, is truly positive
       else:
         false_pos += 1  # predicted positive, is actually negative
+        wrongs.append(res)
 
     else:
       if res['label']:
         false_neg += 1   # predicted negative, should have picked positive
-        wrongs.append(res)
       else:
         true_neg += 1    # predicted negative, got it correct
 

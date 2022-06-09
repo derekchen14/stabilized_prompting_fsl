@@ -69,9 +69,12 @@ def is_salient(speaker, sentence):
   if num_caps >= 3:
     score += 0.1
 
-  for phrase in ['reference', 'postcode', 'thank', 'anything else', 'phone number']:
+  for phrase in ['reference', 'postcode', 'thank', 'anything else', 'phone number', 
+                    'booking', 'contact number']:
     if phrase in sentence.lower():
       score -= 0.2
+  if re.search(r"(\d|[A-Z]){7,}", current):  # reference number of at least 6 characters
+    score -= 0.2
   if speaker == '<agent>':
     if len(sentence) < 20:
       score -= 0.1
