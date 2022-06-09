@@ -43,46 +43,46 @@ def normalize_length(value):
 def is_salient(speaker, sentence):
   score = 0.5
 
-  if re.search(r"\s\d\s", current):  # digit surrounded by whitespace
+  if re.search(r"\s\d\s", sentence):  # digit surrounded by whitespace
     score += 0.3
-  if re.search(r"\d\d:\d\d", current):  # HH:MM time
+  if re.search(r"\d\d:\d\d", sentence):  # HH:MM time
     score += 0.2
   for domain in ['restaurant', 'taxi', 'hotel', 'attraction', 'train']:
-    if domain in current.lower():
+    if domain in sentence.lower():
       score += 0.2
   for number in ['one', 'two', 'three', 'four', 'five', 'six']:
-    if number in current.lower():
+    if number in sentence.lower():
       score += 0.1
   for day in ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']:
-    if day in current.lower():
+    if day in sentence.lower():
       score += 0.1
   for direction in ['north', 'south', 'east', 'west']:
-    if direction in current.lower():
+    if direction in sentence.lower():
       score += 0.1
   for phrase in ['looking for']:
-    if phrase in current.lower():
+    if phrase in sentence.lower():
       score += 0.2
   for phrase in ['do not', "don't care", "don't have", 'preference', 'yes', 'but']:
-    if phrase in current.lower():
+    if phrase in sentence.lower():
       score += 0.1
-  if many_capital_letters(current):
+  if many_capital_letters(sentence):
     score += 0.1
 
   for phrase in ['reference', 'postcode', 'thank', 'anything else', 'phone number']:
-    if phrase in current.lower():
+    if phrase in sentence.lower():
       score -= 0.2
   if speaker == 'agent':
-    if len(current) < 20:
+    if len(sentence) < 20:
       score -= 0.1
-    elif len(current) < 10:
+    elif len(sentence) < 10:
       score -= 0.2
   if speaker == 'customer':
     score += 0.1
-    if len(current) < 10:
+    if len(sentence) < 10:
       score -= 0.2
-    if current[-1] == '?':
+    if sentence[-1] == '?':
       score -= 0.05
-  if len(current) < 5:
+  if len(sentence) < 5:
     score -= 0.1
 
   return score >= 0.5
