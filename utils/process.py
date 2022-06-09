@@ -4,6 +4,8 @@ import json
 import math
 import pickle as pkl
 import numpy as np
+import re
+from nltk.tokenize import sent_tokenize
 
 from assets.static_vars import *
 from utils.help import standardize_format
@@ -38,6 +40,64 @@ def normalize_length(value):
       value = ' '.join(parts[:5])
   return value
 
+def is_salient(speaker, sentence):
+  score = 0.5
+
+  if re.search(r"\s\d\s", current):  # digit surrounded by whitespace
+    score += 0.3
+  if re.search(r"\d\d:\d\d", current):  # HH:MM time
+    score += 0.2
+  for domain in ['restaurant', 'taxi', 'hotel', 'attraction', 'train']:
+    if domain in current.lower():
+      score += 0.2
+  for number in ['one', 'two', 'three', 'four', 'five', 'six']:
+    if number in current.lower():
+      score += 0.1
+  for phrase in ['do not', "don't care", "don't have", 'preference', 'yes']:
+    if phrase in current.lower():
+      score += 0.1
+  if many_capital_letters(current):
+    score += 0.1
+
+  for phrase in ['reference', 'postcode', 'thank', 'anything else', 'phone number']:
+    if phrase in current.lower():
+      score -= 0.3
+  if speaker == 'agent':
+    if len(current) < 20:
+      score -= 0.2
+  if speaker == 'customer':
+    score += 0.1
+    if len(current) < 10:
+      score -= 0.2
+    if current[-1] == '?':
+      score -= 0.05
+  if len(current) < 5:
+    score -= 0.1
+
+  return score >= 0.5
+
+def filter_for_saliency(utterances):
+  """ Input is a list of utterances where each utterance is a speaker + text
+  The output is a list of utterances that only keeps the salient sentences
+  """
+  filtered = []
+
+  for utterance in utterances:
+    if utterance.startswith('<agent>'):
+      speaker, text = utterance[:7], utterance[8:]
+    elif utterance.startswith('<customer>'):
+      speaker, text = utterance[:10], utterance[11:]
+    else:
+      raise ValueError(f"[{utterance}] does not contain a speaker")
+
+
+    texts = [sentence for sentence in sent_tokenize(text) if is_salient(speaker, sentence)]
+    if len(texts) > 0:  # there is at least one salient sentence in the utterance
+      joined = ' '.join(texts)
+      filtered.append(f"<{speaker}> {joined}")
+
+  return filtered
+
 def select_utterances(args, utt_so_far, target, split):
   domain, slot, value = target['domain'], target['slot'], target['value']
   domain, slot = standardize_format(domain, slot)
@@ -46,6 +106,8 @@ def select_utterances(args, utt_so_far, target, split):
   use_target = True
   lookback = -args.context_length
   utterances = utt_so_far[lookback:]
+  if args.filter and args.dataset == 'mwoz':
+    utterances = filter_for_saliency(utterances)
 
   if args.task == 'in_context' and value == '<none>':  # TODO: query result none value slot
     use_target = False
