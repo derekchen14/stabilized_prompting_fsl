@@ -86,7 +86,8 @@ class ExperienceLogger:
 
   def start_chunk(self, args, step):
     if args.checkpoint_interval > 0  and step % args.checkpoint_interval == 0 :
-      self.logger.info(f"Starting chunk {self.chunk_num}")
+      if self.chunk_num > 0:
+        self.logger.info(f"Starting chunk {self.chunk_num}")
       self.start_time_chunk = tm.time()
 
   def end_chunk(self):
@@ -100,8 +101,9 @@ class ExperienceLogger:
     minute_diff = round(raw_diff / 60.0, 3)
 
     met = round(self.best_score[self.metric] * 100, 2)
-    self.logger.info(f"Best chunk is {self.best_score['chunk']} with {met}% accuracy")
-    self.logger.info(f"Current chunk took {minute_diff} min")
+    if self.chunk_num > 5:
+      self.logger.info(f"Best chunk is {self.best_score['chunk']} with {met}% accuracy")
+      self.logger.info(f"Current chunk took {minute_diff} min")
 
     return self.early_stop(met)
 
