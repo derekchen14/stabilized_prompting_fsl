@@ -2,6 +2,8 @@ import os, pdb, sys
 import numpy as np
 
 def find_prompt(style, domain, slot):
+  if domain in ['flight', 'music', 'movie', 'home', 'bus', 'medium', 'message', 'weather']:
+    return naive_style(domain, slot)
   if style == 'schema':   #  taken from https://arxiv.org/abs/2109.07506
     return schema_style(domain, slot)
   elif style == 'question':
@@ -19,26 +21,22 @@ def find_prompt(style, domain, slot):
 
 def schema_style(domain, slot):
   domain_desc = schema_domains[domain]
-  slot_desc = schema_slots[domain][slot]
+  try:
+    slot_desc = schema_slots[domain][slot]
+  except(KeyError):
+    print("domain", domain, "slot", slot)
+    pdb.set_trace()
+    slot_desc = "blank"
   prompt = f"<sep> [domain] {domain_desc} [slot] {slot_desc} is"
   return prompt
 
 def question_style(domain, slot):
-  if domain in ['flight', 'music', 'movie', 'home', 'bus', 'medium', 'message', 'weather']:
-    return naive_style(domain, slot)
   desc = question_descriptions[domain][slot]
   prompt = f"<sep> {desc}?"
   return prompt
 
 def statement_style(domain, slot):
-  if domain in ['flight', 'music', 'movie', 'home', 'bus', 'medium', 'message', 'weather']:
-    return naive_style(domain, slot)
-  try:
-    desc = statement_descriptions[domain][slot]
-  except(KeyError):
-    print(f"Expected domain {domain}, slot {slot}")
-    desc = "blank"
-    pdb.set_trace()
+  desc = statement_descriptions[domain][slot]
   prompt = f"<sep> {desc} is"
   return prompt
 
@@ -48,13 +46,28 @@ def naive_style(domain, slot):
   return prompt
 
 schema_domains = {
-   "restaurant": "find places to dine and whet your appetite",
-   "taxi": "rent cheap cabs to avoid traffic",
-   "train": "find trains that take you to places",
-   "hotel": "hotel reservations and vacation stays",
-   "attraction": "find touristy stuff to do around you",
-   "hospital": "making you feel better when you are ill",
-   "bus": "bus service for traveling"
+  "restaurant": "find places to dine and whet your appetite",
+  "taxi": "rent cheap cabs to avoid traffic",
+  "train": "find trains that take you to places",
+  "hotel": "hotel reservations and vacation stays",
+  "attraction": "find touristy stuff to do around you",
+  "hospital": "making you feel better when you are ill",
+  "bus": "bus service for traveling",
+  "movie": "watch movies in a theatre for entertainment",
+  "rideshare": "app to book a cab to any destination",
+  "event": "get tickets for the coolest concerts and sports in your area",
+  "travel": "biggest database of tourist attractions and points of interest",
+  "rental": "car rental service with extensive coverage of locations and cars",
+  "manage account": "subscription service added or removed, change profile info",
+  "storewide query": "FAQ questions about pricing, timing, membership or features",
+  "single item query": "FAQ questions about jeans, boots, shirt or sweater",
+  "order issue": "get status of an order or change an order, possibly shipping",
+  "product defect": "refunds and returns",
+  "purchase dispute": "bad price, out of stock, promo codes, billing",
+  "account acces": "username, password, two-factor authentication",
+  "shipping issue": "check or update a shipment of an item",
+  "subscription inquiry": "billing and updates of the premium subscription service",
+  "troubleshoot site": "website slow, search not working, credit card, cart not updating"
 }
 
 schema_slots = {
@@ -131,6 +144,7 @@ schema_slots = {
     "origin": "the starting location of the train",
     "number of seats": "the number of seats you want for the train"},
   "hotel": {
+    "price": "cost of staying at the hotel each night",
     "price range": "preferred cost of the hotel",
     "type": "type of hotel building",
     "parking": "parking facility at the hotel",
@@ -179,7 +193,7 @@ schema_slots = {
     "customer name": "customer's name on the account",
     "street address": "street address on the account",
     "zip code": "zip code of the account",
-    "product": "product related to the account",
+    "product": "name of the product being bought",
     "phone": "phone number on the account",  
     "username": "username of the account", 
     "shipping option": "shipping method on the account",
@@ -192,8 +206,8 @@ schema_slots = {
     "reason slotval": "reason for managing the account", 
     "company team": "company team managing the account"},
   "storewide query": {
-    "change option": "detail being changed for the query", 
-    "customer name": "customer's name for the query",
+    "change option": "detail being changed", 
+    "customer name": "customer's name to verify identity",
     "account slotval": "account of the query",
     "company team": "company team dealing with query",
     "reason slotval": "reason for the query",
@@ -201,16 +215,16 @@ schema_slots = {
     "shipping option": "shipping method related to the query",
     "membership level": "membership level of bronze, silver, gold, or none",
     "payment method": "payment method for the query",
-    "product": "product name the customer is asking about",
+    "product": "name of the product being asked about",
     "order slotval": "order of the query",
     "zip code": "zip code for the query"},
   "single item query": {
-    "product": "product of the query",
+    "product": "name of the product being asked about",
     "amount": "amount related to the query",
     "shipping option": "shipping method of the query",
     "company team": "company team related to the query",
     "membership level": "membership level of bronze, silver, gold, or none",
-    "customer name": "customer's name for the query"},
+    "customer name": "customer's name to verify identity"},
   "order issue": {
     "amount": "amount of the order",
     "account id": "customer's account id",
@@ -225,7 +239,7 @@ schema_slots = {
     "payment method": "payment method for the order",
     "refund target": "how the customer wants to recieve their refund",
     "zip code": "zip code for the order",
-    "product": "product name for the order", 
+    "product": "name of the product with an issue", 
     "company team": "company team dealing with the order"},
   "product defect": {
     "email": "email for the product defect",
@@ -246,7 +260,7 @@ schema_slots = {
     "customer name": "customer's name for the product defect"},
   "purchase dispute": {
     "customer name": "customer's name for the purchase",
-    "product": "product for the purchase",
+    "product": "name of the product being disputed",
     "account slotval": "account of the purchase dispute",
     "amount": "amount of the purchase dispute",
     "shipping option": "shipping method of the purchase dispute",
@@ -263,7 +277,7 @@ schema_slots = {
     "reason slotval": "reason for the dispute",
     "order slotval": "order detail of the purchase"},
   "account acces": {
-    "email": "email for the account",
+    "email": "customer's email address",
     "details slotval": "details of the account",
     "amount": "amount related to the account",
     "order slotval": "order of the account",
@@ -279,8 +293,8 @@ schema_slots = {
     "customer name": "customer's name for the shipping issue",
     "company team": "company team dealing with the shipping issue",
     "username": "username for the shipping issue",
-    "email": "email for the shipping issue",
-    "product": "product for the shipping issue",
+    "email": "customer's email address",
+    "product": "name of the product with a shipping issue",
     "amount": "amount related to the shipping issue",
     "account id": "customer's account id",
     "order id": "order id associated with the purchase",
@@ -303,7 +317,7 @@ schema_slots = {
     "zip code": "zip code of the subscription",
     "amount": "cost of the subscription", 
     "shipping option": "shipping method of the subscription",
-    "product": "product name of the subscription",
+    "product": "name of the product with the subscription",
     "details slotval": "details of the subscription", 
     "membership level": "membership level of bronze, silver, gold, or nonen",
     "company team": "company team dealing with the subscription",
