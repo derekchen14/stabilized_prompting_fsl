@@ -33,8 +33,7 @@ def run_train(args, model, datasets, exp_logger, detective):
     model.train()
 
     for step, batch in enumerate(train_dataloader):
-      # start chunk here
-      exp_logger.start_chunk(args, step)
+      exp_logger.start_chunk(args, step)    # start chunk here
       inputs, targets = dataset.collate(args, batch)
       review_inputs(args, inputs, targets, datasets['train'].tokenizer)
       with autocast(dtype=torch.bfloat16):
@@ -55,7 +54,6 @@ def run_train(args, model, datasets, exp_logger, detective):
       use_checkpoint = args.checkpoint_interval > 0               # use checkpoint_interval for validation
       at_checkpoint = step % args.checkpoint_interval == 0        # step on where for validation
       skip_first_five = exp_logger.chunk_num > 5                  # skip the first five checkpoint
-      
       if use_checkpoint and at_checkpoint:
         if skip_first_five:
           eval_res = run_eval(args, model, dev_dataset, exp_logger)

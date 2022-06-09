@@ -17,6 +17,59 @@ def display_errors(wrongs, sample_size=5):
   for sample in samples:
     print(sample['speaker'], sample['current'])
     print(sample['label'], sample['score'], sample['prediction'])
+    # sample['convo_id'], 
+
+def many_capital_letters(current):
+  num_caps = 0
+  for token in current.split():
+    if token[0].isupper():
+      num_caps += 1
+  return num_caps > 2
+
+def predict_saliency(annotations):
+  results = []
+  for convo_id, examples in annotations.items():
+    for exp in examples:
+      speaker, previous, current = exp['speaker'], exp['previous'], exp['current']
+      score = 0.5
+
+      if re.search(r"\s\d\s", current):  # digit surrounded by whitespace
+        score += 0.3
+      if re.search(r"\d\d:\d\d", current):  # HH:MM time
+        score += 0.2
+      for domain in ['restaurant', 'taxi', 'hotel', 'attraction', 'train']:
+        if domain in current.lower():
+          score += 0.2
+      for number in ['one', 'two', 'three', 'four', 'five', 'six']:
+        if number in current.lower():
+          score += 0.1
+      for phrase in ['do not', "don't care", "don't have", 'preference', 'yes']:
+        if phrase in current.lower():
+          score += 0.1
+      if many_capital_letters(current):
+        score += 0.1
+
+      for phrase in ['reference', 'postcode', 'thank', 'anything else', 'phone number']:
+        if phrase in current.lower():
+          score -= 0.3
+      if speaker == 'agent':
+        if len(current) < 20:
+          score -= 0.2
+      if speaker == 'customer':
+        score += 0.1
+        if len(current) < 10:
+          score -= 0.2
+        if current[-1] == '?':
+          score -= 0.05
+      if len(current) < 5:
+        score -= 0.1
+
+      exp['score'] = round(score, 2)
+      exp['prediction'] = score >= 0.5
+      exp['convo_id'] = convo_id
+      results.append(exp)
+
+  return results
 
 def grade_predictions(results):
   wrongs = []
@@ -58,40 +111,6 @@ def calculate_f1(true_pos, false_pos, true_neg, false_neg):
 
   print(f"precision: {prec}, recall: {rec}, f1_score: {score}")
   return score
-
-def predict_saliency(annotations):
-  results = []
-  for convo_id, examples in annotations.items():
-    for exp in examples:
-      speaker, previous, current = exp['speaker'], exp['previous'], exp['current']
-      score = 0.5
-
-      if re.search(r"\s\d\s", current):  # digit surrounded by whitespace
-        score += 0.3
-      if re.search(r"\d\d:\d\d", current):  # HH:MM time
-        score += 0.2
-
-      for phrase in ['reference', 'postcode', 'thank', 'anything else', 'phone number']:
-        if phrase in current.lower():
-          score -= 0.3
-
-      if speaker == 'agent':
-        if len(current) < 20:
-          score -= 0.2
-
-      if speaker == 'customer':
-        score += 0.1
-        if len(current) < 10:
-          score -= 0.2
-
-      if len(current) < 5:
-        score -= 0.1
-
-      exp['score'] = score
-      exp['prediction'] = score > 0.5
-      results.append(exp)
-
-  return results
 
 def load_annotations():
   annotation_path = os.path.join('results', 'annotations', "saliency_final.json")
