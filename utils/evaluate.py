@@ -222,7 +222,7 @@ def test_quantify(args, predictions, targets, exp_logger, tokenizer):
   return results
 
 def eval_quantify(args, predictions, targets, exp_logger, tokenizer):
-  results = {'epoch': exp_logger.epoch }  # 'loss': exp_logger.eval_loss  (no loss by default)
+  results = {'epoch': exp_logger.epoch, 'chunk': exp_logger.chunk_num}  # 'loss': exp_logger.eval_loss  (no loss by default)
 
   if args.style == 'dataset':
     # the left out query set is MWOZ or SGD
