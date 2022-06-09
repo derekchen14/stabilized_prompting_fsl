@@ -91,7 +91,7 @@ def solicit_params():
                 help="Batch size per GPU/CPU for training and evaluation.")
     parser.add_argument('--grad-accum-steps', default=1, type=int,
                 help='Number of steps for gradient accumulation')
-    parser.add_argument("--learning-rate", default=3e-5, type=float,
+    parser.add_argument("--learning-rate", default=3e-4, type=float,
                 help="Model learning rate starting point.")
     parser.add_argument("--drop-rate", default=0.1, type=float,
                 help="Dropout rate with default of 10%")
