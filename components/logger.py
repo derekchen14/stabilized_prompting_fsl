@@ -100,7 +100,7 @@ class ExperienceLogger:
     minute_diff = round(raw_diff / 60.0, 3)
 
     met = round(self.best_score[self.metric] * 100, 2)
-    self.logger.info(f"Best chunk is {self.best_score['chunk']} with {met}% accuracy")
+    self.logger.info(f"Best chunk is "+self.best_score['chunk']+f" with {met}% accuracy")
     self.logger.info(f"Current chunk took {minute_diff} min")
 
     return self.early_stop(met)
