@@ -16,8 +16,7 @@ def display_errors(wrongs, sample_size=5):
   samples = np.random.choice(wrongs, sample_size, replace=False)
   for sample in samples:
     print(sample['speaker'], sample['current'])
-    print(sample['label'], sample['score'], sample['prediction'])
-    # sample['convo_id'], 
+    print(sample['convo_id'], sample['label'], sample['score'], sample['prediction'])
 
 def many_capital_letters(current):
   num_caps = 0
@@ -43,7 +42,16 @@ def predict_saliency(annotations):
       for number in ['one', 'two', 'three', 'four', 'five', 'six']:
         if number in current.lower():
           score += 0.1
-      for phrase in ['do not', "don't care", "don't have", 'preference', 'yes']:
+      for day in ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']:
+        if day in current.lower():
+          score += 0.1
+      for direction in ['north', 'south', 'east', 'west']:
+        if direction in current.lower():
+          score += 0.1
+      for phrase in ['looking for']:
+        if phrase in current.lower():
+          score += 0.2
+      for phrase in ['do not', "don't care", "don't have", 'preference', 'yes', 'but']:
         if phrase in current.lower():
           score += 0.1
       if many_capital_letters(current):
@@ -51,9 +59,11 @@ def predict_saliency(annotations):
 
       for phrase in ['reference', 'postcode', 'thank', 'anything else', 'phone number']:
         if phrase in current.lower():
-          score -= 0.3
+          score -= 0.2
       if speaker == 'agent':
         if len(current) < 20:
+          score -= 0.1
+        elif len(current) < 10:
           score -= 0.2
       if speaker == 'customer':
         score += 0.1

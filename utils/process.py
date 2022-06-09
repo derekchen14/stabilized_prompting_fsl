@@ -53,7 +53,16 @@ def is_salient(speaker, sentence):
   for number in ['one', 'two', 'three', 'four', 'five', 'six']:
     if number in current.lower():
       score += 0.1
-  for phrase in ['do not', "don't care", "don't have", 'preference', 'yes']:
+  for day in ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']:
+    if day in current.lower():
+      score += 0.1
+  for direction in ['north', 'south', 'east', 'west']:
+    if direction in current.lower():
+      score += 0.1
+  for phrase in ['looking for']:
+    if phrase in current.lower():
+      score += 0.2
+  for phrase in ['do not', "don't care", "don't have", 'preference', 'yes', 'but']:
     if phrase in current.lower():
       score += 0.1
   if many_capital_letters(current):
@@ -61,9 +70,11 @@ def is_salient(speaker, sentence):
 
   for phrase in ['reference', 'postcode', 'thank', 'anything else', 'phone number']:
     if phrase in current.lower():
-      score -= 0.3
+      score -= 0.2
   if speaker == 'agent':
     if len(current) < 20:
+      score -= 0.1
+    elif len(current) < 10:
       score -= 0.2
   if speaker == 'customer':
     score += 0.1
