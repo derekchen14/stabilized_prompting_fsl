@@ -65,18 +65,19 @@ def is_salient(speaker, sentence):
   for phrase in ['do not', "don't care", "don't have", 'preference', 'yes', 'but']:
     if phrase in sentence.lower():
       score += 0.1
-  if many_capital_letters(sentence):
+  num_caps = sum([1 for token in sentence.split() if token[0].isupper()])
+  if num_caps >= 3:
     score += 0.1
 
   for phrase in ['reference', 'postcode', 'thank', 'anything else', 'phone number']:
     if phrase in sentence.lower():
       score -= 0.2
-  if speaker == 'agent':
+  if speaker == '<agent>':
     if len(sentence) < 20:
       score -= 0.1
     elif len(sentence) < 10:
       score -= 0.2
-  if speaker == 'customer':
+  if speaker == '<customer>':
     score += 0.1
     if len(sentence) < 10:
       score -= 0.2
@@ -105,7 +106,7 @@ def filter_for_saliency(utterances):
     texts = [sentence for sentence in sent_tokenize(text) if is_salient(speaker, sentence)]
     if len(texts) > 0:  # there is at least one salient sentence in the utterance
       joined = ' '.join(texts)
-      filtered.append(f"<{speaker}> {joined}")
+      filtered.append(f"{speaker} {joined}")
 
   return filtered
 
