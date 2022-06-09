@@ -25,6 +25,8 @@ def run_train(args, model, datasets, exp_logger, detective):
   if args.task == 'meta_learn':
     dataset.add_detective(detective)
     dev_dataset.add_detective(detective)
+    if args.checkpoint_interval > 0:
+      dev_dataset.data = random.sample(dev_dataset.data, len(dev_dataset)//6)
 
   for epoch_count in range(exp_logger.num_epochs):
     exp_logger.start_epoch(train_dataloader, args.percent)
@@ -148,8 +150,6 @@ def run_leftout(args, model, dataset, exp_logger):
 
 def run_eval(args, model, dataset, exp_logger):
   tokenizer = dataset.tokenizer
-  if args.task == "meta_learn" and args.checkpoint_interval > 0:
-    dataset.data = random.sample(dataset.data, len(dataset)//6)
   dataloader = get_dataloader(args, dataset, 'dev')
   num_batches = debug_break if args.debug else len(dataloader)
   exp_logger.start_eval(num_batches, args.eval_interval)
