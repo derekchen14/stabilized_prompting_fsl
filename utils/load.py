@@ -15,10 +15,12 @@ from transformers import GPT2LMHeadModel, GPT2Config, GPT2Tokenizer, \
                           BartForConditionalGeneration, BartConfig, BartTokenizer, \
                           T5ForConditionalGeneration, T5Config, T5Tokenizer
 from transformers import logging, AutoTokenizer, GPTJForCausalLM
+
 from sentence_transformers import SentenceTransformer
 from assets.static_vars import device, DATASETS, CHECKPOINTS
 from components.embed import Embedder
 from utils.help import model_match
+from utils.process import process_data
 
 logging.set_verbosity_error()
 
@@ -37,22 +39,28 @@ def load_data(args):
       print(f"Loaded {split} data with {len(data[split])} {example_type}")
   return data
 
-def load_support(args):
+def load_support(args, tokenizer=None):
   support_data = {}
   if args.num_shots == 'full' or args.task != 'meta_learn':
     return support_data
 
   ctx_len = args.context_length
   ps = args.prompt_style
-  for corpus, full_name in DATASETS.items():
+  for corpus, _ in DATASETS.items():
     support_data[corpus] = {}
     if corpus != args.left_out:
       support_file = f'{args.model}_fine_tune_{args.prompt_style}_lookback{ctx_len}.pkl'
       support_path = os.path.join(args.input_dir, 'cache', corpus, support_file)
-      if os.path.exists(support_path):
+      if not args.ignore_cache and os.path.exists(support_path):
         sdata = pkl.load( open( support_path, 'rb' ) )        
       else:
-        raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), support_path)
+        import copy
+        args_support = copy.deepcopy(args)
+        args_support.dataset = corpus
+        args_support.task = 'fine_tune'
+        raw_data = load_data(args_support)
+        sdata, _ = process_data(args_support, raw_data, tokenizer)
+        # raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), support_path)
 
       support_data[corpus]['train'] = sdata['train']
       support_data[corpus]['dev'] = sdata['dev']

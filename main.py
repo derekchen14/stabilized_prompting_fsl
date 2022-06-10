@@ -173,9 +173,9 @@ def run_eval(args, model, dataset, exp_logger):
 
   return results
 
-def check_support(args, datasets):
+def check_support(args, datasets, tokenizer):
   if args.task == 'meta_learn':
-    supports = load_support(args)
+    supports = load_support(args, tokenizer)
     datasets['train'].add_support(supports, args.left_out)
     datasets['dev'].add_support(supports, args.left_out)
   return datasets
@@ -195,7 +195,7 @@ if __name__ == "__main__":
 
   if args.do_train:
     model = load_model(args, ontology, tokenizer, save_path)
-    datasets = check_support(args, datasets)
+    datasets = check_support(args, datasets, tokenizer)
     run_train(args, model, datasets, exp_logger, detective)
   elif args.do_eval:
     run_test(args, datasets['test'], exp_logger, detective)
