@@ -89,7 +89,7 @@ def is_salient(speaker, sentence):
   if len(sentence) < 5:
     score -= 0.1
 
-  return score >= 0.5
+  return score >= 0.4
 
 def filter_for_saliency(utterances):
   """ Input is a list of utterances where each utterance is a speaker + text
