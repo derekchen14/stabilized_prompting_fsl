@@ -1,7 +1,9 @@
 import os, pdb, sys
 import json
+import random
 from collections import defaultdict
 from nltk.tokenize import sent_tokenize
+
 
 dev_list=[
   "MUL0129.json",
@@ -74,8 +76,11 @@ def load_data():
 
 def annotate_data(data, results, version):
   speakers = ['customer', 'agent']
+  data_keys = list(data.keys())
+  random.shuffle(data_keys)
 
-  for convo_id, conversation in data.items():
+  for convo_id in data_keys:
+    conversation = data[convo_id]
     if convo_id in results or convo_id in dev_list: 
       continue
     else:
