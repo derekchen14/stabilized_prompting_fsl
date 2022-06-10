@@ -121,7 +121,8 @@ def run_test(args, dataset, exp_logger, detective):
   
   if args.do_save:
     output_name = f'{args.prompt_style}_{args.num_shots}.json'
-    json.dump(results, open(os.path.join(save_path, output_name), 'w'), indent=2)
+    output_results = {'preds': prior_pred_state, 'targets': all_targets }
+    json.dump(output_results, open(os.path.join(save_path, output_name), 'w'), indent=2)
 
 def run_leftout(args, model, dataset, exp_logger):
   tokenizer = dataset.tokenizer
