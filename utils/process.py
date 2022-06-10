@@ -73,7 +73,7 @@ def is_salient(speaker, sentence):
                     'booking', 'contact number']:
     if phrase in sentence.lower():
       score -= 0.2
-  if re.search(r"(\d|[A-Z]){7,}", current):  # reference number of at least 6 characters
+  if re.search(r"(\d|[A-Z]){7,}", sentence):  # reference number of at least 6 characters
     score -= 0.2
   if speaker == '<agent>':
     if len(sentence) < 20:
@@ -121,7 +121,7 @@ def select_utterances(args, utt_so_far, target, split):
   use_target = True
   lookback = -args.context_length
   utterances = utt_so_far[lookback:]
-  if args.filter and args.dataset == 'mwoz':
+  if args.filter:
     utterances = filter_for_saliency(utterances)
 
   if args.task == 'in_context' and value == '<none>':  # TODO: query result none value slot
