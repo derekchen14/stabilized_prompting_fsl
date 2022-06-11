@@ -281,8 +281,12 @@ class FineTuneDataset(BaseDataset):
     for example in examples:
       history = ' '.join(example['utterances'])
       target = example['target']
-      state_str = super().state_to_string(example['prev_state'])
-      prompt = find_prompt(args.prompt_style, target['domain'], target['slot'])
+      domain, slot = target['domain'], target['slot']
+      if args.filter:
+        state_str = super().state_to_string(example['prev_state'], domain, slot)
+      else:
+        state_str = super().state_to_string(example['prev_state'])
+      prompt = find_prompt(args.prompt_style, domain, slot)
       
       dialog = f"{state_str}{history} {prompt}"
       dialogues.append(dialog)

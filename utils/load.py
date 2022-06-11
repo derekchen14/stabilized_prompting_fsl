@@ -44,12 +44,12 @@ def load_support(args, tokenizer=None):
   if args.num_shots == 'full' or args.task != 'meta_learn':
     return support_data
 
-  ctx_len = args.context_length
+  saliency = 'filter' if args.filter else 'keepall'
   ps = args.prompt_style
   for corpus, _ in DATASETS.items():
     support_data[corpus] = {}
     if corpus != args.left_out:
-      support_file = f'{args.model}_fine_tune_{args.prompt_style}_lookback{ctx_len}.pkl'
+      support_file = f'{args.model}_fine_tune_{args.prompt_style}_{saliency}.pkl'
       support_path = os.path.join(args.input_dir, 'cache', corpus, support_file)
       if not args.ignore_cache and os.path.exists(support_path):
         sdata = pkl.load( open( support_path, 'rb' ) )        

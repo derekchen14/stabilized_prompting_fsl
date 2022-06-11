@@ -4,6 +4,8 @@ import json
 import math
 import pickle as pkl
 import numpy as np
+import re
+from nltk.tokenize import sent_tokenize
 
 from assets.static_vars import *
 from utils.help import standardize_format
@@ -13,7 +15,8 @@ from tqdm import tqdm as progress_bar
 from collections import defaultdict, Counter
 
 def check_cache(args):
-  cache_file = f'{args.model}_{args.task}_{args.prompt_style}_lookback{args.context_length}.pkl'
+  saliency = 'filter' if args.filter else 'keepall'
+  cache_file = f'{args.model}_{args.task}_{args.prompt_style}_{saliency}.pkl'
   cache_path = os.path.join(args.input_dir, 'cache', args.dataset, cache_file)
   use_cache = not args.ignore_cache
 
@@ -37,6 +40,79 @@ def normalize_length(value):
       value = ' '.join(parts[:5])
   return value
 
+def is_salient(speaker, sentence):
+  score = 0.5
+
+  if re.search(r"\s\d\s", sentence):  # digit surrounded by whitespace
+    score += 0.3
+  if re.search(r"\d\d:\d\d", sentence):  # HH:MM time
+    score += 0.2
+  for domain in ['restaurant', 'taxi', 'hotel', 'attraction', 'train']:
+    if domain in sentence.lower():
+      score += 0.2
+  for number in ['one', 'two', 'three', 'four', 'five', 'six']:
+    if number in sentence.lower():
+      score += 0.1
+  for day in ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']:
+    if day in sentence.lower():
+      score += 0.1
+  for direction in ['north', 'south', 'east', 'west']:
+    if direction in sentence.lower():
+      score += 0.1
+  for phrase in ['looking for']:
+    if phrase in sentence.lower():
+      score += 0.2
+  for phrase in ['do not', "don't care", "don't have", 'preference', 'yes', 'but']:
+    if phrase in sentence.lower():
+      score += 0.1
+  num_caps = sum([1 for token in sentence.split() if token[0].isupper()])
+  if num_caps >= 3:
+    score += 0.1
+
+  for phrase in ['reference', 'postcode', 'thank', 'anything else', 'phone number', 
+                    'booking', 'contact number']:
+    if phrase in sentence.lower():
+      score -= 0.2
+  if re.search(r"(\d|[A-Z]){7,}", sentence):  # reference number of at least 6 characters
+    score -= 0.2
+  if speaker == '<agent>':
+    if len(sentence) < 20:
+      score -= 0.1
+    elif len(sentence) < 10:
+      score -= 0.2
+  if speaker == '<customer>':
+    score += 0.1
+    if len(sentence) < 10:
+      score -= 0.2
+    if sentence[-1] == '?':
+      score -= 0.05
+  if len(sentence) < 5:
+    score -= 0.1
+
+  return score >= 0.4
+
+def filter_for_saliency(utterances):
+  """ Input is a list of utterances where each utterance is a speaker + text
+  The output is a list of utterances that only keeps the salient sentences
+  """
+  filtered = []
+
+  for utterance in utterances:
+    if utterance.startswith('<agent>'):
+      speaker, text = utterance[:7], utterance[8:]
+    elif utterance.startswith('<customer>'):
+      speaker, text = utterance[:10], utterance[11:]
+    else:
+      raise ValueError(f"[{utterance}] does not contain a speaker")
+
+
+    texts = [sentence for sentence in sent_tokenize(text) if is_salient(speaker, sentence)]
+    if len(texts) > 0:  # there is at least one salient sentence in the utterance
+      joined = ' '.join(texts)
+      filtered.append(f"{speaker} {joined}")
+
+  return filtered
+
 def select_utterances(args, utt_so_far, target, split):
   domain, slot, value = target['domain'], target['slot'], target['value']
   domain, slot = standardize_format(domain, slot)
@@ -45,6 +121,8 @@ def select_utterances(args, utt_so_far, target, split):
   use_target = True
   lookback = -args.context_length
   utterances = utt_so_far[lookback:]
+  if args.filter:
+    utterances = filter_for_saliency(utterances)
 
   if args.task == 'in_context' and value == '<none>':  # TODO: query result none value slot
     use_target = False

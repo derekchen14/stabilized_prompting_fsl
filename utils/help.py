@@ -53,7 +53,6 @@ def check_directories(args):
     assert(len(args.left_out) > 0)
     if args.style == 'dataset':
       assert(args.dataset == args.left_out)
-  assert(args.context_length != 0)
   if args.percent < 0.1 or args.percent > 1.0:
     raise IndexError("Data percentage must be between 10% and 100% \
       If you want to run even faster, consider using debug mode instead.")
@@ -142,18 +141,20 @@ def model_match(fname, args):
   check if the ckpt with path 'fname' fits the current args
 
   follow the format:
-  f'results/{dataset}/{task}/{model}_{size}/{prompt_style}_lr{}_clen{context_length}_epoch{}_acc{}.pt'
+  f'results/{dataset}/{task}/{model}_{size}/{prompt_style}_lr{}_{saliency}_epoch{}_acc{}.pt'
   """
   model_type, model_size = fname.split('/')[-2].split("_")
   if len(fname.split('/')[-1].split("_")) != 5:
     return False
-  prompt_style, lr, clen, _, _ = fname.split('/')[-1].split("_")
-  if model_type == args.model and \
-     model_size == args.size  and \
-     prompt_style == args.prompt_style and \
-     lr == f'lr{args.learning_rate}':
-       # and clen == f'clen{args.context_length}':
-      return True
+  prompt_style, lr, saliency, epoch, _ = fname.split('/')[-1].split("_")
+
+  type_match = model_type == args.model
+  size_match = model_size == args.size
+  prompt_match = prompt_style == args.prompt_style
+  lr_match = lr == f'lr{args.learning_rate}'
+
+  if type_match and size_match and prompt_match and lr_match:
+    return True
   return False
 
 def reformat_data(args):
