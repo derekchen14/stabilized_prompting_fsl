@@ -169,14 +169,14 @@ def calculate_jga(results, final_preds, verbose):
       for domain_slot, turn_data in dialog_state.items():
         pred_val, target_val = turn_data
         
-        if target_val != '<none>':
+        # if target_val != '<none>':
           # if pred_val == target_val:
-          if pred_val.startswith(target_val):
-            correct += 1
-          else:
-            turn_correct = False
-            errors[f"{pred_val}-{target_val}"] += 1
-          possible += 1
+        if pred_val.startswith(target_val):
+          correct += 1
+        else:
+          turn_correct = False
+          errors[f"{pred_val}-{target_val}"] += 1
+        possible += 1
 
       if turn_correct:
         joint_correct += 1
