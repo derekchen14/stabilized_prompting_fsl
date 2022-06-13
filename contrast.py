@@ -60,12 +60,16 @@ def fit_model(args, model, dataloader, evaluator):
   ckpt_name = f'lr{args.learning_rate}_k{args.kappa}_{args.loss_function}.pt'
   ckpt_path = os.path.join(args.output_dir, 'sbert', ckpt_name)
 
+  # By default, uses AdamW optimizer with learning rate of 3e-5, WarmupCosine scheduler
   model.fit(train_objectives=[(dataloader, loss_function)],
           evaluator=evaluator,
           epochs=args.n_epochs,
-          evaluation_steps=args.log_interval,
+          logging_steps=args.log_interval,
+          evaluation_steps=args.eval_interval,
           warmup_steps=warm_steps,
-          output_path=ckpt_path)
+          save_best_model=args.do_save,
+          output_path=ckpt_path,
+          do_qual=args.qualify)
   return model
 
 def build_evaluator(args, dev_samples):

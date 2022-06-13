@@ -60,7 +60,7 @@ def check_directories(args):
   return args, save_path
 
 def setup_optimization(args, model, total_steps):
-  no_decay = ["bias", "LayerNorm.weight"]
+  no_decay = ["bias", "LayerNorm.bias", "LayerNorm.weight"]
   optimizer_grouped_parameters = [
       {"params": [p for n, p in model.named_parameters() if not any(nd in n for nd in no_decay)],
         "weight_decay": args.weight_decay,
