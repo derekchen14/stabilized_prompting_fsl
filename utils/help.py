@@ -10,6 +10,7 @@ import shutil
 from collections import defaultdict
 from tqdm import tqdm as progress_bar
 from assets.static_vars import device, SLOT_MAPPING
+from utils.evaluate import parse_output
 from copy import deepcopy
 from transformers import get_scheduler
 from utils.reformat import *
@@ -188,6 +189,25 @@ def standardize_format(raw_domain, raw_slot):
   if slot in SLOT_MAPPING:
     slot = SLOT_MAPPING[slot]
   return domain, slot
+
+def desemble(args, output_strings):
+  pred_values = [parse_output(args, output_str) for output_str in output_strings]
+  if args.ensemble <= 1:
+    return pred_values
+
+  output_desemble = []
+  group_num = len(pred_values) // args.ensemble
+  group_size = args.ensemble
+  for group_id in range(group_num):
+    output_dict = defaultdict(int)
+    for pred_value in pred_values[group_size*group_id:group_size*(group_id+1)]:
+      output_dict[pred_value] += 1
+    pdb.set_trace()
+    output_best = max(output_dict, key=output_dict.get)
+    output_desemble.append(output_best)
+  return output_desemble
+
+
 
 def determine_dataset(global_id):
   dialog_id, turn_count = global_id.split('_')
