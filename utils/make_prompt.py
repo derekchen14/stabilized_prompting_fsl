@@ -31,7 +31,12 @@ def schema_style(domain, slot):
   return prompt
 
 def question_style(domain, slot):
-  desc = question_descriptions[domain][slot]
+  try:
+    desc = question_descriptions[domain][slot]
+  except(KeyError):
+    print("domain", domain, "slot", slot)
+    pdb.set_trace()
+    desc = "blank"
   prompt = f"<sep> {desc}?"
   return prompt
 
@@ -734,6 +739,7 @@ question_descriptions = {
     "name": "What is the name of the hotel",
     "parking": "Does the hotel offer parking",
     "price range": "What is the price range of the hotel",
+    "price": "What is the price of staying at the hotel",
     "stars": "How many stars does the hotel have",
     "type": "What type of hotel is the user interested in",
     "rating": "how many rating stars does the hotel have",

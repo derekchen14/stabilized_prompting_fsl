@@ -85,6 +85,8 @@ def solicit_params():
                 help="Number of models to keep around after pruning, by default does not prune")
     parser.add_argument("--parallel", action="store_true",
                 help="Whether to run in parallel")
+    parser.add_argument("--ensemble", default=-1, type=int,
+                help="setting up the ensembling size")
 
     # Hyper-parameters for tuning
     parser.add_argument("--batch-size", default=12, type=int,
