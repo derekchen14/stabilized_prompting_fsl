@@ -9,7 +9,7 @@ from torch.nn import functional as F
 
 from collections import defaultdict
 from assets.static_vars import device
-
+from sentence_transformers import SentenceTransformer
 
     
 class BaseModel(nn.Module):
@@ -69,4 +69,163 @@ class GenerateModel(BaseModel):
     output = logits if outcome == 'logit' else self.softmax(logits)
     return output, loss
 
-  
+class SentenceBERT(SentenceTransformer):
+
+  def qualify(self, embedder, utterances):
+    chosen_id = random.randint(0, len(utterances))
+    chosen_utt = utterances.pop(chosen_id)
+    chosen_embed = embedder(chosen_utt)['sentence_embedding']
+
+    comparables = []
+    for utterance in utterances:
+      with no_grad():
+        curr_embed = embedder(utterance)['sentence_embedding']
+      score = torch.cosine_similarity(chosen_embed, curr_embed)
+      comp = (utterance, round(score, 3))
+      comparables.append(comp)
+    comparables.sort(key=lambda x: x[0], reverse=True)
+
+    print("Target utterance:", utterance)
+    print(f"Out of {len(utterances)} utterances, the 3 closest are:")
+    for close, score in comparables[:3]:
+      print("   ", close, score)
+    print(f"And the three furthest are:")
+    for far, score in comparables[-3:]:
+      print("   ", far, score)
+
+  def fit(self, train_objective: Tuple[DataLoader, nn.Module],
+      evaluator: SentenceEvaluator = None,
+      epochs: int = 1,
+      steps_per_epoch = None,
+      scheduler_name: str = 'WarmupCosine',
+      warmup_steps: int = 10000,
+      optimizer_class: Type[Optimizer] = torch.optim.AdamW,
+      optimizer_params : Dict[str, object]= {'lr': 3e-5},
+      weight_decay: float = 0.01,
+      logging_steps: int = 0,
+      evaluation_steps: int = 0,
+      output_path: str = None,
+      save_best_model: bool = True,
+      max_grad_norm: float = 3,
+      do_qual: bool=False,
+      callback: Callable[[float, int, int], None] = None,
+      checkpoint_path: str = None,
+      checkpoint_save_steps: int = 2000,
+      checkpoint_save_total_limit: int = 0):
+    """
+    Train the model with the given training objective
+    Each training objective is sampled in turn for one batch.
+    We sample only as many batches from each objective as there are in the smallest one
+    to make sure of equal training with each dataset.
+
+    :param train_objectives: Tuples of (DataLoader, LossFunction). Only accepts on tuple now.
+    :param evaluator: An evaluator (sentence_transformers.evaluation) evaluates the model 
+            performance during training on held-out dev data. Used to determine the best model that is saved to disc.
+    :param epochs: Number of epochs for training
+    :param steps_per_epoch: Number of training steps per epoch. If set to None (default), 
+            one epoch is equal the DataLoader size from train_objectives.
+    :param scheduler_name: Learning rate scheduler. Available schedulers: 
+            constantlr, warmupconstant, warmuplinear, warmupcosine, warmupcosinewithhardrestarts
+    :param warmup_steps: Behavior depends on the scheduler. For WarmupLinear (default), 
+            the learning rate is increased from o up to the maximal learning rate. 
+            After these many training steps, the learning rate is decreased linearly back to zero.
+    :param optimizer_class: Optimizer
+    :param optimizer_params: Optimizer parameters
+    :param weight_decay: Weight decay for model parameters
+    :param logging_steps: If > 0, evaluate the model using evaluator after each number of training steps
+    :param evaluation_steps: If > 0 and do qualify print out the closest relations per batch
+    :param output_path: Storage path for the model and evaluation files
+    :param save_best_model: If true, the best model (according to evaluator) is stored at output_path
+    :param max_grad_norm: Used for gradient normalization.
+    :param callback: Callback function that is invoked after each evaluation.
+        It must accept the following three parameters in this order:
+        `score`, `epoch`, `steps`
+    :param checkpoint_path: Folder to save checkpoints during training
+    :param checkpoint_save_steps: Will save a checkpoint after so many steps
+    :param checkpoint_save_total_limit: Total number of checkpoints to store
+    """
+
+    ##Add info to model card
+    dataloader, loss_model = train_objective
+    info_loss_functions =  ModelCardTemplate.get_train_objective_info(dataloader, loss_model)
+    info_loss_functions = "\n\n".join([text for text in info_loss_functions])
+
+    info_fit_parameters = json.dumps({"evaluator": fullname(evaluator), "epochs": epochs,
+                              "steps_per_epoch": steps_per_epoch, "scheduler": scheduler_name,
+                              "warmup_steps": warmup_steps, "optimizer_class": str(optimizer_class),
+                              "optimizer_params": optimizer_params, "weight_decay": weight_decay,
+                              "evaluation_steps": evaluation_steps, "logging_steps": logging_steps,
+                              "max_grad_norm": max_grad_norm}, indent=4, sort_keys=True)
+    print(info_fit_parameters)
+    self._model_card_text = None
+    self._model_card_vars['{TRAINING_SECTION}'] = ModelCardTemplate.__TRAINING_SECTION__.replace("{LOSS_FUNCTIONS}", info_loss_functions).replace("{FIT_PARAMETERS}", info_fit_parameters)
+    self.best_score = -9999999
+    self.to(self._target_device)
+    loss_model.to(self._target_device)
+
+    # Use smart batching
+    dataloader.collate_fn = self.smart_batching_collate
+    if steps_per_epoch is None or steps_per_epoch == 0:
+      steps_per_epoch = len(dataloader)
+    num_train_steps = int(steps_per_epoch * epochs)
+
+    # Prepare optimizers
+    param_optimizer = list(loss_model.named_parameters())
+    no_decay = ['bias', 'LayerNorm.bias', 'LayerNorm.weight']
+    optimizer_grouped_parameters = [
+      {'params': [p for n, p in param_optimizer if not any(nd in n for nd in no_decay)], 'weight_decay': weight_decay},
+      {'params': [p for n, p in param_optimizer if any(nd in n for nd in no_decay)], 'weight_decay': 0.0}
+    ]
+    optimizer = optimizer_class(optimizer_grouped_parameters, **optimizer_params)
+    scheduler = self._get_scheduler(optimizer, scheduler=scheduler_name, 
+              warmup_steps=warmup_steps, t_total=num_train_steps)
+
+    global_step = 0
+    data_iterators = []
+
+    for epoch in trange(epochs, desc="Epoch", disable=False):
+      training_steps = 0
+      loss_model.zero_grad()
+      loss_model.train()
+
+      losses = []
+      for features, labels in dataloader:
+        loss_value = loss_model(features, labels)
+        losses.append(loss_value.item())
+        loss_value.backward()
+
+        torch.nn.utils.clip_grad_norm_(loss_model.parameters(), max_grad_norm)
+        optimizer.step()
+        optimizer.zero_grad()
+        scheduler.step()
+
+        training_steps += 1
+        global_step += 1
+
+        if do_qual and evaluation_steps > 0 and training_steps % evaluation_steps == 0:
+          utterances = [feat[0] for feat in features]
+          self.qualify(loss_model.model, utterances)
+
+        if logging_steps > 0 and training_steps % logging_steps == 0:
+          avg_loss = round(np.mean(losses), 3) 
+          def caller(raw_score, epoch, steps):
+            score = round(raw_score, 3)
+            print(f"Step {steps}/{steps_per_epoch}, Loss: {avg_loss}, Score: {score}")
+
+          self._eval_during_training(evaluator, output_path, save_best_model, epoch, training_steps, caller)
+          loss_model.zero_grad()
+          loss_model.train()
+
+        if checkpoint_path is not None and checkpoint_save_steps > 0 and global_step % checkpoint_save_steps == 0:
+          self._save_checkpoint(checkpoint_path, checkpoint_save_total_limit, global_step)
+
+
+      self._eval_during_training(evaluator, output_path, save_best_model, epoch, -1, callback)
+
+    if evaluator is None and output_path is not None:   #No evaluator, but output path: save final model version
+      self.save(output_path)
+
+    if checkpoint_path is not None:
+      self._save_checkpoint(checkpoint_path, checkpoint_save_total_limit, global_step)
+
+

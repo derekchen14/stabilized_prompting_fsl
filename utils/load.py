@@ -16,9 +16,10 @@ from transformers import GPT2LMHeadModel, GPT2Config, GPT2Tokenizer, \
                           T5ForConditionalGeneration, T5Config, T5Tokenizer
 from transformers import logging, AutoTokenizer, GPTJForCausalLM
 
-from sentence_transformers import SentenceTransformer
+
 from assets.static_vars import device, DATASETS, CHECKPOINTS
 from components.embed import Embedder
+from components.models import SentenceBERT
 from utils.help import model_match
 from utils.process import process_data
 
@@ -101,7 +102,7 @@ def load_sent_transformer(args, embed_method='mpnet', for_train=False):
     ckpt_name = f'lr3e-5_k{args.kappa}_{args.loss_function}.pt'
     ckpt_path = os.path.join(args.output_dir, 'sbert', ckpt_name)
   
-  model = SentenceTransformer(ckpt_path, device=device)
+  model = SentenceBERT(ckpt_path, device=device)
   return model
 
 def load_model(args, ontology, tokenizer, load_dir, ckpt_name=''):
