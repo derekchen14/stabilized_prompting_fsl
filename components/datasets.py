@@ -66,7 +66,7 @@ class BaseDataset(Dataset):
     target_tensor = torch.tensor(padded).to(device)
     return target_tensor
 
-  def select_context(self, args, example, history):
+  def select_context(self, args, example, history, detective_id=0):
     bpe_tokens = self.tokenizer(history)
     current_size = len(bpe_tokens['input_ids'])
     eos = self.tokenizer.eos_token
@@ -74,10 +74,10 @@ class BaseDataset(Dataset):
     model_input_length = 512 if args.model == 't5' else 1024
     max_allowed = model_input_length - 16
 
-    self.detective.reset()
+    self.detective[detective_id].reset()
     contexts = []
     while current_size < max_allowed:
-      exemplar = self.detective.search(example)
+      exemplar = self.detective[detective_id].search(example)
       ctx_domain, ctx_slot, ctx_label = exemplar['dsv']
       ctx_prompt = find_prompt(args.prompt_style, ctx_domain, ctx_slot)
       state_str = self.__class__.state_to_string(exemplar['prev_state'])
@@ -87,13 +87,16 @@ class BaseDataset(Dataset):
       tokenized_context = self.tokenizer(context)
       current_size += len(tokenized_context['input_ids'])
 
-    self.detective.num_exemplars.append(len(contexts))
+    self.detective[detective_id].num_exemplars.append(len(contexts))
     additional_context = ' '.join(contexts)
     return additional_context
 
   def add_detective(self, detective):
     if self.detective is None:
-      self.detective = detective
+      if type(detective) is list:
+        self.detective = detective
+      else:
+        self.detective = [detective]
     print(f"Using {detective.search_method} distance to search ...")
 
   @staticmethod
@@ -149,14 +152,15 @@ class InContextDataset(BaseDataset):
       state_str = super().state_to_string(example['prev_state'])
       history = ' '.join(example['utterances'])
 
-      additional_context = self.remove_special(self.select_context(args, example, history))
-      dialog = self.remove_special(f"{state_str}{history} {prompt} <extra_id_0>")
+      for detective_id in range(args.ensemble):
+        additional_context = self.remove_special(self.select_context(args, example, history, detective_id))
+        dialog = self.remove_special(f"{state_str}{history} {prompt} <extra_id_0>")
 
-      contexts.append(additional_context)
-      dialogues.append(dialog)
-      
-      target['history'] = history
-      labels.append(target)
+        contexts.append(additional_context)
+        dialogues.append(dialog)
+        
+        target['history'] = history
+        labels.append(target)
 
     inputs = self.tokenizer(contexts, dialogues, padding=True, max_length=512,
                               truncation='only_first', return_tensors='pt').to(device) 
@@ -209,17 +213,18 @@ class MetaLearnDataset(BaseDataset):
       prompt = find_prompt(args.prompt_style, target['domain'], target['slot'])
       state_str = super().state_to_string(example['prev_state'])
       
-      additional_context = self.select_context(args, example, history)
-      dialog = f"{state_str}{history} {prompt}"
+      for detective_id in range(args.ensemble):
+        additional_context = self.select_context(args, example, history, detective_id)
+        dialog = f"{state_str}{history} {prompt}"
 
-      contexts.append(additional_context)
-      dialogues.append(dialog)
+        contexts.append(additional_context)
+        dialogues.append(dialog)
 
-      if self.split == 'train':
-        labels.append(target['value'])
-      else:
-        target['history'] = history
-        labels.append(target)
+        if self.split == 'train':
+          labels.append(target['value'])
+        else:
+          target['history'] = history
+          labels.append(target)
      
     """ max length is hardcoded to 512, which is the max allowed
     there is no need to subtract 16 since we do not need to save any space for the target value
