@@ -61,21 +61,23 @@ def fit_model(args, model, dataloader, evaluator):
   ckpt_path = os.path.join(args.output_dir, 'sbert', ckpt_name)
 
   # By default, uses AdamW optimizer with learning rate of 3e-5, WarmupCosine scheduler
-  model.fit(train_objectives=[(dataloader, loss_function)],
+  model.fit(train_objective=(dataloader, loss_function),
           evaluator=evaluator,
           epochs=args.n_epochs,
           logging_steps=args.log_interval,
-          evaluation_steps=args.eval_interval,
+          checkpoint_save_steps=args.checkpoint_interval,
           warmup_steps=warm_steps,
           save_best_model=args.do_save,
+          optimizer_params={'lr': args.learning_rate},
           output_path=ckpt_path,
+          checkpoint_path=ckpt_path,
           do_qual=args.qualify)
   return model
 
 def build_evaluator(args, dev_samples):
   print("Building the evaluator which is cosine similarity by default")
   evaluator = EmbeddingSimilarityEvaluator.from_input_examples(dev_samples, 
-      show_progress_bar=True, name='mwoz', write_csv=args.do_save)
+      show_progress_bar=False, name='mwoz', write_csv=args.do_save)
   # InformationRetrievalEvaluator, RerankingEvaluator
   # https://www.sbert.net/docs/package_reference/evaluation.html
   # alternatively, where sentences1, sentences2, and scores are lists of equal length
@@ -213,6 +215,5 @@ if __name__ == "__main__":
 
   train_samples, dev_samples = mine_for_samples(args)
   dataloader = DataLoader(train_samples, shuffle=True, batch_size=args.batch_size)
-  # dev_samples = mine_for_samples(args, split='dev')
   evaluator = build_evaluator(args, dev_samples)
   fit_model(args, model, dataloader, evaluator)
