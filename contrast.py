@@ -92,12 +92,15 @@ def add_special_tokens(model):
   print("Model loaded")
   return model
 
-def mine_for_samples(args):
-  # Load raw dialogue data from cache
+def load_from_cache(args):
   cache_file = f'mpnet_mwoz_{args.num_shots}_embeddings.pkl'
   cache_path = os.path.join(args.input_dir, 'cache', args.dataset, cache_file)  
   samples = pkl.load( open( cache_path, 'rb' ) )
+  return samples
 
+def mine_for_samples(args):
+  # Load raw dialogue data from cache
+  samples = load_from_cache(args)
   # Look for positive and negative example pairs to be used as training data based on similarity
   all_pairs = compute_scores(args, samples)
   # all_pairs.sort(key=lambda exp: exp.label)
@@ -106,6 +109,12 @@ def mine_for_samples(args):
   dev_pairs = all_pairs[divide:]
   print('train size', len(selected_pairs), 'dev size', len(dev_pairs))
   return selected_pairs, dev_pairs
+
+def select_test_data(args):
+  samples = load_from_cache(args)
+  total_size = args.kappa * args.batch_size
+  test_data = random.sample(samples, total_size)
+  return test_data
 
 def find_positives_negatives(samples):
   num_samples = len(samples)
@@ -214,23 +223,45 @@ def state_change_sim(a, b):
   aa, bb = row['sentence1'], row['sentence2']
   return sim_score
 
-def run_test(model, datasets):
-  test_samples = datasets['test']
-  test_evaluator = EmbeddingSimilarityEvaluator.from_input_examples(test_samples, name='sts-test')
-  ckpt_name = f'lr{args.learning_rate}_k{args.kappa}_{args.loss_function}.pt'
-  ckpt_path = os.path.join(args.output_dir, 'sbert', ckpt_name)
-  test_evaluator(model, output_path=ckpt_path)
+def test_collate(batch):
+  utterances, states = [], []
+  for example in batch:
+    utterances.append(example['history'])
+    states.append(example['dsv'])
+  return utterances, states
 
+def test_model(args, model, dataloader):
+  for utterances, states in dataloader:
+    # embeddings = []
+    # for utt in utterances:
+    #   feature = model._first_module().tokenize(utt)
+    #   output = self.model(feat.to(device))
+    #   embeddings.append(output['sentence_embedding'])
+    features = [model._first_module().tokenize(utt) for utt in utterances]
+    features.to(device)
+    outputs = model(features)
+    pdb.set_trace()
+    print("outputs: {}".format(outputs['sentence_embedding'].shape))
+
+    model.qualify(outputs, utterances)
 
 if __name__ == "__main__":
   args = solicit_params()
   args = setup_gpus(args)
   set_seed(args)
 
-  model = load_sent_transformer(args, for_train=True)
+  model = load_sent_transformer(args, for_train=args.do_train)
   model = add_special_tokens(model)
 
-  train_samples, dev_samples = mine_for_samples(args)
-  dataloader = DataLoader(train_samples, shuffle=True, batch_size=args.batch_size)
-  evaluator = build_evaluator(args, dev_samples)
-  fit_model(args, model, dataloader, evaluator)
+  if args.do_train:
+    train_samples, dev_samples = mine_for_samples(args)
+    dataloader = DataLoader(train_samples, shuffle=True, batch_size=args.batch_size)
+    evaluator = build_evaluator(args, dev_samples)
+    fit_model(args, model, dataloader, evaluator)
+
+  elif args.do_eval:
+    test_samples = select_test_data(args)
+    dataloader = DataLoader(test_samples, shuffle=True, batch_size=args.batch_size)
+    dataloader.collate_fn = test_collate
+    test_model(args, model, dataloader)
+

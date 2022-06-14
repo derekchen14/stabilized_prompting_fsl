@@ -74,7 +74,7 @@ class GenerateModel(BaseModel):
 
 class SentenceBERT(SentenceTransformer):
 
-  def qualify(self, embedder, features, utterances):
+  def qualify(self, features, utterances):
     chosen_id = random.randint(0, len(utterances))
     chosen_utt = utterances[chosen_id]
     chosen_embed = features['sentence_embedding'][chosen_id].unsqueeze(0)
@@ -82,7 +82,6 @@ class SentenceBERT(SentenceTransformer):
     comparables = []
     for sent_embed, utterance in zip(features['sentence_embedding'], utterances):
       with torch.no_grad():
-        # curr_embed = embedder(utterance)['sentence_embedding']
         score = torch.cosine_similarity(chosen_embed, sent_embed.unsqueeze(0))
       comp = (utterance, round(score.item(), 3))
       comparables.append(comp)
