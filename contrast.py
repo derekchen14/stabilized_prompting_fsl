@@ -232,18 +232,14 @@ def test_collate(batch):
 
 def test_model(args, model, dataloader):
   for utterances, states in dataloader:
-    # embeddings = []
-    # for utt in utterances:
-    #   feature = model._first_module().tokenize(utt)
-    #   output = self.model(feat.to(device))
-    #   embeddings.append(output['sentence_embedding'])
-    features = [model._first_module().tokenize(utt) for utt in utterances]
-    features.to(device)
-    outputs = model(features)
-    pdb.set_trace()
-    print("outputs: {}".format(outputs['sentence_embedding'].shape))
-
+    features = model._first_module().tokenize(utterances)  # dict with inputs and attn_mask
+    features['input_ids'] = features['input_ids'].to(device)
+    features['attention_mask'] = features['attention_mask'].to(device)
+    
+    with torch.no_grad():
+      outputs = model(features)
     model.qualify(outputs, utterances)
+    print("\n   ---------------   \n")
 
 if __name__ == "__main__":
   args = solicit_params()
@@ -252,6 +248,7 @@ if __name__ == "__main__":
 
   model = load_sent_transformer(args, for_train=args.do_train)
   model = add_special_tokens(model)
+  model.to(device)
 
   if args.do_train:
     train_samples, dev_samples = mine_for_samples(args)

@@ -102,6 +102,7 @@ def load_sent_transformer(args, embed_method='mpnet', for_train=False):
     ckpt_name = f'lr{args.learning_rate}_k{args.kappa}_{args.loss_function}.pt'
     ckpt_path = os.path.join(args.output_dir, 'sbert', ckpt_name)
   
+  print(f"Loading sentence transformer from {ckpt_name}")
   model = SentenceBERT(ckpt_path, device=device)
   return model
 

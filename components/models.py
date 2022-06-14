@@ -224,7 +224,7 @@ class SentenceBERT(SentenceTransformer):
           utterances = tok.batch_decode(fzero['input_ids'], skip_special_tokens=True)
 
       if do_qual:
-        self.qualify(loss_model.model, fzero, utterances)
+        self.qualify(fzero, utterances)
       avg_loss = round(np.mean(losses), 3)
       def caller(raw_score, epoch, steps):
         score = round(raw_score, 3)

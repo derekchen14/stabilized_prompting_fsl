@@ -2,10 +2,10 @@
 set -xue
 # ________ Fine-tuned Model Training ________
 # Training with all available data
-# python main.py --dataset mwoz --task fine_tune --style dataset --do-train --do-save \
+# python main.py --dataset dstc --task fine_tune --style dataset --do-train --do-save \
 #       --model t5 --size small --num-shots full --maximum-len 512 --prompt-style naive \
-#       --prune-keep 3 --log-interval 1200 --context-len 2 --batch-size 12 --n-epochs 7 \
-#      --learning-rate 3e-5 --qualify --grad-accum-steps 4 --percent 0.8 --eval-interval half # --verbose
+#       --prune-keep 3 --log-interval 800 --batch-size 16 --n-epochs 7 --learning-rate 1e-4 \
+#       --grad-accum-steps 4 --eval-interval half --verbose --filter --ignore-cache #  --percent 0.8
 # python main.py --dataset sgd --task fine_tune --n-epochs 7 --do-train --debug \
 #       --style dataset --model gpt --size small --num-shots full --batch-size 9 \
 #       --learning-rate 1e-4  --maximum-len 512 --prompt-style naive # --ignore-cache
@@ -19,10 +19,13 @@ set -xue
 #       --log-interval 800 --eval-interval half # quarter
 
 # Finetune the Sentence Transformers model from SBERT
-# python contrast.py --learning-rate 3e-5 --kappa 20 --n-epochs 7 --num-shots five \
-#       --batch-size 64 --seed 21 --log-interval 900 --loss-function cosine
+# python contrast.py --batch-size 64 --kappa 20 --n-epochs 14 --num-shots five --seed 14 \
+#        --log-interval 200 --checkpoint-interval 1400 --loss-function cosine --do-save \
+#        --learning-rate 3e-5 --qualify --do-train
 # python contrast.py --learning-rate 3e-5 --kappa 20 --n-epochs 7 --num-shots one \
 #       --batch-size 64  --log-interval 900 --loss-function custom
+python contrast.py --batch-size 128 --kappa 20 --num-shots five --seed 15 \
+      --loss-function cosine --do-eval --learning-rate 3e-5 --qualify
 
 # Leveraging Slot Descriptions for Zero-Shot Cross-Domain DST (domain held out for testing)
 # python main.py --dataset mwoz --task fine_tune --n-epochs 7 --do-train --debug \
@@ -56,10 +59,10 @@ set -xue
 #      --style dataset --left-out mwoz --model t5 --size small --num-shots five \
 #      --learning-rate 3e-5 --prompt-style naive --batch-size 4 --log-interval 1200 \
 #      --percent 0.5 --eval-interval half --do-leave
-python main.py --dataset mwoz --task meta_learn --n-epochs 7 --do-train --debug \
-     --style dataset --left-out mwoz --model t5 --size small --num-shots five \
-     --learning-rate 3e-4 --prompt-style schema --batch-size 4 --log-interval 1200 \
-     --eval-interval quarter --do-leave --checkpoint-interval 800
+# python main.py --dataset mwoz --task meta_learn --n-epochs 7 --do-train --do-save \
+#      --left-out mwoz --model t5 --size small --num-shots five --prompt-style statement \
+#      --learning-rate 3e-4 --batch-size 16 --grad-accum-steps 8 --log-interval 1200 \
+#      --eval-interval half --checkpoint-interval 4000  --do-leave
 # python main.py --dataset sgd --task meta_learn --n-epochs 7 --do-train --debug \
 #       --style dataset --left-out sgd --model gpt --size small --num-shots five \
 #       --learning-rate 3e-5 --prompt-style naive --batch-size 4 --log-interval 1200 \
