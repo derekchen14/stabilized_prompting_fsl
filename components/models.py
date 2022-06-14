@@ -190,7 +190,6 @@ class SentenceBERT(SentenceTransformer):
     data_iterators = []
     tok = self._first_module().tokenizer
     
-
     for epoch in progress_bar(range(epochs), desc="Epoch", total=epochs):
       training_steps = 0
       loss_model.zero_grad()
@@ -199,6 +198,9 @@ class SentenceBERT(SentenceTransformer):
 
       losses = []
       for features, labels in dataloader:
+        if labels.dtype == torch.int64:
+          labels = labels.type(torch.float32)
+
         loss_value = loss_model(features, labels)
         losses.append(loss_value.item())
         loss_value.backward()
