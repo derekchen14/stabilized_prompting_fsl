@@ -133,13 +133,23 @@ def compute_scores(args, samples):
   """
   num_samples = len(samples)
   pair_ids = set()
+  breakdown = Counter()
   all_pairs = []
   for i in progress_bar(range(num_samples), total=num_samples, desc='Computing scores'):
     s_i = samples[i]
     candidates = random.sample(samples, args.kappa)
+    # print("KEY:", s_i['history'], s_i['dsv'])
+    
     for s_j in candidates:
       if s_i['gid'] == s_j['gid']: continue
-      
+      domain, slot, value = s_j['dsv']
+
+      valid = slot in ['internet', 'parking']  # default to False most of the time
+      for part in value.lower().replace(':', ' ').replace('|', ' ').split():
+        if part in s_j['history'].lower():
+          valid = True
+      if not valid: continue
+
       joint_id = create_joint_id(s_i, s_j)
       if joint_id in pair_ids:
         continue
@@ -155,9 +165,16 @@ def compute_scores(args, samples):
       
       if sim_score == 0 and random.random() > 0.4:
         continue  # only keep a portion of negatives to keep things balanced
+      breakdown[sim_score] += 1
       pair = InputExample(texts=[s_i['history'], s_j['history']], label=sim_score)
       all_pairs.append(pair)
-
+    """
+      if random.random() < 0.3:
+        print("   --", s_j['history'], sim_score, s_j['dsv'])
+    if i >= 10:
+      pdb.set_trace()
+    print(breakdown)
+    """
   return all_pairs
 
 def create_joint_id(a, b):
