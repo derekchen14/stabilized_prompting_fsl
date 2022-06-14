@@ -167,12 +167,15 @@ def compute_scores(args, samples):
 
       if args.loss_function == 'cosine':
         sim_score = domain_slot_sim(s_i, s_j)
+        threshold = 0.4
       elif args.loss_function == 'contrast':
         sim_score = 1 if s_i['dsv'][1] == s_j['dsv'][1] else 0
+        threshold = 0.2
       elif args.loss_function == 'custom':
         sim_score = encode_as_bits(s_i, s_j)
+        threshold = 0.3
       
-      if sim_score == 0 and random.random() > 0.4:
+      if sim_score == 0 and random.random() > threshold:
         continue  # only keep a portion of negatives to keep things balanced
       breakdown[sim_score] += 1
       pair = InputExample(texts=[s_i['history'], s_j['history']], label=sim_score)
@@ -182,8 +185,8 @@ def compute_scores(args, samples):
         print("   --", s_j['history'], sim_score, s_j['dsv'])
     if i >= 10:
       pdb.set_trace()
-    print(breakdown)
     """
+  print(breakdown)
   return all_pairs
 
 def create_joint_id(a, b):
