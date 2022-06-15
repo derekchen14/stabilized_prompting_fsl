@@ -153,7 +153,8 @@ class InContextDataset(BaseDataset):
       state_str = super().state_to_string(example['prev_state'])
       history = ' '.join(example['utterances'])
 
-      for detective_id in range(args.ensemble):
+      ensemble_range = args.ensemble if args.ensemble > 1 else 1
+      for detective_id in range(ensemble_range):
         additional_context = self.remove_special(self.select_context(args, example, history, detective_id))
         dialog = self.remove_special(f"{state_str}{history} {prompt} <extra_id_0>")
 
@@ -214,7 +215,8 @@ class MetaLearnDataset(BaseDataset):
       prompt = find_prompt(args.prompt_style, target['domain'], target['slot'])
       state_str = super().state_to_string(example['prev_state'])
       
-      for detective_id in range(args.ensemble):
+      ensemble_range = args.ensemble if args.ensemble > 1 else 1
+      for detective_id in range(ensemble_range):
         additional_context = self.select_context(args, example, history, detective_id)
         dialog = f"{state_str}{history} {prompt}"
 
@@ -226,7 +228,6 @@ class MetaLearnDataset(BaseDataset):
         else:
           target['history'] = history
           labels.append(target)
-     
     """ max length is hardcoded to 512, which is the max allowed
     there is no need to subtract 16 since we do not need to save any space for the target value
     instead the sequence of target is taken care of by the decoder """
