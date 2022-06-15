@@ -1,6 +1,12 @@
 import os, pdb, sys
 import numpy as np
 
+with open("./utils/animal_for_random.txt") as ar:
+  ANIMALS = ar.read().lower().split("\n")
+for animal in ANIMALS[:]:
+  if " " in animal:
+    ANIMALS.remove(animal)
+
 def find_prompt(style, domain, slot):
   if domain in ['flight', 'music', 'movie', 'home', 'bus', 'medium', 'message', 'weather']:
     return naive_style(domain, slot)
@@ -49,6 +55,26 @@ def naive_style(domain, slot):
   desc = f"{slot} of the {domain}"
   prompt = f"<sep> {desc} is"
   return prompt
+
+def random_style(domain, slot):
+  # needs 22 colors
+  colors = ['red', 'blue', 'green', 'indigo', 'violet', 'yellow', 'orange', 'pink', 'purple',
+      'brown', 'black', 'white', 'gray', 'rose', 'cerulean', 'navy', 'magenta', 'cyan']
+  # needs 86 animals -- using external animal vocab instead
+  # animals = ['alligator','buffalo','cheetah','dog','elephant','fish','girrafe','hippo',
+  #     'iguana','jaguar','kangaroo','lion','mammoth','newt','octopus','parrot','squirrel',
+  #     'racoon','shark','tiger','unicorn','vulture','whale','lynx','yak','zebra']
+
+  # slots are replaced with a random color
+  # domains are replaced with a random animal
+  all_domains = list(schema_domains.keys())
+  all_slots = []
+  for dom in schema_slots:
+    all_slots.extend(list(schema_slots[dom].keys()))
+  all_slots = list(set(all_slots))
+  color = colors[all_domains.index(domain)]
+  animal = ANIMALS[all_slots.index(slot)]
+  return f"<sep> {color} {animal} <label>"
 
 schema_domains = {
   "restaurant": "find places to dine and whet your appetite",
@@ -960,13 +986,5 @@ def extract_domain(metadata, label_set, domain_tracker):
   # could not find anything 
   return "", domain_tracker
 
-def random_style(domain, slot):
-  colors = ['red', 'blue', 'green', 'indigo', 'violet', 'yellow', 'orange', 'pink', 'purple',
-      'brown', 'black', 'white', 'gray', 'rose', 'cerulean', 'navy', 'magenta', 'cyan']
-  animals = ['alligator','buffalo','cheetah','dog','elephant','fish','girrafe','hippo',
-      'iguana','jaguar','kangaroo','lion','mammoth','newt','octopus','parrot','squirrel',
-      'racoon','shark','tiger','unicorn','vulture','whale','lynx','yak','zebra']
-  # slots are replaced with a random color
-  # domains are replaced with a random animal
-  pass
+
 
