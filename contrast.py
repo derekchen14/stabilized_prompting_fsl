@@ -61,21 +61,23 @@ def fit_model(args, model, dataloader, evaluator):
   ckpt_path = os.path.join(args.output_dir, 'sbert', ckpt_name)
 
   # By default, uses AdamW optimizer with learning rate of 3e-5, WarmupCosine scheduler
-  model.fit(train_objectives=[(dataloader, loss_function)],
+  model.fit(train_objective=(dataloader, loss_function),
           evaluator=evaluator,
           epochs=args.n_epochs,
           logging_steps=args.log_interval,
-          evaluation_steps=args.eval_interval,
+          checkpoint_save_steps=args.checkpoint_interval,
           warmup_steps=warm_steps,
           save_best_model=args.do_save,
+          optimizer_params={'lr': args.learning_rate},
           output_path=ckpt_path,
+          checkpoint_path=ckpt_path,
           do_qual=args.qualify)
   return model
 
 def build_evaluator(args, dev_samples):
   print("Building the evaluator which is cosine similarity by default")
   evaluator = EmbeddingSimilarityEvaluator.from_input_examples(dev_samples, 
-      show_progress_bar=True, name='mwoz', write_csv=args.do_save)
+      show_progress_bar=False, name='mwoz', write_csv=args.do_save)
   # InformationRetrievalEvaluator, RerankingEvaluator
   # https://www.sbert.net/docs/package_reference/evaluation.html
   # alternatively, where sentences1, sentences2, and scores are lists of equal length
@@ -90,12 +92,15 @@ def add_special_tokens(model):
   print("Model loaded")
   return model
 
-def mine_for_samples(args):
-  # Load raw dialogue data from cache
+def load_from_cache(args):
   cache_file = f'mpnet_mwoz_{args.num_shots}_embeddings.pkl'
   cache_path = os.path.join(args.input_dir, 'cache', args.dataset, cache_file)  
   samples = pkl.load( open( cache_path, 'rb' ) )
+  return samples
 
+def mine_for_samples(args):
+  # Load raw dialogue data from cache
+  samples = load_from_cache(args)
   # Look for positive and negative example pairs to be used as training data based on similarity
   all_pairs = compute_scores(args, samples)
   # all_pairs.sort(key=lambda exp: exp.label)
@@ -104,6 +109,12 @@ def mine_for_samples(args):
   dev_pairs = all_pairs[divide:]
   print('train size', len(selected_pairs), 'dev size', len(dev_pairs))
   return selected_pairs, dev_pairs
+
+def select_test_data(args):
+  samples = load_from_cache(args)
+  total_size = args.kappa * args.batch_size
+  test_data = random.sample(samples, total_size)
+  return test_data
 
 def find_positives_negatives(samples):
   num_samples = len(samples)
@@ -131,13 +142,23 @@ def compute_scores(args, samples):
   """
   num_samples = len(samples)
   pair_ids = set()
+  breakdown = Counter()
   all_pairs = []
   for i in progress_bar(range(num_samples), total=num_samples, desc='Computing scores'):
     s_i = samples[i]
     candidates = random.sample(samples, args.kappa)
+    # print("KEY:", s_i['history'], s_i['dsv'])
+    
     for s_j in candidates:
       if s_i['gid'] == s_j['gid']: continue
-      
+      domain, slot, value = s_j['dsv']
+
+      valid = slot in ['internet', 'parking']  # default to False most of the time
+      for part in value.lower().replace(':', ' ').replace('|', ' ').split():
+        if part in s_j['history'].lower():
+          valid = True
+      if not valid: continue
+
       joint_id = create_joint_id(s_i, s_j)
       if joint_id in pair_ids:
         continue
@@ -146,16 +167,26 @@ def compute_scores(args, samples):
 
       if args.loss_function == 'cosine':
         sim_score = domain_slot_sim(s_i, s_j)
+        threshold = 0.4
       elif args.loss_function == 'contrast':
         sim_score = 1 if s_i['dsv'][1] == s_j['dsv'][1] else 0
+        threshold = 0.2
       elif args.loss_function == 'custom':
         sim_score = encode_as_bits(s_i, s_j)
+        threshold = 0.3
       
-      if sim_score == 0 and random.random() > 0.4:
+      if sim_score == 0 and random.random() > threshold:
         continue  # only keep a portion of negatives to keep things balanced
+      breakdown[sim_score] += 1
       pair = InputExample(texts=[s_i['history'], s_j['history']], label=sim_score)
       all_pairs.append(pair)
-
+    """
+      if random.random() < 0.3:
+        print("   --", s_j['history'], sim_score, s_j['dsv'])
+    if i >= 10:
+      pdb.set_trace()
+    """
+  print(breakdown)
   return all_pairs
 
 def create_joint_id(a, b):
@@ -195,24 +226,42 @@ def state_change_sim(a, b):
   aa, bb = row['sentence1'], row['sentence2']
   return sim_score
 
-def run_test(model, datasets):
-  test_samples = datasets['test']
-  test_evaluator = EmbeddingSimilarityEvaluator.from_input_examples(test_samples, name='sts-test')
-  ckpt_name = f'lr{args.learning_rate}_k{args.kappa}_{args.loss_function}.pt'
-  ckpt_path = os.path.join(args.output_dir, 'sbert', ckpt_name)
-  test_evaluator(model, output_path=ckpt_path)
+def test_collate(batch):
+  utterances, states = [], []
+  for example in batch:
+    utterances.append(example['history'])
+    states.append(example['dsv'])
+  return utterances, states
 
+def test_model(args, model, dataloader):
+  for utterances, states in dataloader:
+    features = model._first_module().tokenize(utterances)  # dict with inputs and attn_mask
+    features['input_ids'] = features['input_ids'].to(device)
+    features['attention_mask'] = features['attention_mask'].to(device)
+    
+    with torch.no_grad():
+      outputs = model(features)
+    model.qualify(outputs, utterances)
+    print("\n   ---------------   \n")
 
 if __name__ == "__main__":
   args = solicit_params()
   args = setup_gpus(args)
   set_seed(args)
 
-  model = load_sent_transformer(args, for_train=True)
+  model = load_sent_transformer(args, for_train=args.do_train)
   model = add_special_tokens(model)
+  model.to(device)
 
-  train_samples, dev_samples = mine_for_samples(args)
-  dataloader = DataLoader(train_samples, shuffle=True, batch_size=args.batch_size)
-  # dev_samples = mine_for_samples(args, split='dev')
-  evaluator = build_evaluator(args, dev_samples)
-  fit_model(args, model, dataloader, evaluator)
+  if args.do_train:
+    train_samples, dev_samples = mine_for_samples(args)
+    dataloader = DataLoader(train_samples, shuffle=True, batch_size=args.batch_size)
+    evaluator = build_evaluator(args, dev_samples)
+    fit_model(args, model, dataloader, evaluator)
+
+  elif args.do_eval:
+    test_samples = select_test_data(args)
+    dataloader = DataLoader(test_samples, shuffle=True, batch_size=args.batch_size)
+    dataloader.collate_fn = test_collate
+    test_model(args, model, dataloader)
+

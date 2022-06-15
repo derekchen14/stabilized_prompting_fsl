@@ -1,16 +1,19 @@
 import os, pdb, sys
 import numpy as np
 import random
+import json
 
 import torch
 from torch import nn
 from torch import optim
 from torch.nn import functional as F
 
+from tqdm import tqdm as progress_bar
 from collections import defaultdict
 from assets.static_vars import device
 from sentence_transformers import SentenceTransformer
-
+from sentence_transformers.model_card_templates import ModelCardTemplate
+from typing import List, Dict, Tuple, Type, Callable
     
 class BaseModel(nn.Module):
   def __init__(self, args, encoder, tokenizer, ontology):
@@ -71,35 +74,37 @@ class GenerateModel(BaseModel):
 
 class SentenceBERT(SentenceTransformer):
 
-  def qualify(self, embedder, utterances):
+  def qualify(self, features, utterances):
     chosen_id = random.randint(0, len(utterances))
-    chosen_utt = utterances.pop(chosen_id)
-    chosen_embed = embedder(chosen_utt)['sentence_embedding']
+    chosen_utt = utterances[chosen_id]
+    chosen_embed = features['sentence_embedding'][chosen_id].unsqueeze(0)
 
     comparables = []
-    for utterance in utterances:
-      with no_grad():
-        curr_embed = embedder(utterance)['sentence_embedding']
-      score = torch.cosine_similarity(chosen_embed, curr_embed)
-      comp = (utterance, round(score, 3))
+    for sent_embed, utterance in zip(features['sentence_embedding'], utterances):
+      with torch.no_grad():
+        score = torch.cosine_similarity(chosen_embed, sent_embed.unsqueeze(0))
+      comp = (utterance, round(score.item(), 3))
       comparables.append(comp)
-    comparables.sort(key=lambda x: x[0], reverse=True)
+    comparables.sort(key=lambda x: x[1], reverse=True)
 
-    print("Target utterance:", utterance)
+    print("Target utterance:", chosen_utt)
     print(f"Out of {len(utterances)} utterances, the 3 closest are:")
-    for close, score in comparables[:3]:
-      print("   ", close, score)
+    count = 1
+    for close, score in comparables[1:4]:
+      print(f"   {count})", close, score)
+      count += 1
     print(f"And the three furthest are:")
+    count = 1
     for far, score in comparables[-3:]:
-      print("   ", far, score)
+      print(f"   {count})", far, score)
+      count += 1
 
-  def fit(self, train_objective: Tuple[DataLoader, nn.Module],
-      evaluator: SentenceEvaluator = None,
-      epochs: int = 1,
+  def fit(self, train_objective: Tuple[object, nn.Module],
+      evaluator, epochs: int = 1,
       steps_per_epoch = None,
-      scheduler_name: str = 'WarmupCosine',
+      scheduler_name: str = 'WarmupLinear',
       warmup_steps: int = 10000,
-      optimizer_class: Type[Optimizer] = torch.optim.AdamW,
+      optimizer_class = optim.AdamW,
       optimizer_params : Dict[str, object]= {'lr': 3e-5},
       weight_decay: float = 0.01,
       logging_steps: int = 0,
@@ -149,16 +154,17 @@ class SentenceBERT(SentenceTransformer):
     dataloader, loss_model = train_objective
     info_loss_functions =  ModelCardTemplate.get_train_objective_info(dataloader, loss_model)
     info_loss_functions = "\n\n".join([text for text in info_loss_functions])
-
-    info_fit_parameters = json.dumps({"evaluator": fullname(evaluator), "epochs": epochs,
-                              "steps_per_epoch": steps_per_epoch, "scheduler": scheduler_name,
-                              "warmup_steps": warmup_steps, "optimizer_class": str(optimizer_class),
-                              "optimizer_params": optimizer_params, "weight_decay": weight_decay,
-                              "evaluation_steps": evaluation_steps, "logging_steps": logging_steps,
-                              "max_grad_norm": max_grad_norm}, indent=4, sort_keys=True)
+    eval_name = evaluator.__class__.__module__
+    
+    info_fit_parameters = {"evaluator": eval_name, "epochs": epochs, "steps_per_epoch": steps_per_epoch,
+        "scheduler": scheduler_name, "warmup_steps": warmup_steps, "weight_decay": weight_decay,
+        "optimizer_class": str(optimizer_class), "optimizer_params": optimizer_params, 
+        "evaluation_steps": evaluation_steps, "logging_steps": logging_steps, "max_grad_norm": max_grad_norm}
     print(info_fit_parameters)
+    ifp = json.dumps(info_fit_parameters, indent=4, sort_keys=True)
+
     self._model_card_text = None
-    self._model_card_vars['{TRAINING_SECTION}'] = ModelCardTemplate.__TRAINING_SECTION__.replace("{LOSS_FUNCTIONS}", info_loss_functions).replace("{FIT_PARAMETERS}", info_fit_parameters)
+    self._model_card_vars['{TRAINING_SECTION}'] = ModelCardTemplate.__TRAINING_SECTION__.replace("{LOSS_FUNCTIONS}", info_loss_functions).replace("{FIT_PARAMETERS}", ifp)
     self.best_score = -9999999
     self.to(self._target_device)
     loss_model.to(self._target_device)
@@ -182,14 +188,19 @@ class SentenceBERT(SentenceTransformer):
 
     global_step = 0
     data_iterators = []
-
-    for epoch in trange(epochs, desc="Epoch", disable=False):
+    tok = self._first_module().tokenizer
+    
+    for epoch in progress_bar(range(epochs), desc="Epoch", total=epochs):
       training_steps = 0
       loss_model.zero_grad()
       loss_model.train()
+      chosen_batch = random.randint(0, 100-1) # len(dataloader)
 
       losses = []
       for features, labels in dataloader:
+        if labels.dtype == torch.int64:
+          labels = labels.type(torch.float32)
+
         loss_value = loss_model(features, labels)
         losses.append(loss_value.item())
         loss_value.backward()
@@ -202,28 +213,23 @@ class SentenceBERT(SentenceTransformer):
         training_steps += 1
         global_step += 1
 
-        if do_qual and evaluation_steps > 0 and training_steps % evaluation_steps == 0:
-          utterances = [feat[0] for feat in features]
-          self.qualify(loss_model.model, utterances)
-
         if logging_steps > 0 and training_steps % logging_steps == 0:
           avg_loss = round(np.mean(losses), 3) 
-          def caller(raw_score, epoch, steps):
-            score = round(raw_score, 3)
-            print(f"Step {steps}/{steps_per_epoch}, Loss: {avg_loss}, Score: {score}")
-
-          self._eval_during_training(evaluator, output_path, save_best_model, epoch, training_steps, caller)
-          loss_model.zero_grad()
-          loss_model.train()
-
+          print(f"Step {training_steps}/{steps_per_epoch}, Loss: {avg_loss}")
         if checkpoint_path is not None and checkpoint_save_steps > 0 and global_step % checkpoint_save_steps == 0:
+          print("Saving checkpoint")
           self._save_checkpoint(checkpoint_path, checkpoint_save_total_limit, global_step)
+        if do_qual and training_steps == chosen_batch:
+          fzero = features[0]
+          utterances = tok.batch_decode(fzero['input_ids'], skip_special_tokens=True)
 
-
-      self._eval_during_training(evaluator, output_path, save_best_model, epoch, -1, callback)
-
-    if evaluator is None and output_path is not None:   #No evaluator, but output path: save final model version
-      self.save(output_path)
+      if do_qual:
+        self.qualify(fzero, utterances)
+      avg_loss = round(np.mean(losses), 3)
+      def caller(raw_score, epoch, steps):
+        score = round(raw_score, 3)
+        print(f"Step {steps}/{steps_per_epoch}, Loss: {avg_loss}, Score: {score}")
+      self._eval_during_training(evaluator, output_path, save_best_model, epoch, training_steps, caller)
 
     if checkpoint_path is not None:
       self._save_checkpoint(checkpoint_path, checkpoint_save_total_limit, global_step)
