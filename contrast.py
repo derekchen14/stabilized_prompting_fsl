@@ -3,6 +3,7 @@ import numpy as np
 import random
 import math
 
+import torch
 from torch.utils.data import DataLoader
 from torch import nn
 from collections import Counter
@@ -16,19 +17,23 @@ from sentence_transformers.evaluation import EmbeddingSimilarityEvaluator
 
 class DomainSlotValueLoss(nn.Module):
   """https://github.com/UKPLab/sentence-transformers/blob/master/sentence_transformers/losses/ContrastiveLoss.py"""
-  def __init__(self, model):
+  def __init__(self, args, model):
     super(DomainSlotValueLoss).__init__()
     self.model = model
     self.loss_function = nn.MSELoss()
 
-  def _convert_labels(self, labels):
-    """ returns a list of labels where each transformed label is a 3-part tuple
-    the three parts in the tuple are 3 booleans
-    indicating whether the pair is matching in [domain, slot and value] """
-    converted = []
-    for label in labels:
+    self.batch_size = args.batch_size
+    self.register_buffer("temperature", torch.tensor(args.temperature))
+    self.verbose = args.verbose
 
-      score_str = bin(label)[2:]
+  def _convert_to_labels(self, targets):
+    """ returns a list of labels where each transformed target is a 4-part tuple
+    the three parts in the tuple are 4 floats
+    indicating whether the pair is matching in [negative, domain, slot, value] """
+    converted = []
+    for target in targets:
+
+      score_str = bin(target)[2:]
       if len(score_str) == 1:
         bin_str = '00' + score_str
       if len(score_str) == 2:
@@ -36,17 +41,120 @@ class DomainSlotValueLoss(nn.Module):
       if len(score_str) == 3:
         bin_str = score_str
 
-      bin_list = [int(x) > 0.5 for x in bin_str]
-      converted.append(bin_list)
+      label = []
+      if score_str == '000':
+        label.append(0.0)
+      for x in bin_str:
+        label.append(int(x))
+      converted.append(label)
+
+    # turn into a tensor
+    assert len(converted) == self.batch_size
+    # print("matches: {}".format(matches.shape))
+    # labels = labels.contiguous().view(-1, 1)
     return converted
 
-  def forward(self, sentence_features, labels):
+  def sup_con_loss(self, sentence_features, labels):
+    """ supervised contrastive loss """
+    embeds = [self.model(sent_feat)['sentence_embedding'] for sent_feat in sentence_features]
+    # embeds[0] has shape batch_size, embed_dim
+    assert len(embeds) == 2
+
+    # transform labels vector into a matrix of 0.0s and 1.0s (aka. floats)
+    mask = torch.eq(labels, labels.T).float().to(device)
+    
+    # Reshapes the embeddings to merge the batch_size and number of positive classes
+    anchor_count = embeds.shape[1]   # should be 3 for Domain, Slot and Value
+    anchor_feature = torch.cat(torch.unbind(embeds, dim=1), dim=0)  # only embed_dim remains
+
+    anchor_dot_contrast = torch.div(
+      torch.matmul(anchor_feature, contrast_feature.T),
+      self.temperature)
+    # for numerical stability
+    logits_max, _ = torch.max(anchor_dot_contrast, dim=1, keepdim=True)
+    logits = anchor_dot_contrast - logits_max.detach()
+
+    # tile mask
+    mask = mask.repeat(anchor_count, contrast_count)
+    # mask-out self-contrast cases
+    logits_mask = torch.scatter(
+      torch.ones_like(mask),
+      1,
+      torch.arange(batch_size * anchor_count).view(-1, 1).to(device),
+      0
+    )
+    mask = mask * logits_mask
+
+    # compute log_prob
+    exp_logits = torch.exp(logits) * logits_mask
+    log_prob = logits - torch.log(exp_logits.sum(1, keepdim=True))
+
+    # compute mean of log-likelihood over positive
+    mean_log_prob_pos = (mask * log_prob).sum(1) / mask.sum(1)
+
+    # loss
+    loss = - (self.temperature / self.base_temperature) * mean_log_prob_pos
+    loss = loss.view(anchor_count, batch_size).mean()
+
+    return loss
+
+  def simclr_loss(self, sentence_features, labels):
+    """ modified SimCLR loss """
+    embeds = [self.model(sent_feat)['sentence_embedding'] for sent_feat in sentence_features]
+    z_i = F.normalize(embeds[0], dim=1)
+    z_j = F.normalize(embeds[1], dim=1)
+    rep = torch.cat([z_i, z_j], dim=0)
+
+    similarity_matrix = F.cosine_similarity(rep.unsqueeze(1), rep.unsqueeze(0), dim=2)
+    if self.verbose: print("Similarity matrix", similarity_matrix.shape)
+  
+    def pairwise_loss(i, j):
+      z_i_, z_j_ = rep[i], rep[j]
+      sim_i_j = similarity_matrix[i, j]
+      if self.verbose: print(f"sim({i}, {j})={sim_i_j}")
+          
+      numerator = torch.exp(sim_i_j / self.temperature)
+      default_ones = torch.ones((2 * self.batch_size, ))
+      one_for_not_i = default_ones.to(emb_i.device).scatter_(0, torch.tensor([i]), 0.0)
+      if self.verbose: print(f"one for not i", one_for_not_i.shape)
+      
+      partition_func = torch.exp(similarity_matrix[i, :] / self.temperature)
+      denominator = torch.sum(one_for_not_i * partition_func)
+      if self.verbose: print("Denominator", denominator.shape)
+          
+      loss_ij = -torch.log(numerator / denominator)
+      if self.verbose: print(f"loss({i},{j})={loss_ij}")
+      return loss_ij.squeeze(0)
+
+    N = self.batch_size
+    total_loss = 0.0
+    for k in range(0, N):
+        total_loss += self.pairwise_loss(k, k + N) + self.pairwise_loss(k + N, k)
+    total_loss *= 1.0 / (2*N)
+    return total_loss
+
+  def forward(self, sentence_features, targets):
     # sentence_features is Iterable[Dict[str, Tensor]]
     # labels is an integer representing a binary encoding
-    matches = self._convert_labels(labels)
-    embeddings = [self.model(sent_feat)['sentence_embedding'] for sent_feat in sentence_features]
-    output = self.cos_score_transformation(torch.cosine_similarity(embeddings[0], embeddings[1]))
-    return self.loss_fct(output, labels.view(-1))
+    labels = self._convert_to_labels(targets)
+    reps = [self.model(sent_feat)['sentence_embedding'] for sent_feat in sentence_features]
+    distances = 1 - torch.cosine_similarity(reps[0], reps[1])
+    print("distances: {}".format(distances.shape))
+    print("labels: {}".format(len(labels)))
+    print("batch_size: {}".format(self.batch_size))
+    pdb.set_trace()
+
+    pos_values, pos_slots, pos_domains, negatives = 0.0, 0.0, 0.0, 0.0
+    for distance, label in zip(distances, labels):
+      pos_values += label[3] * distances.pow(2)
+      pos_slots += label[2] * F.relu(0.4 - distance).pow(2)
+      pos_domains += label[1] * F.relu(0.7 - distance).pow(2)
+      negatives += label[0] * F.relu(1.0 - distance).pow(2)
+
+    loss = 0.5 * (pos_values + pos_slots + pos_domains + negatives)
+    # loss = 0.5 * (positives + negatives)
+    return loss.mean()
+    # return self.loss_function(output, labels.view(-1))
 
 def fit_model(args, model, dataloader, evaluator):
   if args.loss_function == 'cosine':
@@ -54,7 +162,7 @@ def fit_model(args, model, dataloader, evaluator):
   elif args.loss_function == 'contrast':
     loss_function = losses.ContrastiveLoss(model=model)
   elif args.loss_function == 'custom':
-    loss_function = DomainSlotValueLoss(model=model)
+    loss_function = DomainSlotValueLoss(args, model)
 
   warm_steps = math.ceil(len(dataloader) * args.n_epochs * 0.1) # 10% of train data for warm-up
   ckpt_name = f'lr{args.learning_rate}_k{args.kappa}_{args.loss_function}.pt'
@@ -265,3 +373,45 @@ if __name__ == "__main__":
     dataloader.collate_fn = test_collate
     test_model(args, model, dataloader)
 
+"""
+class ContrastiveLossELI5(nn.Module):
+  def __init__(self, batch_size, temperature=0.5, verbose=True):
+    super().__init__()
+    self.batch_size = batch_size
+    self.register_buffer("temperature", torch.tensor(temperature))
+    self.verbose = verbose
+          
+  def forward(self, emb_i, emb_j):
+    z_i = F.normalize(emb_i, dim=1)
+    z_j = F.normalize(emb_j, dim=1)
+
+    rep = torch.cat([z_i, z_j], dim=0)
+    similarity_matrix = F.cosine_similarity(rep.unsqueeze(1), rep.unsqueeze(0), dim=2)
+    if self.verbose: print("Similarity matrix\n", similarity_matrix, "\n")
+        
+    def l_ij(i, j):
+        z_i_, z_j_ = rep[i], rep[j]
+        sim_i_j = similarity_matrix[i, j]
+        if self.verbose: print(f"sim({i}, {j})={sim_i_j}")
+            
+        numerator = torch.exp(sim_i_j / self.temperature)
+        default_ones = torch.ones((2 * self.batch_size, ))
+        one_for_not_i = default_ones.to(emb_i.device).scatter_(0, torch.tensor([i]), 0.0)
+        if self.verbose: print(f"1{{k!={i}}}",one_for_not_i)
+        
+        denominator = torch.sum(
+            one_for_not_i * torch.exp(similarity_matrix[i, :] / self.temperature)
+        )    
+        if self.verbose: print("Denominator", denominator)
+            
+        loss_ij = -torch.log(numerator / denominator)
+        if self.verbose: print(f"loss({i},{j})={loss_ij}\n")
+            
+        return loss_ij.squeeze(0)
+
+    N = self.batch_size
+    loss = 0.0
+    for k in range(0, N):
+        loss += l_ij(k, k + N) + l_ij(k + N, k)
+    return 1.0 / (2*N) * loss
+"""
