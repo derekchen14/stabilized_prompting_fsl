@@ -202,7 +202,6 @@ def desemble(args, output_strings):
     output_dict = defaultdict(int)
     for pred_value in pred_values[group_size*group_id:group_size*(group_id+1)]:
       output_dict[pred_value] += 1
-    pdb.set_trace()
     output_best = max(output_dict, key=output_dict.get)
     output_desemble.append(output_best)
   return output_desemble

@@ -110,14 +110,13 @@ def run_test(args, dataset, exp_logger, detective):
                                               early_stopping=True, temperature=args.temperature, 
                                               forced_eos_token_id=tokenizer.eos_token_id)
         output_strings = tokenizer.batch_decode(outputs.detach(), skip_special_tokens=False)
-       
+        output_strings = desemble(args, output_strings)
         for target, output_str in zip(target_dict, output_strings):
           state_key = f"{target['domain']}-{target['slot']}"
-          pred_value = parse_output(args, output_str)
-          prior_pred_state[global_id][state_key] = pred_value
+          prior_pred_state[global_id][state_key] = output_str
     if exp_logger.log_eval(args.qualify, output_strings, target_dict):
       results = test_quantify(args, prior_pred_state, all_targets, exp_logger, tokenizer)
-      dataset.detective.report(args.verbose, args.task)
+      dataset.detective[0].report(args.verbose, args.task)
   
   if args.do_save:
     output_name = f'{args.prompt_style}_{args.num_shots}.json'
@@ -181,6 +180,37 @@ def check_support(args, datasets, tokenizer):
     datasets['dev'].add_support(supports, args.left_out)
   return datasets
 
+def ensembledetective(args, datasets):
+  import copy
+  # cosine
+  args_cos = copy.deepcopy(args)
+  args_cos.ignore_cache = True
+  args_cos.search_method = "cosine"
+  detective1 = ExemplarDetective(args_cos, datasets['train'])
+  # cosine with pretrained embedding
+  args_sbert = copy.deepcopy(args)
+  args_sbert.ignore_cache = False
+  args_sbert.search_method = "cosine"
+  detective3 = ExemplarDetective(args_sbert, datasets['train'])
+  # euclidean
+  args_euc = copy.deepcopy(args)
+  args_euc.ignore_cache = True
+  args_euc.search_method = "euclidean"
+  detective2 = ExemplarDetective(args_euc, datasets['train'])
+
+  detective = [detective1, detective2, detective3]
+  if args.ensemble <= 3:
+    detective = detective[:args.ensemble]
+  else:
+    # random
+    for _ in range(args.ensemble - 3):
+      args_rad = copy.deepcopy(args)
+      args_rad.ignore_cache = True
+      args_rad.search_method = "random"
+      detective.append(ExemplarDetective(args_rad, datasets['train']))
+  return detective
+
+
 if __name__ == "__main__":
   args = solicit_params()
   args = setup_gpus(args)
@@ -192,7 +222,12 @@ if __name__ == "__main__":
   tokenizer = load_tokenizer(args)
   datasets, ontology = process_data(args, raw_data, tokenizer)
   exp_logger = ExperienceLogger(args, ontology, save_path)
-  detective = ExemplarDetective(args, datasets['train'])
+  if args.ensemble > 1:
+    detective = ensembledetective(args, datasets)
+  else:
+    detective = ExemplarDetective(args, datasets['train'])
+  
+
 
   if args.do_train:
     model = load_model(args, ontology, tokenizer, save_path)
