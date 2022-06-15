@@ -97,7 +97,8 @@ class BaseDataset(Dataset):
         self.detective = detective
       else:
         self.detective = [detective]
-    print(f"Using {detective.search_method} distance to search ...")
+    search_methods = " ".join([detective.search_method for detective in self.detective])
+    print(f"Using {search_methods} distance to search ...")
 
   @staticmethod
   def state_to_string(prev_state):

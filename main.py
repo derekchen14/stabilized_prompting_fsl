@@ -198,7 +198,7 @@ def ensembledetective(args, datasets):
   args_euc.search_method = "euclidean"
   detective3 = ExemplarDetective(args_euc, datasets['train'])
 
-  detective = [detective1, detective2, detective3, detective4]
+  detective = [detective1, detective2, detective3]
 
   # random
   if args.ensemble > 3:
