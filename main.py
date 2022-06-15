@@ -110,7 +110,6 @@ def run_test(args, dataset, exp_logger, detective):
                                               early_stopping=True, temperature=args.temperature, 
                                               forced_eos_token_id=tokenizer.eos_token_id)
         output_strings = tokenizer.batch_decode(outputs.detach(), skip_special_tokens=False)
-
         output_strings = desemble(output_strings)
         for target, output_str in zip(target_dict, output_strings):
           state_key = f"{target['domain']}-{target['slot']}"
@@ -181,19 +180,7 @@ def check_support(args, datasets, tokenizer):
     datasets['dev'].add_support(supports, args.left_out)
   return datasets
 
-if __name__ == "__main__":
-  args = solicit_params()
-  args = setup_gpus(args)
-  args, save_path = check_directories(args)
-  set_seed(args)
-
-  reformat_data(args)
-  raw_data = load_data(args)
-  tokenizer = load_tokenizer(args)
-  datasets, ontology = process_data(args, raw_data, tokenizer)
-  exp_logger = ExperienceLogger(args, ontology, save_path)
-  detective = ExemplarDetective(args, datasets['train'])
-  """
+def ensembledetective(args, datasets):
   import copy
   # cosine
   args_cos = copy.deepcopy(args)
@@ -220,8 +207,26 @@ if __name__ == "__main__":
       args_rad.ignore_cache = True
       args_rad.search_method = "random"
       detective.append(ExemplarDetective(args_rad, datasets['train']))
+  return detective
 
-  """
+
+if __name__ == "__main__":
+  args = solicit_params()
+  args = setup_gpus(args)
+  args, save_path = check_directories(args)
+  set_seed(args)
+
+  reformat_data(args)
+  raw_data = load_data(args)
+  tokenizer = load_tokenizer(args)
+  datasets, ontology = process_data(args, raw_data, tokenizer)
+  exp_logger = ExperienceLogger(args, ontology, save_path)
+  if args.ensemble > 1:
+    detective = EnsembleDetective(args, datasets)
+  else:
+    detective = ensembledetective(args, datasets['train'])
+  
+
 
   if args.do_train:
     model = load_model(args, ontology, tokenizer, save_path)
