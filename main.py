@@ -222,9 +222,9 @@ if __name__ == "__main__":
   datasets, ontology = process_data(args, raw_data, tokenizer)
   exp_logger = ExperienceLogger(args, ontology, save_path)
   if args.ensemble > 1:
-    detective = EnsembleDetective(args, datasets)
+    detective = EnsembleDetective(args, datasets['train'])
   else:
-    detective = ensembledetective(args, datasets['train'])
+    detective = ensembledetective(args, datasets)
   
 
 
