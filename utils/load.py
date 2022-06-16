@@ -94,13 +94,13 @@ def load_tokenizer(args):
   tokenizer.padding_side = 'left'
   return tokenizer
 
-def load_sent_transformer(args, embed_method='mpnet', for_train=False):
-  if for_train:  # use the default model without fine-tune
-    ckpt_name = 'all-mpnet-base-v2' if embed_method == 'mpnet' else 'all-distilroberta-v1'
-    ckpt_path = f'sentence-transformers/{ckpt_name}'
-  else:
+def load_sent_transformer(args, embed_method='mpnet', use_tuned=False):
+  if use_tuned:
     ckpt_name = f'lr{args.learning_rate}_k{args.kappa}_{args.loss_function}.pt'
     ckpt_path = os.path.join(args.output_dir, 'sbert', ckpt_name)
+  else: # use the default model without fine-tune
+    ckpt_name = 'all-mpnet-base-v2' if embed_method == 'mpnet' else 'all-distilroberta-v1'
+    ckpt_path = f'sentence-transformers/{ckpt_name}'
   
   print(f"Loading sentence transformer from {ckpt_name}")
   model = SentenceBERT(ckpt_path, device=device)

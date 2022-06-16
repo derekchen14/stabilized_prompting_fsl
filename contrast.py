@@ -311,15 +311,13 @@ if __name__ == "__main__":
   args = setup_gpus(args)
   set_seed(args)
 
-  model = load_sent_transformer(args, for_train=args.do_train)
+  model = load_sent_transformer(args, use_tuned=args.do_eval)
   model = add_special_tokens(model)
   model.to(device)
 
   if args.do_train:
-    # if args.loss_function == 'cosine':
+    # train_samples, dev_samples = mine_for_samples(args)
     train_samples, dev_samples = mine_for_queries(args)
-    # else:
-    #   train_samples, dev_samples = mine_for_samples(args)
     dataloader = DataLoader(train_samples, shuffle=True, batch_size=args.batch_size)
     evaluator = build_evaluator(args, dev_samples)
     fit_model(args, model, dataloader, evaluator)

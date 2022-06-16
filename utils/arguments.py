@@ -54,6 +54,8 @@ def solicit_params():
                 help="Number of examples to use as negatives during constrastive training")
     parser.add_argument("--filter", action="store_true",
                 help="Filter out non-salient utterances as predicted by logistic regression")
+    parser.add_argument("--use-tuned", action="store_true",
+                help="Use the fine tuned SBERT model rather than the default one")
 
     # Key settings
     parser.add_argument("--ignore-cache", action="store_true",
