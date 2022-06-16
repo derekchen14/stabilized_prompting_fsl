@@ -20,7 +20,7 @@ def check_cache(args):
   cache_path = os.path.join(args.input_dir, 'cache', args.dataset, cache_file)
   use_cache = not args.ignore_cache
 
-  if os.path.exists(cache_path) and use_cache:
+  if os.path.exists(cache_path) and (use_cache or args.use_tuned):
     res = pkl.load( open( cache_path, 'rb' ) )
     if args.do_train:
       print(f"Loaded {len(res['train'])} train and {len(res['dev'])} dev examples from {cache_path}")
