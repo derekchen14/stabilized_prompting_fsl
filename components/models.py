@@ -75,7 +75,7 @@ class GenerateModel(BaseModel):
 class SentenceBERT(SentenceTransformer):
 
   def qualify(self, features, utterances):
-    chosen_id = random.randint(0, len(utterances))
+    chosen_id = random.randint(0, len(utterances) - 1)
     chosen_utt = utterances[chosen_id]
     chosen_embed = features['sentence_embedding'][chosen_id].unsqueeze(0)
 
