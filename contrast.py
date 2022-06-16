@@ -4,21 +4,22 @@ import random
 import math
 
 import torch
-from torch.utils.data import DataLoader
 from torch import nn
-from collections import Counter
+from torch.utils.data import DataLoader
+from torch.nn import functional as F
 
+from collections import Counter
 from utils.help import *
 from utils.arguments import solicit_params
 from utils.load import load_tokenizer, load_data, load_sent_transformer
 from assets.static_vars import device, debug_break
 from sentence_transformers import LoggingHandler, losses, util, InputExample, models
-from sentence_transformers.evaluation import EmbeddingSimilarityEvaluator
+from sentence_transformers.evaluation import EmbeddingSimilarityEvaluator, InformationRetrievalEvaluator
 
 class DomainSlotValueLoss(nn.Module):
-  """https://github.com/UKPLab/sentence-transformers/blob/master/sentence_transformers/losses/ContrastiveLoss.py"""
+  """Custom contrastive loss for DST"""
   def __init__(self, args, model):
-    super(DomainSlotValueLoss).__init__()
+    super().__init__()
     self.model = model
     self.loss_function = nn.MSELoss()
 
@@ -28,31 +29,14 @@ class DomainSlotValueLoss(nn.Module):
 
   def _convert_to_labels(self, targets):
     """ returns a list of labels where each transformed target is a 4-part tuple
-    the three parts in the tuple are 4 floats
+    targets are a 3-part tensor, which changes into a tensor of 4 floats
     indicating whether the pair is matching in [negative, domain, slot, value] """
-    converted = []
-    for target in targets:
-
-      score_str = bin(target)[2:]
-      if len(score_str) == 1:
-        bin_str = '00' + score_str
-      if len(score_str) == 2:
-        bin_str = '0' + score_str
-      if len(score_str) == 3:
-        bin_str = score_str
-
-      label = []
-      if score_str == '000':
-        label.append(0.0)
-      for x in bin_str:
-        label.append(int(x))
-      converted.append(label)
-
-    # turn into a tensor
-    assert len(converted) == self.batch_size
-    # print("matches: {}".format(matches.shape))
-    # labels = labels.contiguous().view(-1, 1)
-    return converted
+    positives = (torch.sum(targets, dim=1) > 0.5).float()  # sum along 
+    labels = torch.cat([positives.unsqueeze(1), targets], dim=1)
+    if len(labels) != self.batch_size:
+      print('size', len(labels))
+    # assert len(labels) == self.batch_size
+    return labels
 
   def forward(self, sentence_features, targets):
     # sentence_features is Iterable[Dict[str, Tensor]]
@@ -60,22 +44,16 @@ class DomainSlotValueLoss(nn.Module):
     labels = self._convert_to_labels(targets)
     reps = [self.model(sent_feat)['sentence_embedding'] for sent_feat in sentence_features]
     distances = 1 - torch.cosine_similarity(reps[0], reps[1])
-    print("distances: {}".format(distances.shape))
-    print("labels: {}".format(len(labels)))
-    print("batch_size: {}".format(self.batch_size))
-    pdb.set_trace()
 
     pos_values, pos_slots, pos_domains, negatives = 0.0, 0.0, 0.0, 0.0
     for distance, label in zip(distances, labels):
       pos_values += label[3] * distances.pow(2)
-      pos_slots += label[2] * F.relu(0.4 - distance).pow(2)
-      pos_domains += label[1] * F.relu(0.7 - distance).pow(2)
+      pos_slots += label[2] * F.relu(0.3 - distance).pow(2)
+      pos_domains += label[1] * F.relu(0.8 - distance).pow(2)
       negatives += label[0] * F.relu(1.0 - distance).pow(2)
 
     loss = 0.5 * (pos_values + pos_slots + pos_domains + negatives)
-    # loss = 0.5 * (positives + negatives)
     return loss.mean()
-    # return self.loss_function(output, labels.view(-1))
 
 def fit_model(args, model, dataloader, evaluator):
   if args.loss_function == 'cosine':
@@ -106,13 +84,13 @@ def fit_model(args, model, dataloader, evaluator):
 def build_evaluator(args, dev_samples):
   # https://www.sbert.net/docs/package_reference/evaluation.html
   print("Building the evaluator which is cosine similarity by default")
-  if args.loss_function == 'custom':
-    queries, corpus, relevant_docs = dev_samples
-    evaluator = InformationRetrievalEvaluator(queries, corpus, relevant_docs,
-          precision_recall_at_k=[1, 5, 10], show_progress_bar=True, name="margin_4|7|10")
-  else:
-    evaluator = EmbeddingSimilarityEvaluator.from_input_examples(dev_samples, 
-          show_progress_bar=False, name='mwoz', write_csv=args.do_save)
+  # if args.loss_function == 'custom':
+  queries, corpus, relevant_docs = dev_samples
+  evaluator = InformationRetrievalEvaluator(queries, corpus, relevant_docs,
+                   precision_recall_at_k=[1, 5, 10], name="margin_3_8_10")
+  # else:
+  #   evaluator = EmbeddingSimilarityEvaluator.from_input_examples(dev_samples, 
+  #         show_progress_bar=False, name='mwoz', write_csv=args.do_save)
   # alternatively, where sentences1, sentences2, and scores are lists of equal length
   # evaluator = EmbeddingSimilarityEvaluator(sentences1, sentences2, scores)
   return evaluator
@@ -151,6 +129,7 @@ def mine_for_queries(args):
   divide = int(len(all_pairs) * 0.8)
   selected_pairs = all_pairs[:divide]
   # Gather the queries, corpus and relevant docs
+  divide = int(len(samples) * 0.5)
   dev_data = gather_docs(args, samples[divide:])
   return selected_pairs, dev_data
 
@@ -179,6 +158,7 @@ def gather_docs(args, samples):
   """
   corpus, queries = {}, {}
   relevant_docs = defaultdict(list)
+  print(f"Gathered {len(samples)} queries")
 
   for out_sample in progress_bar(samples, total=len(samples), desc='Gathering queries'):
     cid = out_sample['gid']
@@ -192,7 +172,7 @@ def gather_docs(args, samples):
       domain, slot, value = in_sample['dsv']
       valid = slot in ['internet', 'parking']  # default to False most of the time
       for part in value.lower().replace(':', ' ').replace('|', ' ').split():
-        if part in s_j['history'].lower():
+        if part in in_sample['history'].lower():
           valid = True
       if not valid: continue
 
@@ -242,18 +222,21 @@ def compute_scores(args, samples):
 
       if args.loss_function == 'cosine':
         sim_score = domain_slot_sim(s_i, s_j)
+        target = sim_score
         threshold = 0.4
       elif args.loss_function == 'contrast':
         sim_score = 1 if s_i['dsv'][1] == s_j['dsv'][1] else 0
+        target = sim_score
         threshold = 0.2
       elif args.loss_function == 'custom':
-        sim_score = encode_as_bits(s_i, s_j)
+        target = encode_as_bits(s_i, s_j)
+        sim_score = sum(target)
         threshold = 0.3
       
       if sim_score == 0 and random.random() > threshold:
         continue  # only keep a portion of negatives to keep things balanced
       breakdown[sim_score] += 1
-      pair = InputExample(texts=[s_i['history'], s_j['history']], label=sim_score)
+      pair = InputExample(texts=[s_i['history'], s_j['history']], label=target)
       all_pairs.append(pair)
     """
       if random.random() < 0.3:
@@ -284,16 +267,16 @@ def domain_slot_sim(a, b):
   return sim_score
 
 def encode_as_bits(a, b):
-  matches = ['0'] * 5  # start with 5 leading zeros
+  matches = []
   for property_a, property_b in zip(a['dsv'], b['dsv']):
     if property_a == property_b:
-      matches.append('1')
+      matches.append(1.0)
     else:
-      matches.append('0')
-  match_str = ''.join(matches)
-  sim_score = int(match_str, 2)
-
-  return sim_score
+      matches.append(0.0)
+  return matches
+  # match_str = ''.join(matches)
+  # sim_score = int(match_str, 2)
+  # score_str = bin(target)[2:]
 
 def state_change_sim(a, b):
   diff = a - b
@@ -309,6 +292,7 @@ def test_collate(batch):
   return utterances, states
 
 def test_model(args, model, dataloader):
+  count = 0
   for utterances, states in dataloader:
     features = model._first_module().tokenize(utterances)  # dict with inputs and attn_mask
     features['input_ids'] = features['input_ids'].to(device)
@@ -317,6 +301,9 @@ def test_model(args, model, dataloader):
     with torch.no_grad():
       outputs = model(features)
     model.qualify(outputs, utterances)
+    
+    count += 1
+    if count > 10: break
     print("\n   ---------------   \n")
 
 if __name__ == "__main__":
@@ -329,10 +316,10 @@ if __name__ == "__main__":
   model.to(device)
 
   if args.do_train:
-    if args.loss_function == 'custom':
-      train_samples, dev_samples = mine_for_queries(args)
-    else:
-      train_samples, dev_samples = mine_for_samples(args)
+    # if args.loss_function == 'cosine':
+    train_samples, dev_samples = mine_for_queries(args)
+    # else:
+    #   train_samples, dev_samples = mine_for_samples(args)
     dataloader = DataLoader(train_samples, shuffle=True, batch_size=args.batch_size)
     evaluator = build_evaluator(args, dev_samples)
     fit_model(args, model, dataloader, evaluator)
@@ -420,4 +407,4 @@ if __name__ == "__main__":
         total_loss += self.pairwise_loss(k, k + N) + self.pairwise_loss(k + N, k)
     total_loss *= 1.0 / (2*N)
     return total_loss
-"""
+  """
