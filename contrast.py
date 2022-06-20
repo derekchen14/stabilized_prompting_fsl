@@ -224,6 +224,10 @@ def compute_scores(args, samples):
         sim_score = domain_slot_sim(s_i, s_j)
         target = sim_score
         threshold = 0.4
+      elif args.loss_function == 'zero_one':
+        sim_score = zero_one_sim(s_i, s_j)
+        target = sim_score
+        threshold = 0.4
       elif args.loss_function == 'contrast':
         sim_score = 1 if s_i['dsv'][1] == s_j['dsv'][1] else 0
         target = sim_score
@@ -265,6 +269,15 @@ def domain_slot_sim(a, b):
     if value_a == value_b:   # this is conditioned on already matching the slot
       sim_score += 0.3
   return sim_score
+
+def zero_one_sim(a, b):
+  domain_a, slot_a, value_a = a['dsv']
+  domain_b, slot_b, value_b = b['dsv']
+
+  if domain_a == domain_b and slot_a == slot_b:
+    return 1.0
+  else:
+    return 0.0
 
 def encode_as_bits(a, b):
   matches = []
@@ -311,7 +324,14 @@ if __name__ == "__main__":
   args = setup_gpus(args)
   set_seed(args)
 
-  model = load_sent_transformer(args, use_tuned=args.do_eval)
+  if args.do_eval and args.use_tuned:
+    use_fine_tune = True
+  elif args.loss_function == 'default':
+    use_fine_tune = False
+  else:
+    use_fine_tune = False
+
+  model = load_sent_transformer(args, use_tuned=use_fine_tune)
   model = add_special_tokens(model)
   model.to(device)
 
