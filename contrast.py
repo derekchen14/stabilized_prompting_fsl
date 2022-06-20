@@ -87,7 +87,7 @@ def build_evaluator(args, dev_samples):
   # if args.loss_function == 'custom':
   queries, corpus, relevant_docs = dev_samples
   evaluator = InformationRetrievalEvaluator(queries, corpus, relevant_docs,
-                   precision_recall_at_k=[1, 5, 10], name="margin_3_8_10")
+                   precision_recall_at_k=[1, 5, 10], name=args.loss_function)
   # else:
   #   evaluator = EmbeddingSimilarityEvaluator.from_input_examples(dev_samples, 
   #         show_progress_bar=False, name='mwoz', write_csv=args.do_save)
@@ -104,7 +104,7 @@ def add_special_tokens(model):
   return model
 
 def load_from_cache(args):
-  cache_file = f'mpnet_mwoz_{args.num_shots}_embeddings.pkl'
+  cache_file = f'mpnet_mwoz_{args.num_shots}_default_embeddings.pkl'
   cache_path = os.path.join(args.input_dir, 'cache', args.dataset, cache_file)  
   samples = pkl.load( open( cache_path, 'rb' ) )
   return samples
