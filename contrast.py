@@ -16,6 +16,15 @@ from assets.static_vars import device, debug_break
 from sentence_transformers import LoggingHandler, losses, util, InputExample, models
 from sentence_transformers.evaluation import EmbeddingSimilarityEvaluator, InformationRetrievalEvaluator
 
+class IdentityLoss(nn.Module):
+  """Custom contrastive loss for DST"""
+  def __init__(self, model):
+    super().__init__()
+    self.model = model
+
+  def forward(self, sentence_features, targets):
+    return 0.0
+
 class DomainSlotValueLoss(nn.Module):
   """Custom contrastive loss for DST"""
   def __init__(self, args, model):
@@ -56,12 +65,14 @@ class DomainSlotValueLoss(nn.Module):
     return loss.mean()
 
 def fit_model(args, model, dataloader, evaluator):
-  if args.loss_function == 'cosine':
+  if args.loss_function in ['cosine', 'zero_one']:
     loss_function = losses.CosineSimilarityLoss(model=model)
   elif args.loss_function == 'contrast':
     loss_function = losses.ContrastiveLoss(model=model)
   elif args.loss_function == 'custom':
     loss_function = DomainSlotValueLoss(args, model)
+  elif args.loss_function == 'default':
+    loss_function = IdentityLoss(model)
 
   warm_steps = math.ceil(len(dataloader) * args.n_epochs * 0.1) # 10% of train data for warm-up
   ckpt_name = f'lr{args.learning_rate}_k{args.kappa}_{args.loss_function}.pt'
