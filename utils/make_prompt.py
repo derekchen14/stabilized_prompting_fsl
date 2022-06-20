@@ -58,8 +58,10 @@ def naive_style(domain, slot):
 
 def random_style(domain, slot):
   # needs 22 colors
-  colors = ['red', 'blue', 'green', 'indigo', 'violet', 'yellow', 'orange', 'pink', 'purple',
-      'brown', 'black', 'white', 'gray', 'rose', 'cerulean', 'navy', 'magenta', 'cyan']
+  colors = ['red', 'blue', 'green', 'indigo', 'violet', 'yellow', 'orange', 'pink', 'purple', 'brown', 
+            'black', 'white', 'gray', 'rose', 'cerulean', 'navy', 'magenta', 'cyan', 'silver', 'maroon', 
+            'beige', 'tan', 'peach', 'lime', 'olive', 'teal']
+
   # needs 86 animals -- using external animal vocab instead
   # animals = ['alligator','buffalo','cheetah','dog','elephant','fish','girrafe','hippo',
   #     'iguana','jaguar','kangaroo','lion','mammoth','newt','octopus','parrot','squirrel',
