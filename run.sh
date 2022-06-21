@@ -28,8 +28,8 @@ set -xue
 # python contrast.py --learning-rate 3e-5 --kappa 20 --n-epochs 14 --num-shots five \
 #        --batch-size 64 --log-interval 200 --loss-function custom --do-train \
 #        --checkpoint-interval 1200 --qualify --seed 16 --do-save
-python contrast.py --batch-size 128 --kappa 20 --num-shots five --seed 15 \
-      --loss-function contrast --do-eval --learning-rate 3e-5 --qualify
+# python contrast.py --batch-size 128 --kappa 20 --num-shots five --seed 15 \
+#       --loss-function contrast --do-eval --learning-rate 3e-5 --qualify
 
 # Leveraging Slot Descriptions for Zero-Shot Cross-Domain DST (domain held out for testing)
 # python main.py --dataset mwoz --task fine_tune --n-epochs 7 --do-train --debug \
@@ -60,8 +60,8 @@ python contrast.py --batch-size 128 --kappa 20 --num-shots five --seed 15 \
 #       --style domain --left-out hotel --model gpt --size medium --num-shots one \
 #       --learning-rate 1e-5 --batch-size 6 --prompt-style schema  --seed 15
 # python main.py --dataset mwoz --task meta_learn --n-epochs 7 --do-train --do-save \
-#      --left-out mwoz --model t5 --size large --num-shots five --checkpoint-interval 8000 \
-#      --learning-rate 3e-4 --prompt-style naive --batch-size 8 --log-interval 900 \
+#      --left-out mwoz --model t5 --size medium --num-shots five --checkpoint-interval 8000 \
+#      --learning-rate 3e-4 --prompt-style question --batch-size 8 --log-interval 1400 \
 #      --eval-interval half --do-leave --verbose --grad-accum-steps 8 --parallel
 # python main.py --dataset mwoz --task meta_learn --n-epochs 7 --do-train --do-save \
 #      --left-out mwoz --model t5 --size small --num-shots five --prompt-style statement \
@@ -81,6 +81,14 @@ python contrast.py --batch-size 128 --kappa 20 --num-shots five --seed 15 \
 # python main.py --dataset mwoz --task meta_learn --do-eval --num-shots five --context-len 2  \
 #       --model gpt --size small --maximum-len 1024 --batch-size 8 --left-out mwoz --verbose \
 #       --prompt-style statement --quantify --checkpoint statement_lr1e-05_clen2_epoch7_acc883.pt
+# CUDA_VISIBLE_DEVICES=1  python main.py --dataset mwoz --task meta_learn --do-eval --num-shots five \
+#       --model t5 --size medium --maximum-len 512 --batch-size 8 --left-out mwoz --verbose \
+#       --prompt-style schema --quantify --checkpoint naive_lr1e-05_clen2_epoch6_acc746.pt \
+#       --kappa 30 --learning-rate 3e-5 --use-tuned --loss-function cosine --filter
+python main.py --dataset mwoz --task meta_learn --do-eval --num-shots five --filter --parallel \
+      --model t5 --size large --maximum-len 512 --batch-size 8 --left-out mwoz --verbose \
+      --prompt-style naive --quantify --checkpoint naive_lr0.0003_filter_epoch1_acc828.pt \
+      --eval-interval tenth --kappa 30 --learning-rate 3e-5 --use-tuned --loss-function cosine
 # python main.py --dataset mwoz --task fine_tune --do-eval --context-len 2 --batch-size 16 \
 #       --model gpt --size small --maximum-len 512 --prompt-style naive --eval-interval quarter \
 #       --quantify --qualify --verbose  --checkpoint naive_epoch10_lr1e-05_clen2_acc522.pt
