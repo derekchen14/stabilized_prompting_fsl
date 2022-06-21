@@ -16,6 +16,15 @@ from assets.static_vars import device, debug_break
 from sentence_transformers import LoggingHandler, losses, util, InputExample, models
 from sentence_transformers.evaluation import EmbeddingSimilarityEvaluator, InformationRetrievalEvaluator
 
+class IdentityLoss(nn.Module):
+  """Custom contrastive loss for DST"""
+  def __init__(self, model):
+    super().__init__()
+    self.model = model
+
+  def forward(self, sentence_features, targets):
+    return 0.0
+
 class DomainSlotValueLoss(nn.Module):
   """Custom contrastive loss for DST"""
   def __init__(self, args, model):
@@ -56,12 +65,14 @@ class DomainSlotValueLoss(nn.Module):
     return loss.mean()
 
 def fit_model(args, model, dataloader, evaluator):
-  if args.loss_function == 'cosine':
+  if args.loss_function in ['cosine', 'zero_one']:
     loss_function = losses.CosineSimilarityLoss(model=model)
   elif args.loss_function == 'contrast':
     loss_function = losses.ContrastiveLoss(model=model)
   elif args.loss_function == 'custom':
     loss_function = DomainSlotValueLoss(args, model)
+  elif args.loss_function == 'default':
+    loss_function = IdentityLoss(model)
 
   warm_steps = math.ceil(len(dataloader) * args.n_epochs * 0.1) # 10% of train data for warm-up
   ckpt_name = f'lr{args.learning_rate}_k{args.kappa}_{args.loss_function}.pt'
@@ -87,7 +98,7 @@ def build_evaluator(args, dev_samples):
   # if args.loss_function == 'custom':
   queries, corpus, relevant_docs = dev_samples
   evaluator = InformationRetrievalEvaluator(queries, corpus, relevant_docs,
-                   precision_recall_at_k=[1, 5, 10], name="margin_3_8_10")
+                   precision_recall_at_k=[1, 5, 10], name=args.loss_function)
   # else:
   #   evaluator = EmbeddingSimilarityEvaluator.from_input_examples(dev_samples, 
   #         show_progress_bar=False, name='mwoz', write_csv=args.do_save)
@@ -104,7 +115,7 @@ def add_special_tokens(model):
   return model
 
 def load_from_cache(args):
-  cache_file = f'mpnet_mwoz_{args.num_shots}_embeddings.pkl'
+  cache_file = f'mpnet_mwoz_{args.num_shots}_default_embeddings.pkl'
   cache_path = os.path.join(args.input_dir, 'cache', args.dataset, cache_file)  
   samples = pkl.load( open( cache_path, 'rb' ) )
   return samples

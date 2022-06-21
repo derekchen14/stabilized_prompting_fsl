@@ -8,7 +8,6 @@ Antelope
 Aphid
 Armadillo
 Asp
-Ass
 Baboon
 Badger
 Bald Eagle

@@ -34,7 +34,8 @@ class ExemplarDetective(object):
           self.check_embed_cache(args, support_data, corpus)
 
   def check_embed_cache(self, args, data, corpus, embed_method='mpnet'):
-    cache_file = f'{embed_method}_{corpus}_{args.num_shots}_embeddings.pkl'
+    shots, loss_func = args.num_shots, args.loss_function
+    cache_file = f'{embed_method}_{corpus}_{shots}_{loss_func}_embeddings.pkl'
     cache_path = os.path.join(args.input_dir, 'cache', args.dataset, cache_file)
     self.embed_model = load_sent_transformer(args, embed_method, args.use_tuned)
 
