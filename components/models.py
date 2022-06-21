@@ -116,7 +116,8 @@ class SentenceBERT(SentenceTransformer):
       callback: Callable[[float, int, int], None] = None,
       checkpoint_path: str = None,
       checkpoint_save_steps: int = 2000,
-      checkpoint_save_total_limit: int = 0):
+      checkpoint_save_total_limit: int = 0,
+      args=None):
     """
     Train the model with the given training objective
     Each training objective is sampled in turn for one batch.
@@ -203,12 +204,16 @@ class SentenceBERT(SentenceTransformer):
 
         loss_value = loss_model(features, labels)
         losses.append(loss_value.item())
-        loss_value.backward()
 
-        torch.nn.utils.clip_grad_norm_(loss_model.parameters(), max_grad_norm)
-        optimizer.step()
-        optimizer.zero_grad()
-        scheduler.step()
+        if args.loss_function == 'default':
+          torch.set_grad_enabled(False)
+        else:
+          loss_value.backward()
+
+          torch.nn.utils.clip_grad_norm_(loss_model.parameters(), max_grad_norm)
+          optimizer.step()
+          optimizer.zero_grad()
+          scheduler.step()
 
         training_steps += 1
         global_step += 1

@@ -22,8 +22,11 @@ class IdentityLoss(nn.Module):
     super().__init__()
     self.model = model
 
+  def __getitem__(self, key):
+      return getattr(self, key, None)
+
   def forward(self, sentence_features, targets):
-    return 0.0
+    return torch.zeros(1, requires_grad=False)
 
 class DomainSlotValueLoss(nn.Module):
   """Custom contrastive loss for DST"""
@@ -35,6 +38,9 @@ class DomainSlotValueLoss(nn.Module):
     self.batch_size = args.batch_size
     self.register_buffer("temperature", torch.tensor(args.temperature))
     self.verbose = args.verbose
+
+  def __getitem__(self, key):
+      return getattr(self, key, None)
 
   def _convert_to_labels(self, targets):
     """ returns a list of labels where each transformed target is a 4-part tuple
@@ -89,7 +95,8 @@ def fit_model(args, model, dataloader, evaluator):
           optimizer_params={'lr': args.learning_rate},
           output_path=ckpt_path,
           checkpoint_path=ckpt_path,
-          do_qual=args.qualify)
+          do_qual=args.qualify,
+          args=args)
   return model
 
 def build_evaluator(args, dev_samples):
@@ -235,7 +242,7 @@ def compute_scores(args, samples):
         sim_score = domain_slot_sim(s_i, s_j)
         target = sim_score
         threshold = 0.4
-      elif args.loss_function == 'zero_one':
+      elif args.loss_function in ['zero_one', 'default']:
         sim_score = zero_one_sim(s_i, s_j)
         target = sim_score
         threshold = 0.4
@@ -247,6 +254,7 @@ def compute_scores(args, samples):
         target = encode_as_bits(s_i, s_j)
         sim_score = sum(target)
         threshold = 0.3
+
       
       if sim_score == 0 and random.random() > threshold:
         continue  # only keep a portion of negatives to keep things balanced
