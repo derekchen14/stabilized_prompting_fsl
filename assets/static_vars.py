@@ -24,9 +24,9 @@ DATASETS = {
 
 CHECKPOINTS = {
     't5': {
-        'small': 't5-small', 
-        'medium': 't5-large',
-        'large': 't5-3b' },
+        'small': 't5-base', 
+        'medium': 't5-3b',
+        'large': 't5-11b' },
     'gpt': {
         'small': 'gpt2',
         'medium': 'gpt2-xl',
