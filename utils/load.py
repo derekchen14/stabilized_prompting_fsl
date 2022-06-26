@@ -96,7 +96,7 @@ def load_tokenizer(args):
 
 def load_sent_transformer(args, embed_method='mpnet', use_tuned=False):
   if use_tuned:
-    ckpt_name = f'lr{args.learning_rate}_k{args.kappa}_{args.loss_function}.pt'
+    ckpt_name = f'{args.loss_function}_lr3e-05_k{args.kappa}.pt'
     ckpt_path = os.path.join(args.output_dir, 'sbert', ckpt_name)
   else: # use the default model without fine-tune
     ckpt_name = 'all-mpnet-base-v2' if embed_method == 'mpnet' else 'all-distilroberta-v1'

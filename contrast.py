@@ -78,7 +78,7 @@ def fit_model(args, model, dataloader, evaluator):
     loss_function = IdentityLoss(model)
 
   warm_steps = math.ceil(len(dataloader) * args.n_epochs * 0.1) # 10% of train data for warm-up
-  ckpt_name = f'lr{args.learning_rate}_k{args.kappa}_{args.loss_function}.pt'
+  ckpt_name = f'{args.loss_function}_lr{args.learning_rate}_k{args.kappa}.pt'
   ckpt_path = os.path.join(args.output_dir, 'sbert', ckpt_name)
 
   # By default, uses AdamW optimizer with learning rate of 3e-5, WarmupCosine scheduler
