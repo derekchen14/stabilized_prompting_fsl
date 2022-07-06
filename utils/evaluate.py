@@ -223,6 +223,10 @@ def test_quantify(args, predictions, targets, exp_logger, tokenizer):
       target_val = normalize_text(labels[domain_slot])
       if pred_val in GENERAL_TYPO:
         pred_val = GENERAL_TYPO[pred_val]
+      if pred_val == 'any':
+        pred_val = '<none>'
+      if target_val == 'any':
+        target_val = '<none>'
       dialog_state[domain_slot] = (pred_val, target_val)
     final_preds[convo_id].append(dialog_state)
 
