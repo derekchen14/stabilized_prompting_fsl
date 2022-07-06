@@ -79,6 +79,8 @@ def solicit_params():
                 help="Ratio of dev data to process before printing out a score")
     parser.add_argument("--checkpoint-interval", default=-1, type=int, 
                 help="The number of update steps to save a checkpoint for meta-learning")
+    parser.add_argument("--chunk-ratio", default=-1, type=float, 
+                help="chunk_ratio * step_per_epoch = checkpoint_interval")
     parser.add_argument("--qualify", action='store_true',
                 help="Whether to include joint accuracy scores during evaluation")
     parser.add_argument("--quantify", action='store_true',

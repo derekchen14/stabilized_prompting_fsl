@@ -69,7 +69,7 @@ class ExperienceLogger:
     self.num_steps = len(dataloader)
     self.breakpoint = int(self.num_steps * percent)
 
-  def end_epoch(self):
+  def end_epoch(self, args):
     self.epoch += 1
     self.end_time = tm.time()
 
@@ -82,7 +82,7 @@ class ExperienceLogger:
     self.logger.info(f"Best epoch is {self.best_score['epoch']} with {met}% accuracy")
     self.logger.info(f"Current epoch took {minute_diff} min, average is {avg_diff} min")
 
-    return self.early_stop(met)
+    return self.early_stop(args, met)
 
   def start_chunk(self, args, step):
     if args.checkpoint_interval > 0  and step % args.checkpoint_interval == 0 :
@@ -90,7 +90,7 @@ class ExperienceLogger:
         self.logger.info(f"Starting chunk {self.chunk_num}")
       self.start_time_chunk = tm.time()
 
-  def end_chunk(self):
+  def end_chunk(self, args):
     self.chunk_num += 1
     self.end_time_chunk = tm.time()
 
@@ -105,16 +105,16 @@ class ExperienceLogger:
       self.logger.info(f"Best chunk is {self.best_score['chunk']} with {met}% accuracy")
       self.logger.info(f"Current chunk took {minute_diff} min")
 
-    return self.early_stop(met)
+    return self.early_stop(args, met)
 
 
-  def early_stop(self, metric):
+  def early_stop(self, args, metric):
     below_threshold = False
     
     if self.epoch > 3 and self.args.debug:
       below_threshold = True
 
-    patience = 10 if self.args.checkpoint_interval > 0 else 4
+    patience = 10 if args.checkpoint_interval > 0 else 4
     self.past_metrics.append(metric)
     if len(self.past_metrics) >= patience:
       trail = self.past_metrics[-1*patience:]
@@ -122,7 +122,7 @@ class ExperienceLogger:
         below_threshold = True
 
     if below_threshold:
-      if self.args.checkpoint_interval > 0:
+      if args.checkpoint_interval > 0:
         self.logger.info(f"Ran out of patience, early stopped at chunk {self.chunk_num}")
       else:
         self.logger.info(f"Ran out of patience, early stopped at epoch {self.epoch}")

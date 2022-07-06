@@ -21,6 +21,7 @@ def run_train(args, model, datasets, exp_logger, detective):
   total_steps = len(train_dataloader) // args.grad_accum_steps * args.n_epochs
   optimizer, scheduler = setup_optimization(args, model, total_steps)
   scaler = GradScaler()
+  args.checkpoint_interval = len(train_dataloader) * args.chunk_ratio
   
   if args.task == 'meta_learn':
     dataset.add_detective(detective)
@@ -51,16 +52,16 @@ def run_train(args, model, datasets, exp_logger, detective):
       exp_logger.log_train(step, scheduler)
       if exp_logger.train_stop(args, step, debug_break): break
 
-      use_checkpoint = args.checkpoint_interval > 0               # use checkpoint_interval for validation
-      at_checkpoint = step % args.checkpoint_interval == 0        # step on where for validation
+      use_chunk = args.checkpoint_interval > 0               # use checkpoint_interval for validation
+      at_chunk = step % args.checkpoint_interval == 0        # step on where for validation
       skip_first_five = exp_logger.chunk_num > 5                  # skip the first five checkpoint
-      if use_checkpoint and at_checkpoint:
+      if use_chunk and at_chunk:
         if skip_first_five:
           eval_res = run_eval(args, model, dev_dataset, exp_logger)
           if eval_res[exp_logger.metric] >= exp_logger.best_score[exp_logger.metric]:
             exp_logger.best_score = eval_res
             exp_logger.save_best_model(model, tokenizer, args.prune_keep)
-          early_stop = exp_logger.end_chunk()
+          early_stop = exp_logger.end_chunk(args)
           if early_stop: break
         else:
           exp_logger.end_chunk()
@@ -70,13 +71,13 @@ def run_train(args, model, datasets, exp_logger, detective):
         run_leftout(args, model, dev_dataset, exp_logger)
       exp_logger.end_epoch()
 
-    if not use_checkpoint:
+    if not use_chunk:
       # only do epoch validation for non-meta training
       eval_res = run_eval(args, model, dev_dataset, exp_logger)
       if eval_res[exp_logger.metric] >= exp_logger.best_score[exp_logger.metric]:
         exp_logger.best_score = eval_res
         exp_logger.save_best_model(model, tokenizer, args.prune_keep)
-      early_stop = exp_logger.end_epoch()
+      early_stop = exp_logger.end_epoch(args)
       if early_stop: break
 
   return model
