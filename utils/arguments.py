@@ -33,7 +33,7 @@ def solicit_params():
                 help="Used as the repetition penalty during inference of generation")
     parser.add_argument("--temperature", default=1.0, type=float,
                 help="Temperature for increasing diversity when decoding, mainly for paraphrase")
-    parser.add_argument("--style", default='dataset', type=str, choices=['domain', 'dataset'],
+    parser.add_argument("--style", default='dataset', type=str, choices=['domain', 'dataset','prompt'],
                 help="Subset of data held out for testing. For example, if domain is the chosen style, \
                 then we meta learn on [taxi, hotel, restaurant, train] and test on [attraction].")
     parser.add_argument("--left-out", default='', type=str,   # see args.style
@@ -48,7 +48,7 @@ def solicit_params():
     # SBERT Retriever params
     parser.add_argument("--search", default="oracle", type=str, help="find similar examples for context",  
                 choices=["oracle", "cosine", "euclidean", "mahalanobis"])
-    parser.add_argument("--loss-function", default="default", type=str,
+    parser.add_argument("--loss-function", default="cosine", type=str,
                 choices=["contrast", "cosine", "custom", "default", "zero_one"], help="loss function for fine-tuning")
     parser.add_argument("--kappa", default=1000, type=int, 
                 help="Number of examples to use as negatives during constrastive training")
@@ -89,6 +89,10 @@ def solicit_params():
                 help="Whether to run in parallel")
     parser.add_argument("--ensemble", default=-1, type=int,
                 help="setting up the ensembling size")
+    parser.add_argument("--filter-threshold", default=0.4, type=float,
+                help="Used as the threshold for filtering irrelevant sentence in saliency model")
+    parser.add_argument("--train-percent", default=-1.0, type=float,
+                help="percentage of training data for fine-tuning")
 
     # Hyper-parameters for tuning
     parser.add_argument("--batch-size", default=12, type=int,

@@ -148,7 +148,7 @@ class ExemplarDetective(object):
       elif self.search_method == 'random':
         self.random(exp_embed, cand_embeds)
       # we can never fit more than 64 in-context examples, so we can stop sorting there
-      nearest_indexes = np.argpartition(self.distances, 64)[:64]
+      nearest_indexes = np.argpartition(self.distances, 128)[:128]
       
       for near_id in nearest_indexes:
         exemplar = self.candidates[corpus][near_id]

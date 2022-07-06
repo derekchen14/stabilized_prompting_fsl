@@ -35,7 +35,10 @@ def setup_gpus(args):
 
 def check_directories(args):
   dataset_path = os.path.join(args.output_dir, args.dataset)
-  save_path = os.path.join(dataset_path, args.task, f'{args.model}_{args.size}')
+  if args.train_percent > 0:
+    save_path = os.path.join(dataset_path, args.task, f'{args.model}_{args.size}_{args.train_percent}')
+  else:
+    save_path = os.path.join(dataset_path, args.task, f'{args.model}_{args.size}')
   if not os.path.exists(dataset_path):
     os.makedirs(dataset_path)
     print(f"Created {dataset_path} for {args.dataset} results")
@@ -144,13 +147,19 @@ def model_match(fname, args):
   follow the format:
   f'results/{dataset}/{task}/{model}_{size}/{prompt_style}_lr{}_{saliency}_epoch{}_acc{}.pt'
   """
-  model_type, model_size = fname.split('/')[-2].split("_")
+  model_type, model_size = fname.split('/')[-2].split("_")[0], fname.split('/')[-2].split("_")[1]
   if len(fname.split('/')[-1].split("_")) != 5:
     return False
   prompt_style, lr, saliency, epoch, _ = fname.split('/')[-1].split("_")
 
   type_match = model_type == args.model
   size_match = model_size == args.size
+  train_data_match = True
+  if args.train_percent > 0:
+    if len(fname.split('/')[-2].split("_")) < 3:
+      train_data_match = False
+    else:
+      train_data_match = args.train_percent == float(fname.split('/')[-2].split("_")[2])
   prompt_match = prompt_style == args.prompt_style
   lr_match = lr == f'lr{args.learning_rate}'
 

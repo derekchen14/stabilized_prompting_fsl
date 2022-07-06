@@ -69,7 +69,8 @@ def run_train(args, model, datasets, exp_logger, detective):
       if args.do_leave:
         run_leftout(args, model, dev_dataset, exp_logger)
       exp_logger.end_epoch()
-    else:
+
+    if not use_checkpoint:
       # only do epoch validation for non-meta training
       eval_res = run_eval(args, model, dev_dataset, exp_logger)
       if eval_res[exp_logger.metric] >= exp_logger.best_score[exp_logger.metric]:
@@ -93,10 +94,12 @@ def run_test(args, dataset, exp_logger, detective):
   all_targets = defaultdict(list)
   prior_pred_state = defaultdict(dict)
   for conversation in progress_bar(dataset.data, total=len(dataset)):
+
     for global_id, turn in conversation.items():
       # turn is a list of examples
       batches = batchify(args, turn, global_id, prior_pred_state)
       for batch in batches:
+
         inputs, target_dict = dataset.collate(args, batch)
         review_inputs(args, inputs, inputs['input_ids'], tokenizer)
         all_targets[global_id].extend(target_dict) #  all the target labels for this turn 
@@ -113,7 +116,11 @@ def run_test(args, dataset, exp_logger, detective):
         output_strings = desemble(args, output_strings)
         for target, output_str in zip(target_dict, output_strings):
           state_key = f"{target['domain']}-{target['slot']}"
-          prior_pred_state[global_id][state_key] = output_str
+          if len(output_str) < 50:
+            prior_pred_state[global_id][state_key] = output_str
+          else:
+            output_str = output_str[:50]
+            prior_pred_state[global_id][state_key] = output_str
     if exp_logger.log_eval(args.qualify, output_strings, target_dict):
       results = test_quantify(args, prior_pred_state, all_targets, exp_logger, tokenizer)
       dataset.detective[0].report(args.verbose, args.task)

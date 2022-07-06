@@ -232,7 +232,8 @@ class MetaLearnDataset(BaseDataset):
     there is no need to subtract 16 since we do not need to save any space for the target value
     instead the sequence of target is taken care of by the decoder """
     inputs = self.tokenizer(contexts, dialogues, padding=True, max_length=512,
-                              truncation='only_first', pad_to_multiple_of=8, return_tensors='pt').to(device)
+                              truncation='longest_first', pad_to_multiple_of=8, return_tensors='pt').to(device)
+    # inputs = self.tokenizer(contexts, dialogues, padding=True, max_length=512, truncation='longest_first', pad_to_multiple_of=8, return_tensors='pt')
     if self.split == 'train':
       targets = self.tokenizer(labels)
       target_tensor = self._pad_right(targets)

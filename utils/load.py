@@ -76,7 +76,7 @@ def load_tokenizer(args):
 
   if args.model == 't5':
     tokenizer = T5Tokenizer.from_pretrained(token_ckpt, truncation_side='left',
-                                      pad_to_multiple_of=8, model_max_length=512)
+                                      pad_to_multiple_of=8, model_max_length=512, truncation="longest_first")
   elif args.model == 'gpt':
     tokenizer = AutoTokenizer.from_pretrained(token_ckpt, truncation_side='left')
   elif args.model == 'bart':
@@ -96,7 +96,9 @@ def load_tokenizer(args):
 
 def load_sent_transformer(args, embed_method='mpnet', use_tuned=False):
   if use_tuned:
-    ckpt_name = f'lr{args.learning_rate}_k{args.kappa}_{args.loss_function}.pt'
+    # ckpt_name = f'lr{args.learning_rate}_k{args.kappa}_{args.loss_function}.pt'
+    # ckpt_name = f'lr1e-05_k{args.kappa}_{args.loss_function}.pt'
+    ckpt_name = f'lr3e-05_k30_cosine.pt'
     ckpt_path = os.path.join(args.output_dir, 'sbert', ckpt_name)
   else: # use the default model without fine-tune
     ckpt_name = 'all-mpnet-base-v2' if embed_method == 'mpnet' else 'all-distilroberta-v1'
@@ -170,7 +172,9 @@ def load_best_model(args, exp_logger, tokenizer):
         top_folder = fname
 
   if len(top_folder) == 0:
-    raise RuntimeError(f'No models were found in {load_dir}')
+    # raise RuntimeError(f'No models were found in {load_dir}')
+    print(f'No checkpoints were found in {load_dir}, loading the default parameters')
+    ckpt_path = ''
   else:
     ckpt_path = top_folder
     print(f'Attempting to load {ckpt_path} as best model')

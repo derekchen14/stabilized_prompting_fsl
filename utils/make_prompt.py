@@ -73,7 +73,7 @@ def random_style(domain, slot):
   all_slots = []
   for dom in schema_slots:
     all_slots.extend(list(schema_slots[dom].keys()))
-  all_slots = list(set(all_slots))
+  all_slots = sorted(list(set(all_slots)))
   color = colors[all_domains.index(domain)]
   animal = ANIMALS[all_slots.index(slot)]
   return f"<sep> {color} {animal} <label>"

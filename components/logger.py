@@ -206,13 +206,13 @@ class ExperienceLogger:
 
     if self.global_step < 100 and self.global_step % 10 == 0:
       print(self.global_step)
-    if step % self.log_interval == 0 and step > 1:
+    if step % self.log_interval == 0:
       print(f"[{now}] Steps: {step_report}, {lr_report}, {loss_report}")
 
   def save_best_model(self, model, tokenizer, prune_keep):
-    if self.do_save and self.best_score[self.metric] > 0.1:
+    if self.do_save and self.best_score[self.metric] > 0.01:
       learning_rate = str(self.args.learning_rate)
-      accuracy = str(self.best_score[self.metric] * 10000)[:3]
+      accuracy = str(round(self.best_score[self.metric], 4) * 10000)
       style = self.args.prompt_style
       saliency = "filter" if self.args.filter else "keepall"
       ckpt_name = f'{style}_lr{learning_rate}_{saliency}_epoch{self.epoch}_acc{accuracy}.pt'

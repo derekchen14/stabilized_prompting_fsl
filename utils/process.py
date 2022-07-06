@@ -40,7 +40,7 @@ def normalize_length(value):
       value = ' '.join(parts[:5])
   return value
 
-def is_salient(speaker, sentence):
+def is_salient(args, speaker, sentence):
   score = 0.5
 
   if re.search(r"\s\d\s", sentence):  # digit surrounded by whitespace
@@ -89,9 +89,9 @@ def is_salient(speaker, sentence):
   if len(sentence) < 5:
     score -= 0.1
 
-  return score >= 0.4
+  return score >= args.filter_threshold
 
-def filter_for_saliency(utterances):
+def filter_for_saliency(args, utterances):
   """ Input is a list of utterances where each utterance is a speaker + text
   The output is a list of utterances that only keeps the salient sentences
   """
@@ -106,7 +106,7 @@ def filter_for_saliency(utterances):
       raise ValueError(f"[{utterance}] does not contain a speaker")
 
 
-    texts = [sentence for sentence in sent_tokenize(text) if is_salient(speaker, sentence)]
+    texts = [sentence for sentence in sent_tokenize(text) if is_salient(args, speaker, sentence)]
     if len(texts) > 0:  # there is at least one salient sentence in the utterance
       joined = ' '.join(texts)
       filtered.append(f"{speaker} {joined}")
@@ -122,7 +122,7 @@ def select_utterances(args, utt_so_far, target, split):
   lookback = -args.context_length
   utterances = utt_so_far[lookback:]
   if args.filter:
-    utterances = filter_for_saliency(utterances)
+    utterances = filter_for_saliency(args, utterances)
 
   if args.task == 'in_context' and value == '<none>':  # TODO: query result none value slot
     use_target = False
@@ -667,6 +667,12 @@ def process_data(args, raw_data, tokenizer):
     datasets = {}
     for split in ['train', 'dev', 'test']:
       examples = prepare_examples(args, raw_data[split], ontology, split)
+      if args.train_percent > 0 and split == 'train':
+        keys = list(examples.keys())
+        random.shuffle(keys)
+        size = int(len(keys) * args.train_percent)
+        five_percent_keys = keys[:size]
+        examples = {key:examples[key] for key in five_percent_keys}
       if args.task == 'meta_learn':
         datasets[split] = MetaLearnDataset(args, examples, tokenizer, split)
       elif args.task == 'in_context':

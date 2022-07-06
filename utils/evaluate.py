@@ -161,6 +161,11 @@ def calculate_jga(results, final_preds, verbose):
   possible, correct = 0, 0
   joint_possible, joint_correct = 0, 0
   errors = Counter()
+  normal_dict = {
+    "true": "yes",
+    "false": "none",
+    "any":"<none>",
+  }
 
   for convo_id, filled_turns in final_preds.items():
     
@@ -168,6 +173,10 @@ def calculate_jga(results, final_preds, verbose):
     for dialog_state in filled_turns:
       for domain_slot, turn_data in dialog_state.items():
         pred_val, target_val = turn_data
+        if pred_val in normal_dict:
+          pred_val = normal_dict[pred_val]
+        if target_val in normal_dict:
+          target_val = normal_dict[target_val]
         
         # if target_val != '<none>':
           # if pred_val == target_val:
@@ -298,6 +307,7 @@ def dst_breakdown(predictions, labels, results):
   results['recall'] = round(aggregate_found / aggregate_poss_found, 3)
   return results
 
+
 if __name__ == '__main__':
   args = solicit_params()
   args.multiwoz_version = '2.1'
@@ -306,6 +316,22 @@ if __name__ == '__main__':
 
   random.seed(14)
   np.random.seed(14)
+
+  # prompt_style = 'none'
+  # task = 'meta_learn'
+  # size = 'medium'
+  # model = 'gpt'
+  # result_dir = "/results/"
+  # output_name = f"{prompt_style}_five_test.json"
+  # result_path = os.path.join('mwoz', task, f'{model}_{size}')
+
+
+  # with open(os.path.join(result_dir, result_path, output_name)) as df:
+  #   output_results = json.load(df)
+  # prior_pred_state = output_results['preds']
+  # all_targets = output_results['targets']
+
+  # joint_acc, _ = test_results(args,  prior_pred_state, all_targets,)
   # joint_acc, _ = eval_dst(args)
   joint_acc, _ = eval_confidence(args)
   print('joint accuracy: {}%'.format(joint_acc))
