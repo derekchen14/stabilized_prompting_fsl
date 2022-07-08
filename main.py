@@ -21,7 +21,8 @@ def run_train(args, model, datasets, exp_logger, detective):
   total_steps = len(train_dataloader) // args.grad_accum_steps * args.n_epochs
   optimizer, scheduler = setup_optimization(args, model, total_steps)
   scaler = GradScaler()
-  args.checkpoint_interval = len(train_dataloader) * args.chunk_ratio
+  if args.chunk_ratio > 0:
+    args.checkpoint_interval = len(train_dataloader) * args.chunk_ratio
   
   if args.task == 'meta_learn':
     dataset.add_detective(detective)
@@ -58,6 +59,9 @@ def run_train(args, model, datasets, exp_logger, detective):
       if use_chunk and at_chunk:
         if skip_first_five:
           eval_res = run_eval(args, model, dev_dataset, exp_logger)
+          if args.task == 'meta_learn' and args.do_leave:
+            run_leftout(args, model, dev_dataset, exp_logger)
+
           if eval_res[exp_logger.metric] >= exp_logger.best_score[exp_logger.metric]:
             exp_logger.best_score = eval_res
             exp_logger.save_best_model(model, tokenizer, args.prune_keep)
@@ -66,10 +70,6 @@ def run_train(args, model, datasets, exp_logger, detective):
         else:
           exp_logger.end_chunk()
 
-    if args.task == 'meta_learn':
-      if args.do_leave:
-        run_leftout(args, model, dev_dataset, exp_logger)
-      exp_logger.end_epoch()
 
     if not use_chunk:
       # only do epoch validation for non-meta training
@@ -79,6 +79,8 @@ def run_train(args, model, datasets, exp_logger, detective):
         exp_logger.save_best_model(model, tokenizer, args.prune_keep)
       early_stop = exp_logger.end_epoch(args)
       if early_stop: break
+    else:
+      exp_logger.end_epoch(args)
 
   return model
 
@@ -134,11 +136,11 @@ def run_test(args, dataset, exp_logger, detective):
 def run_leftout(args, model, dataset, exp_logger):
   tokenizer = dataset.tokenizer
   bs, num_exp = args.batch_size, len(dataset.leftout)
-  description = f"Evaluating {args.left_out}"
+  description = f"Evaluating {args.left_out} with ratio 0.8"
   all_outputs, all_targets = [], []
 
   for idx in progress_bar(range(0, num_exp, bs), total=num_exp//bs, desc=description):
-    if random.random() < 0.7: continue  # sample from the data to speed things up
+    if random.random() < 0.8: continue  # sample from the data to speed things up
     batch = dataset.leftout[idx:idx+bs]
     inputs, target_dict = dataset.collate(args, batch)
     all_targets.extend(target_dict)   # notice this is "extend", not "append"

@@ -114,7 +114,7 @@ class ExperienceLogger:
     if self.epoch > 3 and self.args.debug:
       below_threshold = True
 
-    patience = 10 if args.checkpoint_interval > 0 else 4
+    patience = 6 if args.checkpoint_interval > 0 else 4
     self.past_metrics.append(metric)
     if len(self.past_metrics) >= patience:
       trail = self.past_metrics[-1*patience:]
