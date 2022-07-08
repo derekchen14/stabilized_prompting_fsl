@@ -58,9 +58,12 @@ def run_train(args, model, datasets, exp_logger, detective):
       skip_first_five = exp_logger.chunk_num > 5                  # skip the first five checkpoint
       if use_chunk and at_chunk:
         if skip_first_five:
-          eval_res = run_eval(args, model, dev_dataset, exp_logger)
+          
           if args.task == 'meta_learn' and args.do_leave:
-            run_leftout(args, model, dev_dataset, exp_logger)
+            run_eval(args, model, dev_dataset, exp_logger)
+            eval_res = run_leftout(args, model, dev_dataset, exp_logger)
+          else:
+            eval_res = run_eval(args, model, dev_dataset, exp_logger)
 
           if eval_res[exp_logger.metric] >= exp_logger.best_score[exp_logger.metric]:
             exp_logger.best_score = eval_res
@@ -68,7 +71,7 @@ def run_train(args, model, datasets, exp_logger, detective):
           early_stop = exp_logger.end_chunk(args)
           if early_stop: break
         else:
-          exp_logger.end_chunk()
+          exp_logger.end_chunk(args)
 
 
     if not use_chunk:
@@ -152,9 +155,10 @@ def run_leftout(args, model, dataset, exp_logger):
     output_strings = tokenizer.batch_decode(outputs.detach(), skip_special_tokens=False)
     all_outputs.extend(output_strings)
   
-  eval_quantify(args, all_outputs, all_targets, exp_logger, tokenizer)
   eval_qualify(args, all_outputs, all_targets)
+  results = eval_quantify(args, all_outputs, all_targets, exp_logger, tokenizer)
 
+  return results
 
 def run_eval(args, model, dataset, exp_logger):
   tokenizer = dataset.tokenizer
