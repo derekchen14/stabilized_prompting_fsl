@@ -212,7 +212,8 @@ class ExperienceLogger:
   def save_best_model(self, model, tokenizer, prune_keep):
     if self.do_save and self.best_score[self.metric] > 0.01:
       learning_rate = str(self.args.learning_rate)
-      accuracy = str(round(self.best_score[self.metric], 4) * 10000)
+      # accuracy = str(round(self.best_score[self.metric], 4) * 10000)
+      accuracy = '{0:.3f}'.format(self.best_score[self.metric])[2:]
       style = self.args.prompt_style
       saliency = "filter" if self.args.filter else "keepall"
       ckpt_name = f'{style}_lr{learning_rate}_{saliency}_epoch{self.epoch}_acc{accuracy}.pt'
