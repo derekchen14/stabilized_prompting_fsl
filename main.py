@@ -22,7 +22,7 @@ def run_train(args, model, datasets, exp_logger, detective):
   optimizer, scheduler = setup_optimization(args, model, total_steps)
   scaler = GradScaler()
   if args.chunk_ratio > 0:
-    args.checkpoint_interval = len(train_dataloader) * args.chunk_ratio
+    args.checkpoint_interval = int(len(train_dataloader) * args.chunk_ratio // 1000 * 1000)
   
   if args.task == 'meta_learn':
     dataset.add_detective(detective)
@@ -54,8 +54,9 @@ def run_train(args, model, datasets, exp_logger, detective):
       if exp_logger.train_stop(args, step, debug_break): break
 
       use_chunk = args.checkpoint_interval > 0               # use checkpoint_interval for validation
-      at_chunk = step % args.checkpoint_interval == 0        # step on where for validation
+      at_chunk = step % args.checkpoint_interval == 0 and step != 0        # step on where for validation
       skip_first_five = exp_logger.chunk_num > 5                  # skip the first five checkpoint
+      # pdb.set_trace()
       if use_chunk and at_chunk:
         if args.task == 'meta_learn' and args.do_leave:
           run_eval(args, model, dev_dataset, exp_logger)
