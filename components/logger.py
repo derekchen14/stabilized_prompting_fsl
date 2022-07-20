@@ -69,7 +69,7 @@ class ExperienceLogger:
     self.num_steps = len(dataloader)
     self.breakpoint = int(self.num_steps * percent)
 
-  def end_epoch(self, args):
+  def end_epoch(self):
     self.epoch += 1
     self.end_time = tm.time()
 
@@ -82,7 +82,7 @@ class ExperienceLogger:
     self.logger.info(f"Best epoch is {self.best_score['epoch']} with {met}% accuracy")
     self.logger.info(f"Current epoch took {minute_diff} min, average is {avg_diff} min")
 
-    return self.early_stop(args, met)
+    return self.early_stop(met)
 
   def start_chunk(self, args, step):
     if args.checkpoint_interval > 0  and step % args.checkpoint_interval == 0 :
@@ -90,7 +90,7 @@ class ExperienceLogger:
         self.logger.info(f"Starting chunk {self.chunk_num}")
       self.start_time_chunk = tm.time()
 
-  def end_chunk(self, args):
+  def end_chunk(self):
     self.chunk_num += 1
     self.end_time_chunk = tm.time()
 
@@ -105,16 +105,16 @@ class ExperienceLogger:
       self.logger.info(f"Best chunk is {self.best_score['chunk']} with {met}% accuracy")
       self.logger.info(f"Current chunk took {minute_diff} min")
 
-    return self.early_stop(args, met)
+    return self.early_stop(met)
 
 
-  def early_stop(self, args, metric):
+  def early_stop(self, metric):
     below_threshold = False
     
     if self.epoch > 3 and self.args.debug:
       below_threshold = True
 
-    patience = 6 if args.checkpoint_interval > 0 else 4
+    patience = 10 if self.args.checkpoint_interval > 0 else 4
     self.past_metrics.append(metric)
     if len(self.past_metrics) >= patience:
       trail = self.past_metrics[-1*patience:]
@@ -122,7 +122,7 @@ class ExperienceLogger:
         below_threshold = True
 
     if below_threshold:
-      if args.checkpoint_interval > 0:
+      if self.args.checkpoint_interval > 0:
         self.logger.info(f"Ran out of patience, early stopped at chunk {self.chunk_num}")
       else:
         self.logger.info(f"Ran out of patience, early stopped at epoch {self.epoch}")
@@ -212,7 +212,8 @@ class ExperienceLogger:
   def save_best_model(self, model, tokenizer, prune_keep):
     if self.do_save and self.best_score[self.metric] > 0.01:
       learning_rate = str(self.args.learning_rate)
-      accuracy = str(round(self.best_score[self.metric], 4) * 10000)
+      # accuracy = str(round(self.best_score[self.metric], 4) * 10000)
+      accuracy = '{0:.3f}'.format(self.best_score[self.metric])[2:]
       style = self.args.prompt_style
       saliency = "filter" if self.args.filter else "keepall"
       ckpt_name = f'{style}_lr{learning_rate}_{saliency}_epoch{self.epoch}_acc{accuracy}.pt'
