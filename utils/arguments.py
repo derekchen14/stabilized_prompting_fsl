@@ -95,6 +95,8 @@ def solicit_params():
                 help="Used as the threshold for filtering irrelevant sentence in saliency model")
     parser.add_argument("--train-percent", default=-1.0, type=float,
                 help="percentage of training data for fine-tuning")
+    parser.add_argument("--patience", default=6, type=int,
+                help="patience for early stop")
 
     # Hyper-parameters for tuning
     parser.add_argument("--batch-size", default=12, type=int,

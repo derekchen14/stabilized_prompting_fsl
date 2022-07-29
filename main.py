@@ -21,6 +21,7 @@ def run_train(args, model, datasets, exp_logger, detective):
   total_steps = len(train_dataloader) // args.grad_accum_steps * args.n_epochs
   optimizer, scheduler = setup_optimization(args, model, total_steps)
   scaler = GradScaler()
+  early_stop = False
   if args.chunk_ratio > 0:
     args.checkpoint_interval = int(len(train_dataloader) * args.chunk_ratio // 1000 * 1000)
   
@@ -69,6 +70,7 @@ def run_train(args, model, datasets, exp_logger, detective):
           exp_logger.save_best_model(model, tokenizer, args.prune_keep)
         early_stop = exp_logger.end_chunk(args)
         if early_stop: break
+    if early_stop: break
 
 
     if not use_chunk:
