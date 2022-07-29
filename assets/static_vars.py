@@ -15,8 +15,8 @@ STOP_TOKENS = ['done', 'exit', 'logout', 'finish', 'stop']
 
 DATASETS = {
     'abcd': 'Action-Based Conversations Dataset',
-    'gsim': 'Google Simulated Dialogue',
     'dstc': 'Dialogue State Tracking Challenge 2',
+    'gsim': 'Google Simulated Dialogue',
     'mwoz': 'MultiWoz 2.1',
     'sgd': 'Schema Guided Dialogue',
 #     'tt': 'TicketTalk'
@@ -24,7 +24,7 @@ DATASETS = {
 
 CHECKPOINTS = {
     't5': {
-        'small': 't5-large', 
+        'small': 't5-base', 
         'medium': 't5-3b',
         'large': 't5-11b' },
     'gpt': {
@@ -61,7 +61,7 @@ GENERAL_TYPO = {
     # parking
     "free parking":"free",
     # internet
-    "free internet":"yes", "y":"yes", "True": "yes", "False": "no",
+    "free internet":"yes", "y":"yes", "true": "yes", "True": "yes", "false": "no", "False": "no",
     # star
     "4 star":"4", "4 stars":"4", "0 star rarting":"<none>", "3 .":"3", "hree": "three", "wo": "two",
     # others
