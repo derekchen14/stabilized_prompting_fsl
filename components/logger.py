@@ -50,8 +50,15 @@ class ExperienceLogger:
     self.tr_loss = 0.0
     self.eval_loss = 0.0
 
-    self.start_time_chunk = None
-    self.chunk_num = 0
+    if args.chunk_per_epoch > 0:
+      self.use_chunks = True
+      num_chunks = len(train_dataloader) / args.chunk_per_epoch
+      self.checkpoint_interval = int(num_chunks // 1000 * 1000)
+      self.start_time_chunk = None
+      self.chunk_num = 0
+    else:
+      self.use_chunks = False
+    self.patience = args.patience
 
   def log_info(self, text):
     self.logger.info(text)
@@ -69,7 +76,7 @@ class ExperienceLogger:
     self.num_steps = len(dataloader)
     self.breakpoint = int(self.num_steps * percent)
 
-  def end_epoch(self, args):
+  def end_epoch(self):
     self.epoch += 1
     self.end_time = tm.time()
 
@@ -82,15 +89,15 @@ class ExperienceLogger:
     self.logger.info(f"Best epoch is {self.best_score['epoch']} with {met}% accuracy")
     self.logger.info(f"Current epoch took {minute_diff} min, average is {avg_diff} min")
 
-    return self.early_stop(args, met)
+    return self.early_stop(met)
 
-  def start_chunk(self, args, step):
-    if args.checkpoint_interval > 0  and step % args.checkpoint_interval == 0 :
+  def start_chunk(self, step):
+    if self.use_chunks  and step % self.checkpoint_interval == 0 :
       if self.chunk_num > 0:
         self.logger.info(f"Starting chunk {self.chunk_num}")
       self.start_time_chunk = tm.time()
 
-  def end_chunk(self, args):
+  def end_chunk(self):
     self.chunk_num += 1
     self.end_time_chunk = tm.time()
 
@@ -105,24 +112,23 @@ class ExperienceLogger:
       self.logger.info(f"Best chunk is {self.best_score['chunk']} with {met}% accuracy")
       self.logger.info(f"Current chunk took {minute_diff} min")
 
-    return self.early_stop(args, met)
+    return self.early_stop(met)
 
 
-  def early_stop(self, args, metric):
+  def early_stop(self, metric):
     below_threshold = False
     
     if self.epoch > 3 and self.args.debug:
       below_threshold = True
 
-    patience = args.patience if self.args.checkpoint_interval > 0 else 4
     self.past_metrics.append(metric)
-    if len(self.past_metrics) >= patience:
-      trail = self.past_metrics[-1*patience:]
+    if len(self.past_metrics) >= self.patience:
+      trail = self.past_metrics[-1*self.patience:]
       if all(x == trail[0] for x in trail):
         below_threshold = True
 
     if below_threshold:
-      if args.checkpoint_interval > 0:
+      if self.use_chunks:
         self.logger.info(f"Ran out of patience, early stopped at chunk {self.chunk_num}")
       else:
         self.logger.info(f"Ran out of patience, early stopped at epoch {self.epoch}")

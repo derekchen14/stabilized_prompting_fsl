@@ -21,14 +21,11 @@ def run_train(args, model, datasets, exp_logger, detective):
   total_steps = len(train_dataloader) // args.grad_accum_steps * args.n_epochs
   optimizer, scheduler = setup_optimization(args, model, total_steps)
   scaler = GradScaler()
-  early_stop = False
-  if args.chunk_ratio > 0:
-    args.checkpoint_interval = int(len(train_dataloader) * args.chunk_ratio // 1000 * 1000)
   
   if args.task == 'meta_learn':
     dataset.add_detective(detective)
     dev_dataset.add_detective(detective)
-    if args.checkpoint_interval > 0:
+    if exp_logger.use_chunks:
       dev_dataset.data = random.sample(dev_dataset.data, len(dev_dataset)//6)
 
   for epoch_count in range(exp_logger.num_epochs):
@@ -36,7 +33,7 @@ def run_train(args, model, datasets, exp_logger, detective):
     model.train()
 
     for step, batch in enumerate(train_dataloader):
-      exp_logger.start_chunk(args, step)    # start chunk here
+      exp_logger.start_chunk(step)    # start chunk here
       inputs, targets = dataset.collate(args, batch)
       review_inputs(args, inputs, targets, datasets['train'].tokenizer)
       with autocast(dtype=torch.bfloat16):
@@ -54,35 +51,32 @@ def run_train(args, model, datasets, exp_logger, detective):
       exp_logger.log_train(step, scheduler)
       if exp_logger.train_stop(args, step, debug_break): break
 
-      use_chunk = args.checkpoint_interval > 0               # use checkpoint_interval for validation
-      at_chunk = step % args.checkpoint_interval == 0 and step != 0        # step on where for validation
-      skip_first_five = exp_logger.chunk_num > 5                  # skip the first five checkpoint
-      # pdb.set_trace()
-      if use_chunk and at_chunk:
-        if args.task == 'meta_learn' and args.do_leave:
-          run_eval(args, model, dev_dataset, exp_logger)
-          eval_res = run_leftout(args, model, dev_dataset, exp_logger)
-        else:
-          eval_res = run_eval(args, model, dev_dataset, exp_logger)
+      if exp_logger.use_chunks:
+        at_chunk = step % exp_logger.checkpoint_interval == 0
+        skip_inital_chunks = exp_logger.chunk_num > 2            # skip the first few checkpoint
 
-        if eval_res[exp_logger.metric] >= exp_logger.best_score[exp_logger.metric]:
-          exp_logger.best_score = eval_res
-          exp_logger.save_best_model(model, tokenizer, args.prune_keep)
-        early_stop = exp_logger.end_chunk(args)
-        if early_stop: break
-    if early_stop: break
+        if step > 0 and at_chunk and skip_inital_chunks:
+          if args.task == 'meta_learn' and args.do_leave:
+            run_eval(args, model, dev_dataset, exp_logger)
+            eval_res = run_leftout(args, model, dev_dataset, exp_logger)
+          else:
+            eval_res = run_eval(args, model, dev_dataset, exp_logger)
 
+          if eval_res[exp_logger.metric] >= exp_logger.best_score[exp_logger.metric]:
+            exp_logger.best_score = eval_res
+            exp_logger.save_best_model(model, tokenizer, args.prune_keep)
+          early_stop = exp_logger.end_chunk()
+          if early_stop: break
 
-    if not use_chunk:
+    if not exp_logger.use_chunks:
       # only do epoch validation for non-meta training
       eval_res = run_eval(args, model, dev_dataset, exp_logger)
       if eval_res[exp_logger.metric] >= exp_logger.best_score[exp_logger.metric]:
         exp_logger.best_score = eval_res
         exp_logger.save_best_model(model, tokenizer, args.prune_keep)
-      early_stop = exp_logger.end_epoch(args)
-      if early_stop: break
-    else:
-      exp_logger.end_epoch(args)
+
+    early_stop = exp_logger.end_epoch()
+    if early_stop: break
 
   return model
 
@@ -137,12 +131,12 @@ def run_test(args, dataset, exp_logger, detective):
 
 def run_leftout(args, model, dataset, exp_logger):
   tokenizer = dataset.tokenizer
-  bs, num_exp = args.batch_size, len(dataset.leftout)
-  description = f"Evaluating {args.left_out} with ratio 0.8"
+  bs, num_exp, leftout_ratio = args.batch_size, len(dataset.leftout), 0.5
+  description = f"Evaluating {args.left_out} with ratio {leftout_ratio}"
   all_outputs, all_targets = [], []
 
   for idx in progress_bar(range(0, num_exp, bs), total=num_exp//bs, desc=description):
-    if random.random() < 0.8: continue  # sample from the data to speed things up
+    if random.random() < leftout_ratio: continue  # sample from the data to speed things up
     batch = dataset.leftout[idx:idx+bs]
     inputs, target_dict = dataset.collate(args, batch)
     all_targets.extend(target_dict)   # notice this is "extend", not "append"
@@ -155,9 +149,7 @@ def run_leftout(args, model, dataset, exp_logger):
     all_outputs.extend(output_strings)
   
   eval_qualify(args, all_outputs, all_targets)
-  results = eval_quantify(args, all_outputs, all_targets, exp_logger, tokenizer)
-
-  return results
+  return eval_quantify(args, all_outputs, all_targets, exp_logger, tokenizer)
 
 def run_eval(args, model, dataset, exp_logger):
   tokenizer = dataset.tokenizer
