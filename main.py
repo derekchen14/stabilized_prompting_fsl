@@ -21,6 +21,7 @@ def run_train(args, model, datasets, exp_logger, detective):
   total_steps = len(train_dataloader) // args.grad_accum_steps * args.n_epochs
   optimizer, scheduler = setup_optimization(args, model, total_steps)
   scaler = GradScaler()
+  exp_logger.checkpoint_interval = int((len(train_dataloader)/args.chunk_per_epoch) // 1000 * 1000)
   
   if args.task == 'meta_learn':
     dataset.add_detective(detective)
@@ -230,9 +231,7 @@ if __name__ == "__main__":
   if args.ensemble > 1:
     detective = ensembledetective(args, datasets)
   else:
-    detective = ExemplarDetective(args, datasets['train'])
-  
-
+    detective = ExemplarDetective(args, datasets['train']) 
 
   if args.do_train:
     model = load_model(args, ontology, tokenizer, save_path)

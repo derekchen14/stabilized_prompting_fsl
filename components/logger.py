@@ -50,14 +50,9 @@ class ExperienceLogger:
     self.tr_loss = 0.0
     self.eval_loss = 0.0
 
-    if args.chunk_per_epoch > 0:
-      self.use_chunks = True
-      num_chunks = len(train_dataloader) / args.chunk_per_epoch
-      self.checkpoint_interval = int(num_chunks // 1000 * 1000)
-      self.start_time_chunk = None
-      self.chunk_num = 0
-    else:
-      self.use_chunks = False
+    self.use_chunks = args.chunk_per_epoch > 0
+    self.start_time_chunk = None
+    self.chunk_num = 0
     self.patience = args.patience
 
   def log_info(self, text):
@@ -92,7 +87,7 @@ class ExperienceLogger:
     return self.early_stop(met)
 
   def start_chunk(self, step):
-    if self.use_chunks  and step % self.checkpoint_interval == 0 :
+    if self.use_chunks and step % self.checkpoint_interval == 0:
       if self.chunk_num > 0:
         self.logger.info(f"Starting chunk {self.chunk_num}")
       self.start_time_chunk = tm.time()
