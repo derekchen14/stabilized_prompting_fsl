@@ -50,8 +50,10 @@ class ExperienceLogger:
     self.tr_loss = 0.0
     self.eval_loss = 0.0
 
+    self.use_chunks = args.chunk_per_epoch > 0
     self.start_time_chunk = None
     self.chunk_num = 0
+    self.patience = args.patience
 
   def log_info(self, text):
     self.logger.info(text)
@@ -84,8 +86,8 @@ class ExperienceLogger:
 
     return self.early_stop(met)
 
-  def start_chunk(self, args, step):
-    if args.checkpoint_interval > 0  and step % args.checkpoint_interval == 0 :
+  def start_chunk(self, step):
+    if self.use_chunks and step % self.checkpoint_interval == 0:
       if self.chunk_num > 0:
         self.logger.info(f"Starting chunk {self.chunk_num}")
       self.start_time_chunk = tm.time()
@@ -114,15 +116,14 @@ class ExperienceLogger:
     if self.epoch > 3 and self.args.debug:
       below_threshold = True
 
-    patience = 10 if self.args.checkpoint_interval > 0 else 4
     self.past_metrics.append(metric)
-    if len(self.past_metrics) >= patience:
-      trail = self.past_metrics[-1*patience:]
+    if len(self.past_metrics) >= self.patience:
+      trail = self.past_metrics[-1*self.patience:]
       if all(x == trail[0] for x in trail):
         below_threshold = True
 
     if below_threshold:
-      if self.args.checkpoint_interval > 0:
+      if self.use_chunks:
         self.logger.info(f"Ran out of patience, early stopped at chunk {self.chunk_num}")
       else:
         self.logger.info(f"Ran out of patience, early stopped at epoch {self.epoch}")

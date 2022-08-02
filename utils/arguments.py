@@ -77,8 +77,8 @@ def solicit_params():
     parser.add_argument("--eval-interval", default='whole', type=str, 
                 choices=['tenth', 'quarter', 'half', 'whole'],
                 help="Ratio of dev data to process before printing out a score")
-    parser.add_argument("--checkpoint-interval", default=-1, type=int, 
-                help="The number of update steps to save a checkpoint for meta-learning")
+    parser.add_argument("--chunk-per-epoch", default=-1, type=int, 
+                help="The ratio of update steps to save a checkpoint for meta-learning")
     parser.add_argument("--qualify", action='store_true',
                 help="Whether to include joint accuracy scores during evaluation")
     parser.add_argument("--quantify", action='store_true',
@@ -93,6 +93,8 @@ def solicit_params():
                 help="Used as the threshold for filtering irrelevant sentence in saliency model")
     parser.add_argument("--train-percent", default=-1.0, type=float,
                 help="percentage of training data for fine-tuning")
+    parser.add_argument("--patience", default=4, type=int,
+                help="patience for early stop, applies to both chunks and epochs")
 
     # Hyper-parameters for tuning
     parser.add_argument("--batch-size", default=12, type=int,
