@@ -22,7 +22,7 @@ def run_train(args, model, datasets, exp_logger, detective):
   optimizer, scheduler = setup_optimization(args, model, total_steps)
   scaler = GradScaler()
   exp_logger.checkpoint_interval = int((len(train_dataloader)/args.chunk_per_epoch) // 1000 * 1000)
-  
+
   if args.task == 'meta_learn':
     dataset.add_detective(detective)
     dev_dataset.add_detective(detective)
@@ -54,10 +54,10 @@ def run_train(args, model, datasets, exp_logger, detective):
 
       if exp_logger.use_chunks:
         at_chunk = step % exp_logger.checkpoint_interval == 0
-        skip_inital_chunks = exp_logger.chunk_num > 2            # skip the first few checkpoint
+        skip_initial_chunks = exp_logger.chunk_num > 2            # skip the first few checkpoint
 
-        if step > 0 and at_chunk and skip_inital_chunks:
-          if args.task == 'meta_learn' and args.do_leave:
+        if step > 0 and at_chunk:
+          if args.task == 'meta_learn' and args.do_leave and skip_initial_chunks:
             run_eval(args, model, dev_dataset, exp_logger)
             eval_res = run_leftout(args, model, dev_dataset, exp_logger)
           else:

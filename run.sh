@@ -61,8 +61,9 @@ set -xue
 #       --learning-rate 1e-5 --batch-size 6 --prompt-style schema  --seed 15
 python main.py --dataset mwoz --task meta_learn --n-epochs 5 --do-train --do-save \
      --left-out mwoz --model t5 --size small --num-shots five --chunk-per-epoch 8 \
-     --learning-rate 3e-4 --prompt-style schema --batch-size 4 --log-interval 1400 \
-     --eval-interval half --do-leave --verbose --grad-accum-steps 8 --filter --kappa 30 # parallel
+     --learning-rate 3e-4 --prompt-style schema --batch-size 4 --log-interval 1600 \
+     --eval-interval half --do-leave --qualify --grad-accum-steps 8 --filter \
+     --do-leave --kappa 30 --search cosine --use-tuned # parallel
 # python main.py --dataset mwoz --task meta_learn --n-epochs 7 --do-train --do-save \
 #      --left-out mwoz --model t5 --size small --num-shots five --prompt-style statement \
 #      --learning-rate 3e-4 --batch-size 16 --grad-accum-steps 8 --log-interval 1200 \
