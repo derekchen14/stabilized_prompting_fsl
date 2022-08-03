@@ -217,7 +217,10 @@ class ExperienceLogger:
       accuracy = '{0:.3f}'.format(self.best_score[self.metric])[2:]
       style = self.args.prompt_style
       saliency = "filter" if self.args.filter else "keepall"
-      ckpt_name = f'{style}_lr{learning_rate}_{saliency}_epoch{self.epoch}_acc{accuracy}.pt'
+      if self.use_chunks:
+        ckpt_name = f'{style}_lr{learning_rate}_{saliency}_chunk{self.chunk_num}_acc{accuracy}.pt'
+      else:
+        ckpt_name = f'{style}_lr{learning_rate}_{saliency}_epoch{self.epoch}_acc{accuracy}.pt'
       ckpt_path = os.path.join(self.save_path,ckpt_name)
 
       # model_to_save = model.module if hasattr(model, 'module') else model

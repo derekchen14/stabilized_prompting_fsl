@@ -52,12 +52,9 @@ def run_train(args, model, datasets, exp_logger, detective):
       exp_logger.log_train(step, scheduler)
       if exp_logger.train_stop(args, step, debug_break): break
 
-      if exp_logger.use_chunks:
-        at_chunk = step % exp_logger.checkpoint_interval == 0
-        skip_initial_chunks = exp_logger.chunk_num > 2            # skip the first few checkpoint
-
-        if step > 0 and at_chunk:
-          if args.task == 'meta_learn' and args.do_leave and skip_initial_chunks:
+      if exp_logger.use_chunks and step > 0 and step % exp_logger.checkpoint_interval == 0:
+        if exp_logger.chunk_num > 2:
+          if args.task == 'meta_learn' and args.do_leave:
             run_eval(args, model, dev_dataset, exp_logger)
             eval_res = run_leftout(args, model, dev_dataset, exp_logger)
           else:
@@ -66,8 +63,9 @@ def run_train(args, model, datasets, exp_logger, detective):
           if eval_res[exp_logger.metric] >= exp_logger.best_score[exp_logger.metric]:
             exp_logger.best_score = eval_res
             exp_logger.save_best_model(model, tokenizer, args.prune_keep)
-          early_stop = exp_logger.end_chunk()
-          if early_stop: break
+          
+        early_stop = exp_logger.end_chunk()
+        if early_stop: break
 
     if not exp_logger.use_chunks:
       # only do epoch validation for non-meta training
