@@ -275,6 +275,36 @@ class MetaLearnDataset(BaseDataset):
       labels = inputs['input_ids']
     return inputs, labels
 
+class PreTrainDataset(MetaLearnDataset):
+  """ Uses the meta learn dataset pre-processing to add different corpora as support sets.
+  At the same time, uses the standard fine-tuning method to collate since not doing ICL"""
+
+  def collate_seq2seq(self, args, examples):
+    dialogues, labels = [], []
+
+    for example in examples:
+      history = ' '.join(example['utterances'])
+      target = example['target']
+      state_str = super().state_to_string(example['prev_state'])
+      prompt = find_prompt(args.prompt_style, target['domain'], target['slot'])
+      
+      dialog = f"{state_str}{history} {prompt}"
+      dialogues.append(dialog)
+
+      if self.split == 'train':
+        labels.append(target['value'])
+      else:
+        target['history'] = history
+        labels.append(target)
+
+    inputs = self.tokenizer(dialogues, padding='longest', max_length=512,
+                              truncation=True, pad_to_multiple_of=8, return_tensors='pt').to(device)
+    if self.split == 'train':
+      targets = self.tokenizer(labels) # we do not want tensors
+      target_tensor = self._pad_right(targets)
+      return inputs, target_tensor
+    else:
+      return inputs, labels
 
 class FineTuneDataset(BaseDataset):
 
@@ -299,7 +329,6 @@ class FineTuneDataset(BaseDataset):
 
     inputs = self.tokenizer(dialogues, padding='longest', max_length=512,
                               truncation=True, pad_to_multiple_of=8, return_tensors='pt').to(device)
-
     if self.split == 'train':
       targets = self.tokenizer(labels) # we do not want tensors
       target_tensor = self._pad_right(targets)

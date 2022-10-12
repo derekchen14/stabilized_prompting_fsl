@@ -9,7 +9,7 @@ from nltk.tokenize import sent_tokenize
 
 from assets.static_vars import *
 from utils.help import standardize_format
-from components.datasets import MetaLearnDataset, InContextDataset, FineTuneDataset
+from components.datasets import MetaLearnDataset, InContextDataset, FineTuneDataset, PreTrainDataset
 from torch.utils.data import DataLoader, RandomSampler, SequentialSampler
 from tqdm import tqdm as progress_bar
 from collections import defaultdict, Counter
@@ -677,6 +677,8 @@ def process_data(args, raw_data, tokenizer):
         datasets[split] = MetaLearnDataset(args, examples, tokenizer, split)
       elif args.task == 'in_context':
         datasets[split] = InContextDataset(args, examples, tokenizer, split)
+      elif args.task == 'pre_train':
+        datasets[split] = PreTrainDataset(args, examples, tokenizer, split)
       elif args.task == 'fine_tune':
         datasets[split] = FineTuneDataset(args, examples, tokenizer, split)
       print(f"Running with {len(datasets[split])} {split} examples")

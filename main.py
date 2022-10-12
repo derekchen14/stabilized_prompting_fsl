@@ -178,13 +178,13 @@ def run_eval(args, model, dataset, exp_logger):
   return results
 
 def check_support(args, datasets, tokenizer):
-  if args.task == 'meta_learn':
+  if args.task in ['meta_learn', 'pre_train']:
     supports = load_support(args, tokenizer)
     datasets['train'].add_support(supports, args.left_out)
     datasets['dev'].add_support(supports, args.left_out)
   return datasets
 
-def ensembledetective(args, datasets):
+def ensemble_of_detectives(args, datasets):
   import copy
   # cosine
   args_cos = copy.deepcopy(args)
@@ -227,7 +227,7 @@ if __name__ == "__main__":
   datasets, ontology = process_data(args, raw_data, tokenizer)
   exp_logger = ExperienceLogger(args, ontology, save_path)
   if args.ensemble > 1:
-    detective = ensembledetective(args, datasets)
+    detective = ensemble_of_detectives(args, datasets)
   else:
     detective = ExemplarDetective(args, datasets['train']) 
 

@@ -14,7 +14,7 @@ def solicit_params():
                 choices=['abcd', 'dstc', 'gsim', 'mwoz', 'sgd', 'tt'],
                 help="which dataset to choose from out of all possible options")
     parser.add_argument("--task", default='fine_tune', type=str,
-                choices=['in_context', 'meta_learn', 'fine_tune', 'reptile'],
+                choices=['in_context', 'meta_learn', 'fine_tune', 'pre_train'],
                 help="in context has no gradients, meta learn uses inner loop gradients to \
                 improve outer loop performance, fine tune performs outer loop training only")
     parser.add_argument("--model", default='gpt', type=str, choices=['t5', 'bart', 'gpt', 'trade'],
