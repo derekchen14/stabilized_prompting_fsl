@@ -1,7 +1,7 @@
 import os, pdb, sys
 import numpy as np
 
-with open("./utils/animal_for_random.txt") as ar:
+with open("./utils/animals.txt") as ar:
   ANIMALS = ar.read().lower().split("\n")
 for animal in ANIMALS[:]:
   if " " in animal:
