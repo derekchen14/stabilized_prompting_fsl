@@ -178,14 +178,14 @@ def calculate_jga(results, final_preds, verbose):
         if target_val in normal_dict:
           target_val = normal_dict[target_val]
         
-        # if target_val != '<none>':
+        if target_val != '<none>':
           # if pred_val == target_val:
-        if pred_val.startswith(target_val):
-          correct += 1
-        else:
-          turn_correct = False
-          errors[f"{pred_val}-{target_val}"] += 1
-        possible += 1
+          if pred_val.startswith(target_val):
+            correct += 1
+          else:
+            turn_correct = False
+            errors[f"{pred_val}-{target_val}"] += 1
+          possible += 1
 
       if turn_correct:
         joint_correct += 1

@@ -88,8 +88,8 @@ class ExperienceLogger:
 
   def start_chunk(self, step):
     if self.use_chunks and step % self.checkpoint_interval == 0:
-      if self.chunk_num > 0:
-        self.logger.info(f"Starting chunk {self.chunk_num}")
+      if step > 0:
+        self.logger.info(f"Starting chunk {self.chunk_num} on step {step}")
       self.start_time_chunk = tm.time()
 
   def end_chunk(self):
